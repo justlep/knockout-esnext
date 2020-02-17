@@ -1,4 +1,4 @@
-# Knockout ESNext [![Build Status](https://travis-ci.org/justlep/knockout-next.svg?branch=master)](https://travis-ci.org/justlep/knockout-next) 
+# Knockout ESNext [![Build Status](https://travis-ci.org/justlep/knockout-esnext.svg?branch=master)](https://travis-ci.org/justlep/knockout-esnext) 
 
 A complete overhaul of the [Knockout.js](https://knockoutjs.com/) library code and build process.
 
