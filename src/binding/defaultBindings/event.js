@@ -1,52 +1,57 @@
+import {bindingHandlers} from '../bindingHandlers';
+
 // For certain common events (currently just 'click'), allow a simplified data-binding syntax
 // e.g. click:handler instead of the usual full-length event:{click:handler}
-function makeEventHandlerShortcut(eventName) {
-    ko.bindingHandlers[eventName] = {
-        'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var newValueAccessor = function () {
-                var result = {};
-                result[eventName] = valueAccessor();
-                return result;
-            };
-            return ko.bindingHandlers['event']['init'].call(this, element, newValueAccessor, allBindings, viewModel, bindingContext);
+import {registerEventHandler} from '../../utils';
+
+export const _makeEventHandlerShortcut = (eventName) => {
+    bindingHandlers[eventName] = {
+        init (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            let newValueAccessor = () => ({[eventName]: valueAccessor()});
+            return _eventBindingInitFn(element, newValueAccessor, allBindings, viewModel, bindingContext);
         }
+    };
+};
+
+const _eventBindingInitFn = (element, valueAccessor, allBindings, viewModel, bindingContext) => {
+    let eventsToHandle = valueAccessor() || {};
+    if (!eventsToHandle) {
+        return;
     }
-}
+    for (let eventName of Object.keys(eventsToHandle)) {
+        if (typeof eventName !== 'string') {
+            continue;
+        }
+        registerEventHandler(element, eventName, (event, ...otherArgs) => {
+            let handlerReturnValue,
+                handlerFunction = valueAccessor()[eventName];
+            
+            if (!handlerFunction) {
+                return;
+            }
 
-ko.bindingHandlers['event'] = {
-    'init' : function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-        var eventsToHandle = valueAccessor() || {};
-        ko.utils.objectForEach(eventsToHandle, function(eventName) {
-            if (typeof eventName == "string") {
-                ko.utils.registerEventHandler(element, eventName, function (event) {
-                    var handlerReturnValue;
-                    var handlerFunction = valueAccessor()[eventName];
-                    if (!handlerFunction)
-                        return;
+            try {
+                // Take all the event args, and prefix with the viewmodel
+                let viewModel = bindingContext['$data'];
+                // call the event handler with like handler(viewModel, event, ...otherArgs);
+                handlerReturnValue = handlerFunction.call(viewModel, viewModel, event, ...otherArgs);
+            } finally {
+                if (handlerReturnValue !== true) { 
+                    // Normally we want to prevent default action. Developer can override this be explicitly returning true.
+                    event.preventDefault();
+                    // removed historic 'event.returnValue = false'
+                }
+            }
 
-                    try {
-                        // Take all the event args, and prefix with the viewmodel
-                        var argsForHandler = ko.utils.makeArray(arguments);
-                        viewModel = bindingContext['$data'];
-                        argsForHandler.unshift(viewModel);
-                        handlerReturnValue = handlerFunction.apply(viewModel, argsForHandler);
-                    } finally {
-                        if (handlerReturnValue !== true) { // Normally we want to prevent default action. Developer can override this be explicitly returning true.
-                            if (event.preventDefault)
-                                event.preventDefault();
-                            else
-                                event.returnValue = false;
-                        }
-                    }
-
-                    var bubble = allBindings.get(eventName + 'Bubble') !== false;
-                    if (!bubble) {
-                        event.cancelBubble = true;
-                        if (event.stopPropagation)
-                            event.stopPropagation();
-                    }
-                });
+            let bubble = allBindings.get(eventName + 'Bubble') !== false;
+            if (!bubble) {
+                event.stopPropagation();
+                // removed historic 'event.cancelBubble = true'
             }
         });
     }
+};
+
+bindingHandlers.event = {
+    init: _eventBindingInitFn
 };

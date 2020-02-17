@@ -1,39 +1,54 @@
+import {bindingRewriteValidators} from '../expressionRewriting';
+import {isObservable} from '../../subscribables/observableUtils';
+import {unwrapObservable} from '../../utils';
+import {bindingHandlers} from '../bindingHandlers';
+import {NativeTemplateEngine} from '../../templating/native/nativeTemplateEngine';
+import {allowedVirtualElementBindings} from '../../virtualElements';
+
+const _foreachBindingMakeTemplateValueAccessor = (valueAccessor) => () => {
+    let modelValue = valueAccessor(),
+        // Unwrap without setting a dependency here
+        unwrappedValue = isObservable(modelValue) ? modelValue.peek() : modelValue;
+    
+    // If unwrappedValue is the array, pass in the wrapped value on its own
+    // The value will be unwrapped and tracked within the template binding
+    // (See https://github.com/SteveSanderson/knockout/issues/523)
+    if (!unwrappedValue || typeof unwrappedValue.length === 'number') {
+        return {
+            foreach: modelValue, 
+            templateEngine: NativeTemplateEngine.instance
+        };
+    }
+
+    // If unwrappedValue.data is the array, preserve all relevant options and unwrap again value so we get updates
+    unwrapObservable(modelValue);
+    return {
+        foreach: unwrappedValue.data,
+        as: unwrappedValue.as,
+        noChildContext: unwrappedValue.noChildContext,
+        includeDestroyed: unwrappedValue.includeDestroyed,
+        afterAdd: unwrappedValue.afterAdd,
+        beforeRemove: unwrappedValue.beforeRemove,
+        afterRender: unwrappedValue.afterRender,
+        beforeMove: unwrappedValue.beforeMove,
+        afterMove: unwrappedValue.afterMove,
+        templateEngine: NativeTemplateEngine.instance
+    };
+};
+
+
 // "foreach: someExpression" is equivalent to "template: { foreach: someExpression }"
 // "foreach: { data: someExpression, afterAdd: myfn }" is equivalent to "template: { foreach: someExpression, afterAdd: myfn }"
-ko.bindingHandlers['foreach'] = {
-    makeTemplateValueAccessor: function(valueAccessor) {
-        return function() {
-            var modelValue = valueAccessor(),
-                unwrappedValue = ko.utils.peekObservable(modelValue);    // Unwrap without setting a dependency here
 
-            // If unwrappedValue is the array, pass in the wrapped value on its own
-            // The value will be unwrapped and tracked within the template binding
-            // (See https://github.com/SteveSanderson/knockout/issues/523)
-            if ((!unwrappedValue) || typeof unwrappedValue.length == "number")
-                return { 'foreach': modelValue, 'templateEngine': ko.nativeTemplateEngine.instance };
-
-            // If unwrappedValue.data is the array, preserve all relevant options and unwrap again value so we get updates
-            ko.utils.unwrapObservable(modelValue);
-            return {
-                'foreach': unwrappedValue['data'],
-                'as': unwrappedValue['as'],
-                'noChildContext': unwrappedValue['noChildContext'],
-                'includeDestroyed': unwrappedValue['includeDestroyed'],
-                'afterAdd': unwrappedValue['afterAdd'],
-                'beforeRemove': unwrappedValue['beforeRemove'],
-                'afterRender': unwrappedValue['afterRender'],
-                'beforeMove': unwrappedValue['beforeMove'],
-                'afterMove': unwrappedValue['afterMove'],
-                'templateEngine': ko.nativeTemplateEngine.instance
-            };
-        };
+bindingHandlers.foreach = {
+    makeTemplateValueAccessor: _foreachBindingMakeTemplateValueAccessor,
+    init(element, valueAccessor, allBindings, viewModel, bindingContext) {
+        return bindingHandlers.template.init(element, _foreachBindingMakeTemplateValueAccessor(valueAccessor));
     },
-    'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-        return ko.bindingHandlers['template']['init'](element, ko.bindingHandlers['foreach'].makeTemplateValueAccessor(valueAccessor));
-    },
-    'update': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-        return ko.bindingHandlers['template']['update'](element, ko.bindingHandlers['foreach'].makeTemplateValueAccessor(valueAccessor), allBindings, viewModel, bindingContext);
+    update(element, valueAccessor, allBindings, viewModel, bindingContext) {
+        return bindingHandlers.template.update(element, _foreachBindingMakeTemplateValueAccessor(valueAccessor), allBindings, viewModel, bindingContext);
     }
 };
-ko.expressionRewriting.bindingRewriteValidators['foreach'] = false; // Can't rewrite control flow bindings
-ko.virtualElements.allowedBindings['foreach'] = true;
+
+bindingRewriteValidators.foreach = false; // Can't rewrite control flow bindings
+allowedVirtualElementBindings.foreach = true;

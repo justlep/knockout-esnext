@@ -1,106 +1,106 @@
+import {nextDomDataKey, setDomData, getDomData, clearDomData} from './utils.domData';
+import {ignoreDependencyDetection} from './subscribables/dependencyDetection';
 
-ko.utils.domNodeDisposal = new (function () {
-    var domDataKey = ko.utils.domData.nextKey();
-    var cleanableNodeTypes = { 1: true, 8: true, 9: true };       // Element, Comment, Document
-    var cleanableNodeTypesWithDescendants = { 1: true, 9: true }; // Element, Document
+const DOM_DATA_KEY = nextDomDataKey();
+const CLEANABLE_NODE_TYPES = {1: true, 8: true, 9: true};                   // Element, Comment, Document
+const CLEANABLE_NODE_TYPES_WITH_DESCENDENTS = {1: true, 8: false, 9: true}; // Element, Comment(not), Document
 
-    function getDisposeCallbacksCollection(node, createIfNotFound) {
-        var allDisposeCallbacks = ko.utils.domData.get(node, domDataKey);
-        if ((allDisposeCallbacks === undefined) && createIfNotFound) {
-            allDisposeCallbacks = [];
-            ko.utils.domData.set(node, domDataKey, allDisposeCallbacks);
-        }
-        return allDisposeCallbacks;
+const _getDisposeCallbacksCollection = (node, createIfNotFound) => {
+    let allDisposeCallbacks = getDomData(node, DOM_DATA_KEY);
+    if ((allDisposeCallbacks === undefined) && createIfNotFound) {
+        allDisposeCallbacks = [];
+        setDomData(node, DOM_DATA_KEY, allDisposeCallbacks);
     }
-    function destroyCallbacksCollection(node) {
-        ko.utils.domData.set(node, domDataKey, undefined);
-    }
+    return allDisposeCallbacks;
+};
 
-    function cleanSingleNode(node) {
-        // Run all the dispose callbacks
-        var callbacks = getDisposeCallbacksCollection(node, false);
-        if (callbacks) {
-            callbacks = callbacks.slice(0); // Clone, as the array may be modified during iteration (typically, callbacks will remove themselves)
-            for (var i = 0; i < callbacks.length; i++)
-                callbacks[i](node);
-        }
+const _destroyCallbacksCollection = (node) => setDomData(node, DOM_DATA_KEY, undefined);
 
-        // Erase the DOM data
-        ko.utils.domData.clear(node);
+/** @type {function} */
+export let _cleanExternalData = null;
+export const _overrideCleanExternalData = (fn) => _cleanExternalData = fn;
 
-        // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
-        ko.utils.domNodeDisposal["cleanExternalData"](node);
 
-        // Clear any immediate-child comment nodes, as these wouldn't have been found by
-        // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
-        if (cleanableNodeTypesWithDescendants[node.nodeType]) {
-            cleanNodesInList(node.childNodes, true/*onlyComments*/);
-        }
+const _cleanSingleNode = (node) => {
+    // Run all the dispose callbacks
+    let callbacks = _getDisposeCallbacksCollection(node, false);
+    if (callbacks) {
+        callbacks = callbacks.slice(0); // Clone, as the array may be modified during iteration (typically, callbacks will remove themselves)
+         for (let i = 0; i < callbacks.length; i++) {
+             callbacks[i](node);
+         }
     }
 
-    function cleanNodesInList(nodeList, onlyComments) {
-        var cleanedNodes = [], lastCleanedNode;
-        for (var i = 0; i < nodeList.length; i++) {
-            if (!onlyComments || nodeList[i].nodeType === 8) {
-                cleanSingleNode(cleanedNodes[cleanedNodes.length] = lastCleanedNode = nodeList[i]);
-                if (nodeList[i] !== lastCleanedNode) {
-                    while (i-- && ko.utils.arrayIndexOf(cleanedNodes, nodeList[i]) == -1) {}
+    // Erase the DOM data
+    clearDomData(node);
+
+    // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
+    if (_cleanExternalData) {
+        _cleanExternalData(node);
+    }
+    
+    // Clear any immediate-child comment nodes, as these wouldn't have been found by
+    // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
+    if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
+        _cleanNodesInList(node.childNodes, true/*onlyComments*/);
+    }
+};
+
+const _cleanNodesInList = (nodeList, onlyComments) => {
+    let cleanedNodes = [], 
+        lastCleanedNode;
+    
+     for (let i = 0; i < nodeList.length; i++) {
+        if (!onlyComments || nodeList[i].nodeType === 8) {
+            _cleanSingleNode(cleanedNodes[cleanedNodes.length] = lastCleanedNode = nodeList[i]);
+            if (nodeList[i] !== lastCleanedNode) {
+                while (i-- && !cleanedNodes.includes(nodeList[i])) {
+                    // just do
                 }
             }
         }
     }
+};
 
-    return {
-        addDisposeCallback : function(node, callback) {
-            if (typeof callback != "function")
-                throw new Error("Callback must be a function");
-            getDisposeCallbacksCollection(node, true).push(callback);
-        },
+export const addDisposeCallback = (node, callback) => {
+    if (typeof callback !== 'function') {
+        throw new Error('Callback must be a function');
+    }
+    _getDisposeCallbacksCollection(node, true).push(callback);
+};
 
-        removeDisposeCallback : function(node, callback) {
-            var callbacksCollection = getDisposeCallbacksCollection(node, false);
-            if (callbacksCollection) {
-                ko.utils.arrayRemoveItem(callbacksCollection, callback);
-                if (callbacksCollection.length == 0)
-                    destroyCallbacksCollection(node);
-            }
-        },
-
-        cleanNode : function(node) {
-            ko.dependencyDetection.ignore(function () {
-                // First clean this node, where applicable
-                if (cleanableNodeTypes[node.nodeType]) {
-                    cleanSingleNode(node);
-
-                    // ... then its descendants, where applicable
-                    if (cleanableNodeTypesWithDescendants[node.nodeType]) {
-                        cleanNodesInList(node.getElementsByTagName("*"));
-                    }
-                }
-            });
-
-            return node;
-        },
-
-        removeNode : function(node) {
-            ko.cleanNode(node);
-            if (node.parentNode)
-                node.parentNode.removeChild(node);
-        },
-
-        "cleanExternalData" : function (node) {
-            // Special support for jQuery here because it's so commonly used.
-            // Many jQuery plugins (including jquery.tmpl) store data using jQuery's equivalent of domData
-            // so notify it to tear down any resources associated with the node & descendants here.
-            if (jQueryInstance && (typeof jQueryInstance['cleanData'] == "function"))
-                jQueryInstance['cleanData']([node]);
+export const removeDisposeCallback = (node, callback) => {
+    let callbacksCollection = _getDisposeCallbacksCollection(node, false);
+    if (callbacksCollection) {
+        let index = callbacksCollection.length ? callbacksCollection.indexOf(callback) : -1;
+        if (index === 0) {
+            callbacksCollection.shift();
+        } else if (index > 0) {
+            callbacksCollection.splice(index, 1);
         }
-    };
-})();
-ko.cleanNode = ko.utils.domNodeDisposal.cleanNode; // Shorthand name for convenience
-ko.removeNode = ko.utils.domNodeDisposal.removeNode; // Shorthand name for convenience
-ko.exportSymbol('cleanNode', ko.cleanNode);
-ko.exportSymbol('removeNode', ko.removeNode);
-ko.exportSymbol('utils.domNodeDisposal', ko.utils.domNodeDisposal);
-ko.exportSymbol('utils.domNodeDisposal.addDisposeCallback', ko.utils.domNodeDisposal.addDisposeCallback);
-ko.exportSymbol('utils.domNodeDisposal.removeDisposeCallback', ko.utils.domNodeDisposal.removeDisposeCallback);
+        if (!callbacksCollection.length) {
+            _destroyCallbacksCollection(node);
+        }
+    }
+};
+
+export const cleanNode = (node) => {
+    ignoreDependencyDetection(() => {
+        // First clean this node, where applicable
+        if (CLEANABLE_NODE_TYPES[node.nodeType]) {
+            _cleanSingleNode(node);
+            // ... then its descendants, where applicable
+            if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
+                _cleanNodesInList(node.getElementsByTagName('*'));
+            }
+        }
+    });
+    return node;
+};
+
+export const removeNode = (node) => {
+    cleanNode(node);
+    if (node.parentNode) {
+        node.parentNode.removeChild(node);
+    }
+};

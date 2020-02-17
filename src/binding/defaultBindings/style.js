@@ -1,31 +1,38 @@
-ko.bindingHandlers['style'] = {
-    'update': function (element, valueAccessor) {
-        var value = ko.utils.unwrapObservable(valueAccessor() || {});
-        ko.utils.objectForEach(value, function(styleName, styleValue) {
-            styleValue = ko.utils.unwrapObservable(styleValue);
+import {unwrapObservable} from '../../utils';
+import {bindingHandlers} from '../bindingHandlers';
 
-            if (styleValue === null || styleValue === undefined || styleValue === false) {
+const CUSTOM_CSS_PROPERTY_REGEX = /^--/;
+
+bindingHandlers.style = {
+    update(element, valueAccessor) {
+        let value = unwrapObservable(valueAccessor() || {});
+        if (!value) {
+            return;
+        }
+        
+        const _elementStyle = element.style;
+        
+        for (let styleName of Object.keys(value)) {
+            let newStyleValue = unwrapObservable(value[styleName]);
+
+            if (newStyleValue === null || newStyleValue === undefined || newStyleValue === false) {
                 // Empty string removes the value, whereas null/undefined have no effect
-                styleValue = "";
+                newStyleValue = '';
             }
 
-            if (jQueryInstance) {
-                jQueryInstance(element)['css'](styleName, styleValue);
-            } else if (/^--/.test(styleName)) {
+            if (CUSTOM_CSS_PROPERTY_REGEX.test(styleName)) {
                 // Is styleName a custom CSS property?
-                element.style.setProperty(styleName, styleValue);
+                _elementStyle.setProperty(styleName, newStyleValue);
             } else {
-                styleName = styleName.replace(/-(\w)/g, function (all, letter) {
-                    return letter.toUpperCase();
-                });
+                styleName = styleName.replace(/-(\w)/g, (all, letter) => letter.toUpperCase());
 
-                var previousStyle = element.style[styleName];
-                element.style[styleName] = styleValue;
+                let previousStyleValue = _elementStyle[styleName];
+                _elementStyle[styleName] = newStyleValue;
 
-                if (styleValue !== previousStyle && element.style[styleName] == previousStyle && !isNaN(styleValue)) {
-                    element.style[styleName] = styleValue + "px";
+                if (newStyleValue !== previousStyleValue && _elementStyle[styleName] === previousStyleValue && !isNaN(newStyleValue)) {
+                    _elementStyle[styleName] = newStyleValue + 'px';
                 }
             }
-        });
+        }
     }
 };

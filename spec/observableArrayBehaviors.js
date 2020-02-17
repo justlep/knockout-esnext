@@ -1,4 +1,6 @@
 
+let testObservableArray, notifiedValues, beforeNotifiedValues;
+
 describe('Observable Array', function() {
     beforeEach(function () {
         testObservableArray = new ko.observableArray([1, 2, 3]);

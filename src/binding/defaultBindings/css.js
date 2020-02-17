@@ -1,23 +1,30 @@
-var classesWrittenByBindingKey = '__ko__cssValue';
-ko.bindingHandlers['class'] = {
-    'update': function (element, valueAccessor) {
-        var value = ko.utils.stringTrim(ko.utils.unwrapObservable(valueAccessor()));
-        ko.utils.toggleDomNodeCssClass(element, element[classesWrittenByBindingKey], false);
-        element[classesWrittenByBindingKey] = value;
-        ko.utils.toggleDomNodeCssClass(element, value, true);
-    }
+import {unwrapObservable} from '../../utils';
+import {bindingHandlers} from '../bindingHandlers';
+import {stringTrim, toggleDomNodeCssClass} from '../../utils';
+
+const CLASSES_WRITTEN_BY_BINDING_KEY = Symbol('__ko__cssValue');
+
+const _classBindingUpdateFn = (element, valueAccessor) => {
+    let value = stringTrim(unwrapObservable(valueAccessor()));
+    toggleDomNodeCssClass(element, element[CLASSES_WRITTEN_BY_BINDING_KEY], false);
+    element[CLASSES_WRITTEN_BY_BINDING_KEY] = value;
+    toggleDomNodeCssClass(element, value, true);
 };
 
-ko.bindingHandlers['css'] = {
-    'update': function (element, valueAccessor) {
-        var value = ko.utils.unwrapObservable(valueAccessor());
-        if (value !== null && typeof value == "object") {
-            ko.utils.objectForEach(value, function(className, shouldHaveClass) {
-                shouldHaveClass = ko.utils.unwrapObservable(shouldHaveClass);
-                ko.utils.toggleDomNodeCssClass(element, className, shouldHaveClass);
-            });
-        } else {
-            ko.bindingHandlers['class']['update'](element, valueAccessor);
+bindingHandlers.class = { 
+    update: _classBindingUpdateFn
+};
+
+bindingHandlers.css = {
+    update(element, valueAccessor) {
+        let value = unwrapObservable(valueAccessor());
+        if (!value || typeof value !== 'object') {
+            _classBindingUpdateFn(element, valueAccessor);
+            return;
+        }
+        for (let className of Object.keys(value)) {
+            let shouldHaveClass = unwrapObservable( value[className] );
+            toggleDomNodeCssClass(element, className, shouldHaveClass);
         }
     }
 };

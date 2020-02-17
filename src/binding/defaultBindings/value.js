@@ -1,58 +1,53 @@
-ko.bindingHandlers['value'] = {
-    'init': function (element, valueAccessor, allBindings) {
-        var tagName = ko.utils.tagNameLower(element),
-            isInputElement = tagName == "input";
+import {readSelectOrOptionValue, writeSelectOrOptionValue} from '../selectExtensions';
+import {registerEventHandler, setTimeoutWithCatchError, arrayGetDistinctValues, unwrapObservable, arrayRemoveItem} from '../../utils';
+import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
+import {EVENT_CHILDREN_COMPLETE, applyBindingAccessorsToNode, bindingEvent} from '../bindingAttributeSyntax';
+import {ignoreDependencyDetection} from '../../subscribables/dependencyDetection';
+import {bindingHandlers} from '../bindingHandlers';
+import {computed} from '../../subscribables/dependentObservable';
+
+bindingHandlers.value = {
+    /** 
+     * @param {HTMLInputElement|HTMLButtonElement|HTMLSelectElement} element 
+     **/
+    init(element, valueAccessor, allBindings) {
+        let tagName = element.nodeName.toLowerCase(),
+            isInputElement = tagName === 'input',
+            inputType = isInputElement && element.type;
 
         // If the value binding is placed on a radio/checkbox, then just pass through to checkedValue and quit
-        if (isInputElement && (element.type == "checkbox" || element.type == "radio")) {
-            ko.applyBindingAccessorsToNode(element, { 'checkedValue': valueAccessor });
+        if (inputType === 'checkbox' || inputType === 'radio') {
+            applyBindingAccessorsToNode(element, {checkedValue: valueAccessor});
             return;
         }
-
-        var eventsToCatch = [];
-        var requestedEventsToCatch = allBindings.get("valueUpdate");
-        var propertyChangedFired = false;
-        var elementValueBeforeEvent = null;
-
+        
+        let requestedEventsToCatch = allBindings.get('valueUpdate'),
+            elementValueBeforeEvent = null,
+            eventsToCatch = [];
+        
         if (requestedEventsToCatch) {
             // Allow both individual event names, and arrays of event names
-            if (typeof requestedEventsToCatch == "string") {
-                eventsToCatch = [requestedEventsToCatch];
+            if (typeof requestedEventsToCatch === 'string') {
+                eventsToCatch.push(requestedEventsToCatch);
             } else {
-                eventsToCatch = ko.utils.arrayGetDistinctValues(requestedEventsToCatch);
+                eventsToCatch = arrayGetDistinctValues(requestedEventsToCatch);
             }
-            ko.utils.arrayRemoveItem(eventsToCatch, "change");  // We'll subscribe to "change" events later
+            arrayRemoveItem(eventsToCatch, 'change');  // We'll subscribe to 'change' events later
         }
 
-        var valueUpdateHandler = function() {
+        const _valueUpdateHandler = () => {
             elementValueBeforeEvent = null;
-            propertyChangedFired = false;
-            var modelValue = valueAccessor();
-            var elementValue = ko.selectExtensions.readValue(element);
-            ko.expressionRewriting.writeValueToProperty(modelValue, allBindings, 'value', elementValue);
-        }
+            let modelValue = valueAccessor(),
+                elementValue = readSelectOrOptionValue(element);
+            writeValueToProperty(modelValue, allBindings, 'value', elementValue);
+        };
 
-        // Workaround for https://github.com/SteveSanderson/knockout/issues/122
-        // IE doesn't fire "change" events on textboxes if the user selects a value from its autocomplete list
-        var ieAutoCompleteHackNeeded = ko.utils.ieVersion && isInputElement && element.type == "text"
-                                       && element.autocomplete != "off" && (!element.form || element.form.autocomplete != "off");
-        if (ieAutoCompleteHackNeeded && ko.utils.arrayIndexOf(eventsToCatch, "propertychange") == -1) {
-            ko.utils.registerEventHandler(element, "propertychange", function () { propertyChangedFired = true });
-            ko.utils.registerEventHandler(element, "focus", function () { propertyChangedFired = false });
-            ko.utils.registerEventHandler(element, "blur", function() {
-                if (propertyChangedFired) {
-                    valueUpdateHandler();
-                }
-            });
-        }
-
-        ko.utils.arrayForEach(eventsToCatch, function(eventName) {
-            // The syntax "after<eventname>" means "run the handler asynchronously after the event"
-            // This is useful, for example, to catch "keydown" events after the browser has updated the control
-            // (otherwise, ko.selectExtensions.readValue(this) will receive the control's value *before* the key event)
-            var handler = valueUpdateHandler;
-            if (ko.utils.stringStartsWith(eventName, "after")) {
-                handler = function() {
+        for (let eventName of eventsToCatch) {
+            // The syntax 'after<eventname>' means 'run the handler asynchronously after the event'
+            // This is useful, for example, to catch 'keydown' events after the browser has updated the control
+            // (otherwise, readSelectOrOptionValue(this) will receive the control's value *before* the key event)
+            if (eventName.startsWith('after')) {
+                registerEventHandler(element, eventName.substring(5), () => {
                     // The elementValueBeforeEvent variable is non-null *only* during the brief gap between
                     // a keyX event firing and the valueUpdateHandler running, which is scheduled to happen
                     // at the earliest asynchronous opportunity. We store this temporary information so that
@@ -60,71 +55,70 @@ ko.bindingHandlers['value'] = {
                     // we can overwrite that model value change with the value the user just typed. Otherwise,
                     // techniques like rateLimit can trigger model changes at critical moments that will
                     // override the user's inputs, causing keystrokes to be lost.
-                    elementValueBeforeEvent = ko.selectExtensions.readValue(element);
-                    ko.utils.setTimeout(valueUpdateHandler, 0);
-                };
-                eventName = eventName.substring("after".length);
+                    elementValueBeforeEvent = readSelectOrOptionValue(element);
+                    setTimeoutWithCatchError(_valueUpdateHandler, 0);
+                });
+            } else {
+                registerEventHandler(element, eventName, _valueUpdateHandler);
             }
-            ko.utils.registerEventHandler(element, eventName, handler);
-        });
+        }
 
-        var updateFromModel;
+        let _updateFromModel;
 
-        if (isInputElement && element.type == "file") {
+        if (inputType === 'file') {
             // For file input elements, can only write the empty string
-            updateFromModel = function () {
-                var newValue = ko.utils.unwrapObservable(valueAccessor());
-                if (newValue === null || newValue === undefined || newValue === "") {
-                    element.value = "";
+            _updateFromModel = () => {
+                let newValue = unwrapObservable(valueAccessor());
+                if (newValue === null || newValue === undefined || newValue === '') {
+                    element.value = '';
                 } else {
-                    ko.dependencyDetection.ignore(valueUpdateHandler);  // reset the model to match the element
+                    ignoreDependencyDetection(_valueUpdateHandler);  // reset the model to match the element
                 }
-            }
+            };
         } else {
-            updateFromModel = function () {
-                var newValue = ko.utils.unwrapObservable(valueAccessor());
-                var elementValue = ko.selectExtensions.readValue(element);
+            _updateFromModel = () => {
+                let newValue = unwrapObservable(valueAccessor()),
+                    elementValue = readSelectOrOptionValue(element);
 
                 if (elementValueBeforeEvent !== null && newValue === elementValueBeforeEvent) {
-                    ko.utils.setTimeout(updateFromModel, 0);
+                    setTimeoutWithCatchError(_updateFromModel, 0);
                     return;
                 }
-
-                var valueHasChanged = newValue !== elementValue;
-
-                if (valueHasChanged || elementValue === undefined) {
-                    if (tagName === "select") {
-                        var allowUnset = allBindings.get('valueAllowUnset');
-                        ko.selectExtensions.writeValue(element, newValue, allowUnset);
-                        if (!allowUnset && newValue !== ko.selectExtensions.readValue(element)) {
-                            // If you try to set a model value that can't be represented in an already-populated dropdown, reject that change,
-                            // because you're not allowed to have a model value that disagrees with a visible UI selection.
-                            ko.dependencyDetection.ignore(valueUpdateHandler);
-                        }
-                    } else {
-                        ko.selectExtensions.writeValue(element, newValue);
-                    }
+                if (newValue === elementValue && elementValue !== undefined) {
+                    return; // no changes
                 }
+                if (tagName === 'select') {
+                    let allowUnset = allBindings.get('valueAllowUnset');
+                    writeSelectOrOptionValue(element, newValue, allowUnset);
+                    if (!allowUnset && newValue !== readSelectOrOptionValue(element)) {
+                        // If you try to set a model value that can't be represented in an already-populated dropdown, reject that change,
+                        // because you're not allowed to have a model value that disagrees with a visible UI selection.
+                        ignoreDependencyDetection(_valueUpdateHandler);
+                    }
+                    return;
+                }
+                writeSelectOrOptionValue(element, newValue);
             };
         }
 
-        if (tagName === "select") {
-            var updateFromModelComputed;
-            ko.bindingEvent.subscribe(element, ko.bindingEvent.childrenComplete, function () {
-                if (!updateFromModelComputed) {
-                    ko.utils.registerEventHandler(element, "change", valueUpdateHandler);
-                    updateFromModelComputed = ko.computed(updateFromModel, null, { disposeWhenNodeIsRemoved: element });
+        if (tagName === 'select') {
+            let isChangeHandlerBound = false;
+            bindingEvent.subscribe(element, EVENT_CHILDREN_COMPLETE, () => {
+                if (!isChangeHandlerBound) {
+                    registerEventHandler(element, 'change', _valueUpdateHandler);
+                    isChangeHandlerBound = !!computed(_updateFromModel, null, {disposeWhenNodeIsRemoved: element});
                 } else if (allBindings.get('valueAllowUnset')) {
-                    updateFromModel();
+                    _updateFromModel();
                 } else {
-                    valueUpdateHandler();
+                    _valueUpdateHandler();
                 }
-            }, null, { 'notifyImmediately': true });
+            }, null, {notifyImmediately: true});
         } else {
-            ko.utils.registerEventHandler(element, "change", valueUpdateHandler);
-            ko.computed(updateFromModel, null, { disposeWhenNodeIsRemoved: element });
+            registerEventHandler(element, 'change', _valueUpdateHandler);
+            computed(_updateFromModel, null, {disposeWhenNodeIsRemoved: element});
         }
     },
-    'update': function() {} // Keep for backwards compatibility with code that may have wrapped value binding
+    update() {} // Keep for backwards compatibility with code that may have wrapped value binding
 };
-ko.expressionRewriting.twoWayBindings['value'] = true;
+
+twoWayBindings.value = true;

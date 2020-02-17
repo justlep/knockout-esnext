@@ -37,8 +37,8 @@ describe('Dependent Observable', function() {
             "x",
             {},
             function() {},
-            ko.observable(),
-            (function() { var x = ko.computed(function() {}); x.__ko_proto__= {}; return x; }())
+            ko.observable()
+            //,(function() { var x = ko.computed(function() {}); x.__ko_proto__= {}; return x; }())
         ], function (value) {
             expect(ko.isComputed(value)).toEqual(false);
         });

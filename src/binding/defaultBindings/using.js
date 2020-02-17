@@ -1,15 +1,20 @@
-ko.bindingHandlers['using'] = {
-    'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-        var options;
+import {applyBindingsToDescendants} from '../bindingAttributeSyntax';
+import {bindingHandlers} from '../bindingHandlers';
+import {allowedBindings} from '../../virtualElements';
 
-        if (allBindings['has']('as')) {
-            options = { 'as': allBindings.get('as'), 'noChildContext': allBindings.get('noChildContext') };
+bindingHandlers.using = {
+    init(element, valueAccessor, allBindings, viewModel, bindingContext) {
+        let options;
+
+        if (allBindings.has('as')) {
+            options = {as: allBindings.get('as'), noChildContext: allBindings.get('noChildContext')};
         }
 
-        var innerContext = bindingContext['createChildContext'](valueAccessor, options);
-        ko.applyBindingsToDescendants(innerContext, element);
+        let innerContext = bindingContext.createChildContext(valueAccessor, options);
+        applyBindingsToDescendants(innerContext, element);
 
-        return { 'controlsDescendantBindings': true };
+        return {controlsDescendantBindings: true};
     }
 };
-ko.virtualElements.allowedBindings['using'] = true;
+
+allowedBindings.using = true;

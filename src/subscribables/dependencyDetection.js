@@ -1,76 +1,46 @@
+import {isSubscribable} from './observableUtils';
 
-ko.computedContext = ko.dependencyDetection = (function () {
-    var outerFrames = [],
-        currentFrame,
-        lastId = 0;
+const outerFrames = [];
+let currentFrame,
+    lastId = 0;
 
-    // Return a unique ID that can be assigned to an observable for dependency tracking.
-    // Theoretically, you could eventually overflow the number storage size, resulting
-    // in duplicate IDs. But in JavaScript, the largest exact integral value is 2^53
-    // or 9,007,199,254,740,992. If you created 1,000,000 IDs per second, it would
-    // take over 285 years to reach that number.
-    // Reference http://blog.vjeux.com/2010/javascript/javascript-max_int-number-limits.html
-    function getId() {
-        return ++lastId;
+export const beginDependencyDetection = options => {
+    outerFrames.push(currentFrame);
+    currentFrame = options;
+};
+
+export const endDependencyDetection = () => currentFrame = outerFrames.pop();
+
+export const ignoreDependencyDetection = (callback, callbackTarget, callbackArgs) => {
+    try {
+        beginDependencyDetection();
+        // there's a high percentage of calls without callbackTarget and/or callbackArgs, 
+        // so let's speed up things by not using `apply` or args in those cases
+        return callbackTarget ? callback.apply(callbackTarget, callbackArgs || []) :
+            callbackArgs ? callback(...callbackArgs) : callback();
+    } finally {
+        endDependencyDetection();
     }
+};
 
-    function begin(options) {
-        outerFrames.push(currentFrame);
-        currentFrame = options;
-    }
+// Return a unique ID that can be assigned to an observable for dependency tracking.
+// Theoretically, you could eventually overflow the number storage size, resulting
+// in duplicate IDs. But in JavaScript, the largest exact integral value is 2^53
+// or 9,007,199,254,740,992. If you created 1,000,000 IDs per second, it would
+// take over 285 years to reach that number.
+// Reference http://blog.vjeux.com/2010/javascript/javascript-max_int-number-limits.html
+const _getId = () => ++lastId;
 
-    function end() {
-        currentFrame = outerFrames.pop();
-    }
-
-    return {
-        begin: begin,
-
-        end: end,
-
-        registerDependency: function (subscribable) {
-            if (currentFrame) {
-                if (!ko.isSubscribable(subscribable))
-                    throw new Error("Only subscribable things can act as dependencies");
-                currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = getId()));
-            }
-        },
-
-        ignore: function (callback, callbackTarget, callbackArgs) {
-            try {
-                begin();
-                return callback.apply(callbackTarget, callbackArgs || []);
-            } finally {
-                end();
-            }
-        },
-
-        getDependenciesCount: function () {
-            if (currentFrame)
-                return currentFrame.computed.getDependenciesCount();
-        },
-
-        getDependencies: function () {
-            if (currentFrame)
-                return currentFrame.computed.getDependencies();
-        },
-
-        isInitial: function() {
-            if (currentFrame)
-                return currentFrame.isInitial;
-        },
-
-        computed: function() {
-            if (currentFrame)
-                return currentFrame.computed;
+export const registerDependency = (subscribable) => {
+    if (currentFrame) {
+        if (!isSubscribable(subscribable)) {
+            throw new Error('Only subscribable things can act as dependencies');
         }
-    };
-})();
+        currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
+    }
+};
 
-ko.exportSymbol('computedContext', ko.computedContext);
-ko.exportSymbol('computedContext.getDependenciesCount', ko.computedContext.getDependenciesCount);
-ko.exportSymbol('computedContext.getDependencies', ko.computedContext.getDependencies);
-ko.exportSymbol('computedContext.isInitial', ko.computedContext.isInitial);
-ko.exportSymbol('computedContext.registerDependency', ko.computedContext.registerDependency);
-
-ko.exportSymbol('ignoreDependencies', ko.ignoreDependencies = ko.dependencyDetection.ignore);
+export const getDependenciesCount = () => currentFrame ? currentFrame.computed.getDependenciesCount() : undefined;
+export const getDependencies = () => currentFrame ? currentFrame.computed.getDependencies() : undefined;
+export const isInitialDependency = () => currentFrame ? currentFrame.isInitial : undefined;
+export const getCurrentComputed = () => currentFrame ? currentFrame.computed : undefined;

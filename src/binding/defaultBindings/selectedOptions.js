@@ -1,44 +1,59 @@
-ko.bindingHandlers['selectedOptions'] = {
-    'init': function (element, valueAccessor, allBindings) {
-        function updateFromView() {
-            var value = valueAccessor(), valueToWrite = [];
-            ko.utils.arrayForEach(element.getElementsByTagName("option"), function(node) {
-                if (node.selected)
-                    valueToWrite.push(ko.selectExtensions.readValue(node));
-            });
-            ko.expressionRewriting.writeValueToProperty(value, allBindings, 'selectedOptions', valueToWrite);
+import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
+import {bindingEvent, EVENT_CHILDREN_COMPLETE} from '../bindingAttributeSyntax';
+import {registerEventHandler, unwrapObservable, setOptionNodeSelectionState} from '../../utils';
+import {computed} from '../../subscribables/dependentObservable';
+import {readSelectOrOptionValue} from '../selectExtensions';
+import {bindingHandlers} from '../bindingHandlers';
+
+bindingHandlers.selectedOptions = {
+    /**
+     * @param {HTMLSelectElement} element
+     */
+    init(element, valueAccessor, allBindings) {
+        if (element.tagName.toLowerCase() !== 'select') {
+            throw new Error("selectedOptions binding applies only to SELECT elements");
         }
+        
+        const _updateFromView = () => {
+            let value = valueAccessor(), 
+                valueToWrite = [];
+            
+            for (let option of element.options) {
+                option.selected && valueToWrite.push(readSelectOrOptionValue(option)); 
+            }
+            writeValueToProperty(value, allBindings, 'selectedOptions', valueToWrite);
+        };
 
         function updateFromModel() {
-            var newValue = ko.utils.unwrapObservable(valueAccessor()),
+            let newValue = unwrapObservable(valueAccessor()),
                 previousScrollTop = element.scrollTop;
 
-            if (newValue && typeof newValue.length == "number") {
-                ko.utils.arrayForEach(element.getElementsByTagName("option"), function(node) {
-                    var isSelected = ko.utils.arrayIndexOf(newValue, ko.selectExtensions.readValue(node)) >= 0;
-                    if (node.selected != isSelected) {      // This check prevents flashing of the select element in IE
-                        ko.utils.setOptionNodeSelectionState(node, isSelected);
+            if (newValue && typeof newValue.length === 'number') {
+                for (let node of element.options) {
+                    let isSelected = newValue.includes(readSelectOrOptionValue(node));
+                    if (node.selected !== isSelected /* This check prevents flashing of the select element in IE */ ) {      
+                        setOptionNodeSelectionState(node, isSelected);
                     }
-                });
+                }
             }
 
             element.scrollTop = previousScrollTop;
         }
 
-        if (ko.utils.tagNameLower(element) != "select") {
-            throw new Error("selectedOptions binding applies only to SELECT elements");
-        }
-
-        var updateFromModelComputed;
-        ko.bindingEvent.subscribe(element, ko.bindingEvent.childrenComplete, function () {
-            if (!updateFromModelComputed) {
-                ko.utils.registerEventHandler(element, "change", updateFromView);
-                updateFromModelComputed = ko.computed(updateFromModel, null, { disposeWhenNodeIsRemoved: element });
+        let isChangeHandlerBound = false;
+        bindingEvent.subscribe(element, EVENT_CHILDREN_COMPLETE, () => {
+            if (isChangeHandlerBound) {
+                _updateFromView();
             } else {
-                updateFromView();
+                registerEventHandler(element, "change", _updateFromView);
+                computed(updateFromModel, null, {disposeWhenNodeIsRemoved: element});
+                isChangeHandlerBound = true;
             }
-        }, null, { 'notifyImmediately': true });
+        }, null, {notifyImmediately: true});
     },
-    'update': function() {} // Keep for backwards compatibility with code that may have wrapped binding
+    update() {
+        // Keep for backwards compatibility with code that may have wrapped binding
+    } 
 };
-ko.expressionRewriting.twoWayBindings['selectedOptions'] = true;
+
+twoWayBindings.selectedOptions = true;

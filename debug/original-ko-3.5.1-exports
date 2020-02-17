@@ -1,0 +1,177 @@
+all = '{\n';
+
+function str(obj, ind = 1) {
+  let indent = '  '.repeat(ind);
+
+  return Object.keys(obj).filter(k => k.length > 2).map(k => {
+    let val = obj[k],
+        s = indent + k;
+
+    if (['jsonExpressionRewriting','_twoWayBindings','bindingHandlers','extenders','defaultLoader','allowedBindings'].includes(k)) {
+      return s;
+    }
+
+    if (Array.isArray(val)) {
+      s += ': []'
+    } else if (typeof val === 'object') {
+      s += `: {\n${str(val, ind+1)}\n${indent}}`;
+    }
+    return s; 
+  }).join(',\n');
+
+}
+
+str(ko);
+
+
+
+==========
+ Result:
+==========
+
+version,
+  options: {
+    deferUpdates,
+    useOnlyNativeEvents,
+    foreachHidesDestroyed
+  },
+  utils: {
+    extend,
+    setPrototypeOf,
+    setTimeout,
+    arrayForEach,
+    arrayFirst,
+    arrayFilter,
+    arrayGetDistinctValues,
+    arrayIndexOf,
+    arrayMap,
+    arrayPushAll,
+    arrayRemoveItem,
+    cloneNodes,
+    createSymbolOrString,
+    fieldsIncludedWithJsonPost: [],
+    getFormFields,
+    objectMap,
+    peekObservable,
+    postJson,
+    parseJson,
+    registerEventHandler,
+    stringifyJson,
+    range,
+    toggleDomNodeCssClass,
+    triggerEvent,
+    unwrapObservable,
+    objectForEach,
+    addOrRemoveItem,
+    setTextContent,
+    domData: {
+      get,
+      set,
+      clear
+    },
+    domNodeDisposal: {
+      removeNode,
+      cleanExternalData,
+      addDisposeCallback,
+      removeDisposeCallback
+    },
+    parseHtmlFragment,
+    setHtml,
+    compareArrays,
+    setDomNodeChildrenFromArrayMapping
+  },
+  unwrap,
+  removeNode,
+  cleanNode,
+  memoization: {
+    memoize,
+    unmemoize,
+    parseMemoText,
+    unmemoizeDomNodeAndDescendants
+  },
+  tasks: {
+    scheduler,
+    cancel,
+    resetForTesting,
+    schedule,
+    runEarly
+  },
+  extenders,
+  subscribable,
+  isSubscribable,
+  computedContext: {
+    end,
+    getDependenciesCount,
+    getDependencies,
+    isInitial,
+    registerDependency
+  },
+  ignoreDependencies,
+  observable,
+  isObservable,
+  isWriteableObservable,
+  isWritableObservable,
+  observableArray,
+  isObservableArray,
+  computed,
+  dependentObservable,
+  isComputed,
+  isPureComputed,
+  pureComputed,
+  toJSON,
+  toJS,
+  when,
+  selectExtensions: {
+    readValue,
+    writeValue
+  },
+  expressionRewriting: {
+    bindingRewriteValidators: [],
+    parseObjectLiteral,
+    preProcessBindings,
+    _twoWayBindings,
+    insertPropertyAccessorsIntoJson
+  },
+  jsonExpressionRewriting,
+  virtualElements: {
+    childNodes,
+    firstChild,
+    nextSibling,
+    allowedBindings,
+    emptyNode,
+    insertAfter,
+    prepend,
+    setDomNodeChildren
+  },
+  bindingProvider,
+  getBindingHandler,
+  bindingHandlers,
+  bindingEvent: {
+    subscribe,
+    startPossiblyAsyncContentBinding
+  },
+  applyBindings,
+  applyBindingsToDescendants,
+  applyBindingAccessorsToNode,
+  applyBindingsToNode,
+  contextFor,
+  dataFor,
+  components: {
+    get,
+    loaders: [],
+    clearCachedDefinition,
+    register,
+    unregister,
+    isRegistered,
+    defaultLoader,
+    getComponentNameForNode
+  },
+  templateEngine,
+  __tr_ambtns,
+  templateSources: {
+    domElement,
+    anonymousTemplate
+  },
+  setTemplateEngine,
+  renderTemplate,
+  nativeTemplateEngine

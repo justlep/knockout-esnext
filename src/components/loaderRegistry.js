@@ -1,142 +1,135 @@
-(function(undefined) {
-    var loadingSubscribablesCache = {}, // Tracks component loads that are currently in flight
-        loadedDefinitionsCache = {};    // Tracks component loads that have already completed
+import {scheduleTask} from '../tasks';
+import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
+import {Subscribable} from '../subscribables/subscribable';
 
-    ko.components = {
-        get: function(componentName, callback) {
-            var cachedDefinition = getObjectOwnProperty(loadedDefinitionsCache, componentName);
-            if (cachedDefinition) {
-                // It's already loaded and cached. Reuse the same definition object.
-                // Note that for API consistency, even cache hits complete asynchronously by default.
-                // You can bypass this by putting synchronous:true on your component config.
-                if (cachedDefinition.isSynchronousComponent) {
-                    ko.dependencyDetection.ignore(function() { // See comment in loaderRegistryBehaviors.js for reasoning
-                        callback(cachedDefinition.definition);
-                    });
-                } else {
-                    ko.tasks.schedule(function() { callback(cachedDefinition.definition); });
-                }
-            } else {
-                // Join the loading process that is already underway, or start a new one.
-                loadComponentAndNotify(componentName, callback);
-            }
-        },
+const _loadingSubscribablesCache = new Map(); // Tracks component loads that are currently in flight
+const _loadedDefinitionsCache = new Map();    // Tracks component loads that have already completed
 
-        clearCachedDefinition: function(componentName) {
-            delete loadedDefinitionsCache[componentName];
-        },
+export let loaders = [];
 
-        _getFirstResultFromLoaders: getFirstResultFromLoaders
-    };
+export const _setComponentLoaders = (newLoaders) => loaders = newLoaders;
 
-    function getObjectOwnProperty(obj, propName) {
-        return Object.prototype.hasOwnProperty.call(obj, propName) ? obj[propName] : undefined;
-    }
-
-    function loadComponentAndNotify(componentName, callback) {
-        var subscribable = getObjectOwnProperty(loadingSubscribablesCache, componentName),
-            completedAsync;
-        if (!subscribable) {
-            // It's not started loading yet. Start loading, and when it's done, move it to loadedDefinitionsCache.
-            subscribable = loadingSubscribablesCache[componentName] = new ko.subscribable();
-            subscribable.subscribe(callback);
-
-            beginLoadingComponent(componentName, function(definition, config) {
-                var isSynchronousComponent = !!(config && config['synchronous']);
-                loadedDefinitionsCache[componentName] = { definition: definition, isSynchronousComponent: isSynchronousComponent };
-                delete loadingSubscribablesCache[componentName];
-
-                // For API consistency, all loads complete asynchronously. However we want to avoid
-                // adding an extra task schedule if it's unnecessary (i.e., the completion is already
-                // async).
-                //
-                // You can bypass the 'always asynchronous' feature by putting the synchronous:true
-                // flag on your component configuration when you register it.
-                if (completedAsync || isSynchronousComponent) {
-                    // Note that notifySubscribers ignores any dependencies read within the callback.
-                    // See comment in loaderRegistryBehaviors.js for reasoning
-                    subscribable['notifySubscribers'](definition);
-                } else {
-                    ko.tasks.schedule(function() {
-                        subscribable['notifySubscribers'](definition);
-                    });
-                }
-            });
-            completedAsync = true;
+export const getComponent = (componentName, callback) => {
+    let cachedDefinition = _loadedDefinitionsCache.get(componentName);
+    if (cachedDefinition) {
+        // It's already loaded and cached. Reuse the same definition object.
+        // Note that for API consistency, even cache hits complete asynchronously by default.
+        // You can bypass this by putting synchronous:true on your component config.
+        if (cachedDefinition.isSynchronousComponent) {
+            // See comment in loaderRegistryBehaviors.js for reasoning
+            ignoreDependencyDetection(() => callback(cachedDefinition.definition));
         } else {
-            subscribable.subscribe(callback);
+            scheduleTask(() => callback(cachedDefinition.definition));
+        }
+    } else {
+        // Join the loading process that is already underway, or start a new one.
+        let loadingSubscribable = _loadingSubscribablesCache.get(componentName);
+        if (loadingSubscribable) {
+            loadingSubscribable.subscribe(callback);
+        } else {
+            _loadNotYetLoadingComponentAndNotify(componentName, callback);
         }
     }
+};
 
-    function beginLoadingComponent(componentName, callback) {
-        getFirstResultFromLoaders('getConfig', [componentName], function(config) {
-            if (config) {
-                // We have a config, so now load its definition
-                getFirstResultFromLoaders('loadComponent', [componentName, config], function(definition) {
-                    callback(definition, config);
-                });
+export const clearCachedDefinition = (componentName) => {
+    _loadedDefinitionsCache.delete(componentName);
+};
+
+/**
+ * Start loading a component that is not yet loading, and when it's done, move it to loadedDefinitionsCache.
+ * @param {string} componentName
+ * @param {function} callback
+ * @private
+ */
+const _loadNotYetLoadingComponentAndNotify = (componentName, callback) => {
+    // if (_loadingSubscribablesCache.has(componentName)) {
+    //     throw new Error('Component "' + componentName + '" is already loading');
+    // }
+    let _subscribable = new Subscribable(),
+        completedAsync;
+    
+    _loadingSubscribablesCache.set(componentName, _subscribable);
+    _subscribable.subscribe(callback);
+
+    _beginLoadingComponent(componentName, (definition, config) => {
+        let isSynchronousComponent = !!(config && config.synchronous);
+        _loadedDefinitionsCache.set(componentName, {definition, isSynchronousComponent});
+        _loadingSubscribablesCache.delete(componentName);
+
+        // For API consistency, all loads complete asynchronously. However we want to avoid
+        // adding an extra task schedule if it's unnecessary (i.e., the completion is already
+        // async).
+        //
+        // You can bypass the 'always asynchronous' feature by putting the synchronous:true
+        // flag on your component configuration when you register it.
+        if (completedAsync || isSynchronousComponent) {
+            // Note that notifySubscribers ignores any dependencies read within the callback.
+            // See comment in loaderRegistryBehaviors.js for reasoning
+            _subscribable.notifySubscribers(definition);
+        } else {
+            scheduleTask(() => _subscribable.notifySubscribers(definition));
+        }
+    });
+    completedAsync = true;
+};
+
+const _beginLoadingComponent = (componentName, callback) => {
+    _getFirstResultFromLoaders('getConfig', [componentName], config => {
+        if (config) {
+            // We have a config, so now load its definition
+            _getFirstResultFromLoaders('loadComponent', [componentName, config], definition => void callback(definition, config));
+        } else {
+            // The component has no config - it's unknown to all the loaders.
+            // Note that this is not an error (e.g., a module loading error) - that would abort the
+            // process and this callback would not run. For this callback to run, all loaders must
+            // have confirmed they don't know about this component.
+            callback(null, null);
+        }
+    });
+};
+
+export const _getFirstResultFromLoaders = (methodName, argsExceptCallback, callback, candidateLoaders) => {
+    // On the first call in the stack, start with the full set of loaders
+    if (!candidateLoaders) {
+        candidateLoaders = loaders.slice(); // Use a copy, because we'll be mutating this array
+    }
+
+    // Try the next candidate
+    let currentCandidateLoader = candidateLoaders.shift();
+    if (!currentCandidateLoader) {
+        // No candidates returned a value
+        return callback(null);
+    }
+    
+    if (!currentCandidateLoader[methodName]) {
+        // This candidate doesn't have the relevant handler. Synchronously move on to the next one.
+        return _getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders);
+    }
+    let wasAborted = false,
+        synchronousReturnValue = currentCandidateLoader[methodName](...argsExceptCallback, result => {
+            if (wasAborted) {
+                callback(null);
+            } else if (result !== null) {
+                // This candidate returned a value. Use it.
+                callback(result);
             } else {
-                // The component has no config - it's unknown to all the loaders.
-                // Note that this is not an error (e.g., a module loading error) - that would abort the
-                // process and this callback would not run. For this callback to run, all loaders must
-                // have confirmed they don't know about this component.
-                callback(null, null);
+                // Try the next candidate
+                _getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders);
             }
         });
-    }
 
-    function getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders) {
-        // On the first call in the stack, start with the full set of loaders
-        if (!candidateLoaders) {
-            candidateLoaders = ko.components['loaders'].slice(0); // Use a copy, because we'll be mutating this array
-        }
+    // Currently, loaders may not return anything synchronously. This leaves open the possibility
+    // that we'll extend the API to support synchronous return values in the future. It won't be
+    // a breaking change, because currently no loader is allowed to return anything except undefined.
+    if (synchronousReturnValue !== undefined) {
+        wasAborted = true;
 
-        // Try the next candidate
-        var currentCandidateLoader = candidateLoaders.shift();
-        if (currentCandidateLoader) {
-            var methodInstance = currentCandidateLoader[methodName];
-            if (methodInstance) {
-                var wasAborted = false,
-                    synchronousReturnValue = methodInstance.apply(currentCandidateLoader, argsExceptCallback.concat(function(result) {
-                        if (wasAborted) {
-                            callback(null);
-                        } else if (result !== null) {
-                            // This candidate returned a value. Use it.
-                            callback(result);
-                        } else {
-                            // Try the next candidate
-                            getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders);
-                        }
-                    }));
-
-                // Currently, loaders may not return anything synchronously. This leaves open the possibility
-                // that we'll extend the API to support synchronous return values in the future. It won't be
-                // a breaking change, because currently no loader is allowed to return anything except undefined.
-                if (synchronousReturnValue !== undefined) {
-                    wasAborted = true;
-
-                    // Method to suppress exceptions will remain undocumented. This is only to keep
-                    // KO's specs running tidily, since we can observe the loading got aborted without
-                    // having exceptions cluttering up the console too.
-                    if (!currentCandidateLoader['suppressLoaderExceptions']) {
-                        throw new Error('Component loaders must supply values by invoking the callback, not by returning values synchronously.');
-                    }
-                }
-            } else {
-                // This candidate doesn't have the relevant handler. Synchronously move on to the next one.
-                getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders);
-            }
-        } else {
-            // No candidates returned a value
-            callback(null);
+        // Method to suppress exceptions will remain undocumented. This is only to keep
+        // KO's specs running tidily, since we can observe the loading got aborted without
+        // having exceptions cluttering up the console too.
+        if (!currentCandidateLoader['suppressLoaderExceptions']) {
+            throw new Error('Component loaders must supply values by invoking the callback, not by returning values synchronously.');
         }
     }
-
-    // Reference the loaders via string name so it's possible for developers
-    // to replace the whole array by assigning to ko.components.loaders
-    ko.components['loaders'] = [];
-
-    ko.exportSymbol('components', ko.components);
-    ko.exportSymbol('components.get', ko.components.get);
-    ko.exportSymbol('components.clearCachedDefinition', ko.components.clearCachedDefinition);
-})();
+};

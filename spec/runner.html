@@ -13,10 +13,12 @@
         <link rel="stylesheet" type="text/css" href="lib/jasmine.extensions.css" />
         <script type="text/javascript" src="lib/jasmine.extensions.js"></script>
 
-        <!-- knockout and other dependencies -->
-        <script type="text/javascript" src="lib/loadDependencies.js"></script>
+        <script src="../build/output/knockout-latest.debug.js"></script>
+        <!-- uncomment for testing against the original Knockout library -->
+<!--        <script src="../debug/original-knockout-3.5.1.debug.js"></script>-->
 
         <!-- specs -->
+        <script type="text/javascript" src="basicTypeCheckBehaviors.js"></script>
         <script type="text/javascript" src="arrayEditDetectionBehaviors.js"></script>
         <script type="text/javascript" src="arrayToDomEditDetectionBehaviors.js"></script>
         <script type="text/javascript" src="asyncBehaviors.js"></script>
@@ -79,7 +81,7 @@
         <script type="text/javascript" src="crossWindowBehaviors.js"></script>
     </head>
     <body>
-        <script type="text/javascript">
+        <script>
           (function() {
             var jasmineEnv = jasmine.getEnv();
             jasmineEnv.updateInterval = 500;

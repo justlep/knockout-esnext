@@ -1,231 +1,198 @@
-(function(undefined) {
+import {_getFirstResultFromLoaders, clearCachedDefinition} from './loaderRegistry';
+import {parseHtmlFragment} from '../utils.domManipulation';
+import {cloneNodes} from '../utils';
+import {loaders} from './loaderRegistry';
 
-    // The default loader is responsible for two things:
-    // 1. Maintaining the default in-memory registry of component configuration objects
-    //    (i.e., the thing you're writing to when you call ko.components.register(someName, ...))
-    // 2. Answering requests for components by fetching configuration objects
-    //    from that default in-memory registry and resolving them into standard
-    //    component definition objects (of the form { createViewModel: ..., template: ... })
-    // Custom loaders may override either of these facilities, i.e.,
-    // 1. To supply configuration objects from some other source (e.g., conventions)
-    // 2. Or, to resolve configuration objects by loading viewmodels/templates via arbitrary logic.
+const CREATE_VIEW_MODEL_KEY = 'createViewModel';
 
-    var defaultConfigRegistry = {};
+// The default loader is responsible for two things:
+// 1. Maintaining the default in-memory registry of component configuration objects
+//    (i.e., the thing you're writing to when you call ko.components.register(someName, ...))
+// 2. Answering requests for components by fetching configuration objects
+//    from that default in-memory registry and resolving them into standard
+//    component definition objects (of the form { createViewModel: ..., template: ... })
+// Custom loaders may override either of these facilities, i.e.,
+// 1. To supply configuration objects from some other source (e.g., conventions)
+// 2. Or, to resolve configuration objects by loading viewmodels/templates via arbitrary logic.
+const defaultConfigRegistry = new Map();
 
-    ko.components.register = function(componentName, config) {
-        if (!config) {
-            throw new Error('Invalid configuration for ' + componentName);
-        }
+export const registerComponent = (componentName, config) => {
+    if (!config) {
+        throw new Error('Invalid configuration for ' + componentName);
+    }
+    if (isComponentRegistered(componentName)) {
+        throw new Error('Component ' + componentName + ' is already registered');
+    }
+    defaultConfigRegistry.set(componentName, config);
+};
 
-        if (ko.components.isRegistered(componentName)) {
-            throw new Error('Component ' + componentName + ' is already registered');
-        }
+export const isComponentRegistered = componentName => defaultConfigRegistry.has(componentName);
 
-        defaultConfigRegistry[componentName] = config;
-    };
+export const unregisterComponent = (componentName) => {
+    defaultConfigRegistry.delete(componentName);
+    clearCachedDefinition(componentName);
+};
 
-    ko.components.isRegistered = function(componentName) {
-        return Object.prototype.hasOwnProperty.call(defaultConfigRegistry, componentName);
-    };
+export const defaultLoader = {
+    getConfig(componentName, callback) {
+        let result = isComponentRegistered(componentName) ? defaultConfigRegistry.get(componentName) : null;
+        callback(result);
+    },
+    
+    loadComponent(componentName, config, callback) {
+        let errorCallback = _makeErrorCallback(componentName);
+        _possiblyGetConfigFromAmd(errorCallback, config, loadedConfig => _resolveConfig(componentName, errorCallback, loadedConfig, callback));
+    },
+    
+    loadTemplate(componentName, templateConfig, callback) {
+        _resolveTemplate(_makeErrorCallback(componentName), templateConfig, callback);
+    },
+    
+    loadViewModel(componentName, viewModelConfig, callback) {
+        _resolveViewModel(_makeErrorCallback(componentName), viewModelConfig, callback);
+    }
+};
 
-    ko.components.unregister = function(componentName) {
-        delete defaultConfigRegistry[componentName];
-        ko.components.clearCachedDefinition(componentName);
-    };
+// Takes a config object of the form { template: ..., viewModel: ... }, and asynchronously convert it
+// into the standard component definition format:
+//    { template: <ArrayOfDomNodes>, createViewModel: function(params, componentInfo) { ... } }.
+// Since both template and viewModel may need to be resolved asynchronously, both tasks are performed
+// in parallel, and the results joined when both are ready. We don't depend on any promises infrastructure,
+// so this is implemented manually below.
+const _resolveConfig = (componentName, errorCallback, config, callback) => {
+    let result = {},
+        makeCallBackWhenZero = 2,
+        tryIssueCallback = () => (--makeCallBackWhenZero === 0) && callback(result),
+        templateConfig = config['template'],
+        viewModelConfig = config['viewModel'];
 
-    ko.components.defaultLoader = {
-        'getConfig': function(componentName, callback) {
-            var result = ko.components.isRegistered(componentName)
-                ? defaultConfigRegistry[componentName]
-                : null;
-            callback(result);
-        },
-
-        'loadComponent': function(componentName, config, callback) {
-            var errorCallback = makeErrorCallback(componentName);
-            possiblyGetConfigFromAmd(errorCallback, config, function(loadedConfig) {
-                resolveConfig(componentName, errorCallback, loadedConfig, callback);
+    if (templateConfig) {
+        _possiblyGetConfigFromAmd(errorCallback, templateConfig, loadedConfig => {
+            _getFirstResultFromLoaders('loadTemplate', [componentName, loadedConfig], resolvedTemplate => {
+                result['template'] = resolvedTemplate;
+                tryIssueCallback();
             });
-        },
-
-        'loadTemplate': function(componentName, templateConfig, callback) {
-            resolveTemplate(makeErrorCallback(componentName), templateConfig, callback);
-        },
-
-        'loadViewModel': function(componentName, viewModelConfig, callback) {
-            resolveViewModel(makeErrorCallback(componentName), viewModelConfig, callback);
-        }
-    };
-
-    var createViewModelKey = 'createViewModel';
-
-    // Takes a config object of the form { template: ..., viewModel: ... }, and asynchronously convert it
-    // into the standard component definition format:
-    //    { template: <ArrayOfDomNodes>, createViewModel: function(params, componentInfo) { ... } }.
-    // Since both template and viewModel may need to be resolved asynchronously, both tasks are performed
-    // in parallel, and the results joined when both are ready. We don't depend on any promises infrastructure,
-    // so this is implemented manually below.
-    function resolveConfig(componentName, errorCallback, config, callback) {
-        var result = {},
-            makeCallBackWhenZero = 2,
-            tryIssueCallback = function() {
-                if (--makeCallBackWhenZero === 0) {
-                    callback(result);
-                }
-            },
-            templateConfig = config['template'],
-            viewModelConfig = config['viewModel'];
-
-        if (templateConfig) {
-            possiblyGetConfigFromAmd(errorCallback, templateConfig, function(loadedConfig) {
-                ko.components._getFirstResultFromLoaders('loadTemplate', [componentName, loadedConfig], function(resolvedTemplate) {
-                    result['template'] = resolvedTemplate;
-                    tryIssueCallback();
-                });
-            });
-        } else {
-            tryIssueCallback();
-        }
-
-        if (viewModelConfig) {
-            possiblyGetConfigFromAmd(errorCallback, viewModelConfig, function(loadedConfig) {
-                ko.components._getFirstResultFromLoaders('loadViewModel', [componentName, loadedConfig], function(resolvedViewModel) {
-                    result[createViewModelKey] = resolvedViewModel;
-                    tryIssueCallback();
-                });
-            });
-        } else {
-            tryIssueCallback();
-        }
+        });
+    } else {
+        tryIssueCallback();
     }
 
-    function resolveTemplate(errorCallback, templateConfig, callback) {
-        if (typeof templateConfig === 'string') {
-            // Markup - parse it
-            callback(ko.utils.parseHtmlFragment(templateConfig));
-        } else if (templateConfig instanceof Array) {
-            // Assume already an array of DOM nodes - pass through unchanged
-            callback(templateConfig);
-        } else if (isDocumentFragment(templateConfig)) {
-            // Document fragment - use its child nodes
-            callback(ko.utils.makeArray(templateConfig.childNodes));
-        } else if (templateConfig['element']) {
-            var element = templateConfig['element'];
-            if (isDomElement(element)) {
-                // Element instance - copy its child nodes
-                callback(cloneNodesFromTemplateSourceElement(element));
-            } else if (typeof element === 'string') {
-                // Element ID - find it, then copy its child nodes
-                var elemInstance = document.getElementById(element);
-                if (elemInstance) {
-                    callback(cloneNodesFromTemplateSourceElement(elemInstance));
-                } else {
-                    errorCallback('Cannot find element with ID ' + element);
-                }
-            } else {
-                errorCallback('Unknown element type: ' + element);
+    if (viewModelConfig) {
+        _possiblyGetConfigFromAmd(errorCallback, viewModelConfig, loadedConfig => {
+            _getFirstResultFromLoaders('loadViewModel', [componentName, loadedConfig], resolvedViewModel => {
+                result[CREATE_VIEW_MODEL_KEY] = resolvedViewModel;
+                tryIssueCallback();
+            });
+        });
+    } else {
+        tryIssueCallback();
+    }
+};
+
+const _resolveTemplate = (errorCallback, templateConfig, callback) => {
+    if (typeof templateConfig === 'string') {
+        // Markup - parse it
+        return callback(parseHtmlFragment(templateConfig));
+    } 
+    if (templateConfig.element) {
+        let elementIdOrNode = templateConfig.element,
+            elemNode;
+        if (typeof elementIdOrNode === 'string') {
+            elemNode = document.getElementById(elementIdOrNode);
+            if (!elemNode) {
+                errorCallback('Cannot find element with ID ' + elementIdOrNode);
             }
+        } else if (_isDomElement(elementIdOrNode)) {
+            elemNode = elementIdOrNode;
         } else {
-            errorCallback('Unknown template value: ' + templateConfig);
+            errorCallback('Unknown element type: ' + elementIdOrNode);
         }
+        // Element instance found - copy its child nodes
+        return callback(_cloneNodesFromTemplateSourceElement(elemNode));
+    }  
+    if (Array.isArray(templateConfig)) {
+        // Assume already an array of DOM nodes - pass through unchanged
+        return callback(templateConfig);
     }
+    if (_isDocumentFragment(templateConfig)) {
+        // Document fragment - use its child nodes
+        return callback([...templateConfig.childNodes]);
+    } 
+    errorCallback('Unknown template value: ' + templateConfig);
+};
 
-    function resolveViewModel(errorCallback, viewModelConfig, callback) {
-        if (typeof viewModelConfig === 'function') {
-            // Constructor - convert to standard factory function format
-            // By design, this does *not* supply componentInfo to the constructor, as the intent is that
-            // componentInfo contains non-viewmodel data (e.g., the component's element) that should only
-            // be used in factory functions, not viewmodel constructors.
-            callback(function (params /*, componentInfo */) {
-                return new viewModelConfig(params);
-            });
-        } else if (typeof viewModelConfig[createViewModelKey] === 'function') {
-            // Already a factory function - use it as-is
-            callback(viewModelConfig[createViewModelKey]);
-        } else if ('instance' in viewModelConfig) {
-            // Fixed object instance - promote to createViewModel format for API consistency
-            var fixedInstance = viewModelConfig['instance'];
-            callback(function (params, componentInfo) {
-                return fixedInstance;
-            });
-        } else if ('viewModel' in viewModelConfig) {
-            // Resolved AMD module whose value is of the form { viewModel: ... }
-            resolveViewModel(errorCallback, viewModelConfig['viewModel'], callback);
-        } else {
-            errorCallback('Unknown viewModel value: ' + viewModelConfig);
-        }
-    }
+const _resolveViewModel = (errorCallback, viewModelConfig, callback) => {
+    if (typeof viewModelConfig === 'function') {
+        // Constructor - convert to standard factory function format
+        // By design, this does *not* supply componentInfo to the constructor, as the intent is that
+        // componentInfo contains non-viewmodel data (e.g., the component's element) that should only
+        // be used in factory functions, not viewmodel constructors.
+        return callback((params /*, componentInfo */) => new viewModelConfig(params));
+    } 
+    let factoryFn = viewModelConfig[CREATE_VIEW_MODEL_KEY];
+    if (typeof factoryFn === 'function') {
+        // Already a factory function - use it as-is
+        return callback(factoryFn);
+    } 
+    let fixedInstance = viewModelConfig.instance;
+    if (fixedInstance !== undefined) {
+        // Fixed object instance - promote to createViewModel format for API consistency
+        return callback((params, componentInfo) => fixedInstance);
+    } 
+    let viewModel = viewModelConfig.viewModel;
+    if (viewModel !== undefined) {
+        // Resolved AMD module whose value is of the form { viewModel: ... }
+        return _resolveViewModel(errorCallback, viewModel, callback);
+    } 
+    errorCallback('Unknown viewModel value: ' + viewModelConfig);
+};
 
-    function cloneNodesFromTemplateSourceElement(elemInstance) {
-        switch (ko.utils.tagNameLower(elemInstance)) {
-            case 'script':
-                return ko.utils.parseHtmlFragment(elemInstance.text);
-            case 'textarea':
-                return ko.utils.parseHtmlFragment(elemInstance.value);
-            case 'template':
-                // For browsers with proper <template> element support (i.e., where the .content property
-                // gives a document fragment), use that document fragment.
-                if (isDocumentFragment(elemInstance.content)) {
-                    return ko.utils.cloneNodes(elemInstance.content.childNodes);
-                }
-        }
-
-        // Regular elements such as <div>, and <template> elements on old browsers that don't really
-        // understand <template> and just treat it as a regular container
-        return ko.utils.cloneNodes(elemInstance.childNodes);
-    }
-
-    function isDomElement(obj) {
-        if (window['HTMLElement']) {
-            return obj instanceof HTMLElement;
-        } else {
-            return obj && obj.tagName && obj.nodeType === 1;
-        }
-    }
-
-    function isDocumentFragment(obj) {
-        if (window['DocumentFragment']) {
-            return obj instanceof DocumentFragment;
-        } else {
-            return obj && obj.nodeType === 11;
-        }
-    }
-
-    function possiblyGetConfigFromAmd(errorCallback, config, callback) {
-        if (typeof config['require'] === 'string') {
-            // The config is the value of an AMD module
-            if (amdRequire || window['require']) {
-                (amdRequire || window['require'])([config['require']], function (module) {
-                    if (module && typeof module === 'object' && module.__esModule && module.default) {
-                        module = module.default;
-                    }
-                    callback(module);
-                });
-            } else {
-                errorCallback('Uses require, but no AMD loader is present');
+const _cloneNodesFromTemplateSourceElement = (elemInstance) => {
+    let tagName = elemInstance.tagName.toLowerCase();
+    switch (tagName) {
+        case 'script':   
+            return parseHtmlFragment(elemInstance.text);
+        case 'textarea': 
+            return parseHtmlFragment(elemInstance.value);
+        case 'template':
+            // For browsers with proper <template> element support (i.e., where the .content property
+            // gives a document fragment), use that document fragment.
+            if (_isDocumentFragment(elemInstance.content)) {
+                return cloneNodes(elemInstance.content.childNodes);
             }
-        } else {
-            callback(config);
-        }
     }
+    // Regular elements such as <div>, and <template> elements on old browsers that don't really
+    // understand <template> and just treat it as a regular container
+    return cloneNodes(elemInstance.childNodes);
+};
 
-    function makeErrorCallback(componentName) {
-        return function (message) {
-            throw new Error('Component \'' + componentName + '\': ' + message);
-        };
+// not as precise as `instanceof HTMLElement' but a lot cheaper 
+const _isDomElement = obj => obj && obj.tagName && obj.nodeType === 1;
+
+const _isDocumentFragment = obj => obj && obj.nodeType === 11;
+
+const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
+    if (typeof config.require !== 'string') {
+        callback(config);
+        return;
     }
+    // The config is the value of an AMD module
+    let requireFn = typeof amdRequire === 'function' ? amdRequire : window.require; // eslint-disable-line no-undef
+    if (requireFn) {
+        requireFn([config.require], module => {
+            if (module && (typeof module === 'object') && module.__esModule && module.default) {
+                module = module.default;
+            }
+            callback(module);
+        });
+    } else {
+        errorCallback('Uses require, but no AMD loader is present');
+    }
+};
 
-    ko.exportSymbol('components.register', ko.components.register);
-    ko.exportSymbol('components.isRegistered', ko.components.isRegistered);
-    ko.exportSymbol('components.unregister', ko.components.unregister);
+const _makeErrorCallback = (componentName) => message => {
+    throw new Error('Component \'' + componentName + '\': ' + message);
+};
 
-    // Expose the default loader so that developers can directly ask it for configuration
-    // or to resolve configuration
-    ko.exportSymbol('components.defaultLoader', ko.components.defaultLoader);
-
-    // By default, the default loader is the only registered component loader
-    ko.components['loaders'].push(ko.components.defaultLoader);
-
-    // Privately expose the underlying config registry for use in old-IE shim
-    ko.components._allRegisteredComponents = defaultConfigRegistry;
-})();
+// By default, the default loader is the only registered component loader
+loaders.push(defaultLoader);

@@ -1,23 +1,48 @@
-(function () {
+import {getCurrentComputed, getDependenciesCount} from '../../subscribables/dependencyDetection';
+import {bindingRewriteValidators} from '../expressionRewriting';
+import {cloneNodes, unwrapObservable} from '../../utils';
+import {childNodes, setDomNodeChildren, allowedVirtualElementBindings, emptyNode} from '../../virtualElements';
+import {bindingHandlers} from '../bindingHandlers';
+import {
+    EVENT_CHILDREN_COMPLETE,
+    EVENT_DESCENDENTS_COMPLETE,
+    bindingEvent,
+    applyBindingsToDescendants
+} from '../bindingAttributeSyntax';
+import {computed} from '../../subscribables/dependentObservable';
+
+const {startPossiblyAsyncContentBinding, notify} = bindingEvent;
 
 // Makes a binding like with or if
-function makeWithIfBinding(bindingKey, isWith, isNot) {
-    ko.bindingHandlers[bindingKey] = {
-        'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var didDisplayOnLastUpdate, savedNodes, contextOptions = {}, completeOnRender, needAsyncContext, renderOnEveryChange;
+const _makeWithIfBinding = (bindingKey, isWith, isNot) => {
+    
+    bindingHandlers[bindingKey] = {
+        init(element, valueAccessor, allBindings, viewModel, bindingContext) {
+            let didDisplayOnLastUpdate, 
+                savedNodes, 
+                contextOptions = {}, 
+                completeOnRender, 
+                needAsyncContext,
+                renderOnEveryChange;
 
             if (isWith) {
-                var as = allBindings.get('as'), noChildContext = allBindings.get('noChildContext');
+                let as = allBindings.get('as'), 
+                    noChildContext = allBindings.get('noChildContext');
+                
                 renderOnEveryChange = !(as && noChildContext);
-                contextOptions = { 'as': as, 'noChildContext': noChildContext, 'exportDependencies': renderOnEveryChange };
+                contextOptions = {
+                    as,
+                    noChildContext,
+                    exportDependencies: renderOnEveryChange
+                };
             }
 
-            completeOnRender = allBindings.get("completeOn") == "render";
-            needAsyncContext = completeOnRender || allBindings['has'](ko.bindingEvent.descendantsComplete);
+            completeOnRender = allBindings.get('completeOn') === 'render';
+            needAsyncContext = completeOnRender || allBindings.has(EVENT_DESCENDENTS_COMPLETE);
 
-            ko.computed(function() {
-                var value = ko.utils.unwrapObservable(valueAccessor()),
-                    shouldDisplay = !isNot !== !value, // equivalent to isNot ? !value : !!value,
+            computed(() => {
+                let value = unwrapObservable(valueAccessor()),
+                    shouldDisplay = isNot ? !value : !!value,
                     isInitial = !savedNodes,
                     childContext;
 
@@ -26,56 +51,54 @@ function makeWithIfBinding(bindingKey, isWith, isNot) {
                 }
 
                 if (needAsyncContext) {
-                    bindingContext = ko.bindingEvent.startPossiblyAsyncContentBinding(element, bindingContext);
+                    bindingContext = startPossiblyAsyncContentBinding(element, bindingContext);
                 }
 
                 if (shouldDisplay) {
                     if (!isWith || renderOnEveryChange) {
-                        contextOptions['dataDependency'] = ko.computedContext.computed();
+                        contextOptions['dataDependency'] = getCurrentComputed();
                     }
 
                     if (isWith) {
-                        childContext = bindingContext['createChildContext'](typeof value == "function" ? value : valueAccessor, contextOptions);
-                    } else if (ko.computedContext.getDependenciesCount()) {
-                        childContext = bindingContext['extend'](null, contextOptions);
+                        childContext = bindingContext.createChildContext(typeof value === 'function' ? value : valueAccessor, contextOptions);
+                    } else if (getDependenciesCount()) {
+                        childContext = bindingContext.extend(null, contextOptions);
                     } else {
                         childContext = bindingContext;
                     }
                 }
 
                 // Save a copy of the inner nodes on the initial update, but only if we have dependencies.
-                if (isInitial && ko.computedContext.getDependenciesCount()) {
-                    savedNodes = ko.utils.cloneNodes(ko.virtualElements.childNodes(element), true /* shouldCleanNodes */);
+                if (isInitial && getDependenciesCount()) {
+                    savedNodes = cloneNodes(childNodes(element), true /* shouldCleanNodes */);
                 }
 
                 if (shouldDisplay) {
                     if (!isInitial) {
-                        ko.virtualElements.setDomNodeChildren(element, ko.utils.cloneNodes(savedNodes));
+                        setDomNodeChildren(element, cloneNodes(savedNodes));
                     }
 
-                    ko.applyBindingsToDescendants(childContext, element);
+                    applyBindingsToDescendants(childContext, element);
                 } else {
-                    ko.virtualElements.emptyNode(element);
+                    emptyNode(element);
 
                     if (!completeOnRender) {
-                        ko.bindingEvent.notify(element, ko.bindingEvent.childrenComplete);
+                        notify(element, EVENT_CHILDREN_COMPLETE);
                     }
                 }
 
                 didDisplayOnLastUpdate = shouldDisplay;
 
-            }, null, { disposeWhenNodeIsRemoved: element });
+            }, null, {disposeWhenNodeIsRemoved: element});
 
-            return { 'controlsDescendantBindings': true };
+            return {controlsDescendantBindings: true};
         }
     };
-    ko.expressionRewriting.bindingRewriteValidators[bindingKey] = false; // Can't rewrite control flow bindings
-    ko.virtualElements.allowedBindings[bindingKey] = true;
-}
+    bindingRewriteValidators[bindingKey] = false; // Can't rewrite control flow bindings
+    allowedVirtualElementBindings[bindingKey] = true;
+};
 
 // Construct the actual binding handlers
-makeWithIfBinding('if');
-makeWithIfBinding('ifnot', false /* isWith */, true /* isNot */);
-makeWithIfBinding('with', true /* isWith */);
-
-})();
+_makeWithIfBinding('if');
+_makeWithIfBinding('ifnot', false /* isWith */, true /* isNot */);
+_makeWithIfBinding('with', true /* isWith */);

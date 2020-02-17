@@ -1,6 +1,5 @@
 console.log("Running Knockout tests in Node.js");
 
-var fs = require('fs');
 var jasmine = require('./lib/jasmine-1.2.0/jasmine');
 
 // export jasmine globals
@@ -12,21 +11,7 @@ for (var key in jasmine) {
 require('./lib/jasmine.extensions');
 
 // export ko globals
-if (process.argv.length > 2 && process.argv[2] == '--source') {
-    // equivalent of  ../build/knockout-raw.js
-    global.DEBUG = true;
-    global.ko = global.koExports = {};
-    global.knockoutDebugCallback = function(sources) {
-        sources.unshift('build/fragments/extern-pre.js');
-        sources.push('build/fragments/extern-post.js');
-        eval(sources.reduce(function(all, source) {
-            return all + '\n' + fs.readFileSync(source);
-        }, ''));
-    };
-    require('../build/fragments/source-references');
-} else {
-    global.ko = require('../build/output/knockout-latest.js');
-}
+global.ko = require('../build/output/knockout-latest.debug.js');
 
 // reference behaviors that should work out of browser
 require('./arrayEditDetectionBehaviors');

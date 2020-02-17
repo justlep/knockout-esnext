@@ -1,3 +1,56 @@
+# Knockout ESNext [![Build Status](https://travis-ci.org/justlep/knockout-next.svg?branch=master)](https://travis-ci.org/justlep/knockout-next) 
+
+A complete overhaul of the [Knockout.js](https://knockoutjs.com/) library code and build process.
+
+For a slicker *Knockout.js* finally leaving behind the dark ages of ES5, Internet Explorer and jQuery.
+
+
+### Changes (in code):
+* Rewrote all library code in ES6+ supported in all modern browsers
+* Using maps, classes, symbols, arrow functions where applicable & performance-wise useful
+* Replaced clumsy iterations, mappings (ko.utils.arrayForEach etc) with faster, in-place native pendants
+* Turned former *source fragments* into ES modules 
+  * Retained most of the original names & structure, so catchup & diffing with original Knockout.js remains possible
+  * Easy circular-dependency detection through ESM imports/exports
+  * No more worries about loading order of fragments, no more file concatenation at all
+* Internals are now **namespace-agnostic** & self-contained   
+  * no more `ko.foo.bar` references or assignments internally
+  * `ko.js` being the **only source of truth** about what is exposed publicly (including legacy aliases)
+  * override-points like `ko.onError` are setters in `ko.js`, so we gain full control over what can be overridden
+* Removed historic browser support (IE, early Firefox etc)
+* Removed jQuery support
+* Kept all ~1300 tests working with very few changes:
+  * Added tests for type checking (`ko.isObservable` etc) in `basicTypeCheckBehaviors.js`
+  * Removed IE/jQuery-related tests
+
+### Changes (build process):
+* Removed Google Closure Compiler and all code soothing its side-effects (`ko.exportSymbol`)
+* Using [Rollup](https://rollupjs.org/guide/en/) + [Terser](https://github.com/terser/terser) plugin for build & minification
+* Now exporting the Knockout.js library in 3 flavors:
+    * Minified UMD (`knockout.js`)
+    * Minified ES Module (`knockout.esm.js`)
+    * Non-minified UMD **debug version incl. sourcemap** (`knockout-debug.js`, `knockout-debug.js.map`)
+* Removed deprecated `PhantomJS`
+* Added [`ESLint`](https://eslint.org/) for code quality checks 
+
+### Changes (testing/debugging)
+* After changing any source file during browser testing (`spec/runner.html`), 
+  you now have to run the `rollup-dev` task before the next test-run:    
+    * ```shell script
+      npm run rollup-dev
+      ```
+  This will rebuild the `build/output/knockout-latest.debug.js` used by `runner.html`.    
+* The debug version now has a sourcemap generated alongside it (`knockout-latest.debug.js.map`), 
+  so you can attach your IDE's debugger to e.g. `runner.html` and add breakpoints
+  inside the actual source files rather than the generated `knockout-latest.debug.js`.  
+  
+
+
+  
+---
+   
+    
+
 # Knockout
 
 **Knockout** is a JavaScript [MVVM](http://en.wikipedia.org/wiki/Model_View_ViewModel) (a modern variant of MVC) library that makes it easier to create rich, desktop-like user interfaces with JavaScript and HTML. It uses *observers* to make your UI automatically stay in sync with an underlying data model, along with a powerful and extensible set of *declarative bindings* to enable productive development.
