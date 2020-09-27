@@ -57,9 +57,10 @@ if (typeof MutationObserver !== 'undefined') {
     // Chrome 27+, Firefox 14+, IE 11+, Opera 15+, Safari 6.1+
     // From https://github.com/petkaantonov/bluebird * Copyright (c) 2014 Petka Antonov * License: MIT
     _scheduler = (callback => {
-        let div = document.createElement("div");
-        new MutationObserver(callback).observe(div, {attributes: true});
-        return () => div.classList.toggle("foo");
+        let elem = document.createElement('b'),
+            val = 1;
+        new MutationObserver(callback).observe(elem, {attributes: true});
+        return () => elem.title = (val = -val); // original classList.toggle is 60% slower in Chrome 85
     })(_scheduledProcess);
 
 } else if (typeof process === 'object') {
@@ -69,11 +70,9 @@ if (typeof MutationObserver !== 'undefined') {
     throw new Error('Browser is too old, does not know MutationObserver');
 }
 
-const _scheduleTaskProcessing = () => _scheduler(_scheduledProcess);
-
 export const scheduleTask = (func) => {
     if (!_taskQueueLength) {
-        _scheduleTaskProcessing();
+        _scheduler(_scheduledProcess);
     }
     _taskQueue[_taskQueueLength++] = func;
     return _nextHandle++;
