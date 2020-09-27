@@ -126,9 +126,6 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
     return _computedObservable;
 }
 
-// Utility function that disposes a given dependencyTracking entry
-const computedDisposeDependencyCallback = (id, entryToDispose) => (entryToDispose && entryToDispose.dispose) && entryToDispose.dispose();
-
 // This function gets called each time a dependency is detected while evaluating a computed.
 // It's factored out as a shared function to avoid creating unnecessary function instances during evaluation.
 function computedBeginDependencyDetectionCallback(subscribable, id) {
@@ -386,9 +383,10 @@ const COMPUTED_PROTOTYPE = {
 
             // For each subscription no longer being used, remove it from the active subscriptions list and dispose it
             if (dependencyDetectionContext.disposalCount && !state.isSleeping) {
-                let __disposalCandidates = dependencyDetectionContext.disposalCandidates;
-                for (let key of Object.keys(__disposalCandidates)) {
-                    computedDisposeDependencyCallback(key, __disposalCandidates[key]);
+                for (let entryToDispose of Object.values(dependencyDetectionContext.disposalCandidates)) {
+                    if (entryToDispose && entryToDispose.dispose) {
+                        entryToDispose.dispose();
+                    }
                 }
             }
 
