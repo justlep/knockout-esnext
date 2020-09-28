@@ -63,9 +63,9 @@ const _cleanNodesInList = (nodeList, onlyComments) => {
 };
 
 export const addDisposeCallback = (node, callback) => {
-    if (typeof callback !== 'function') {
-        throw new Error('Callback must be a function');
-    }
+    // if (typeof callback !== 'function') {
+    //     throw new Error('Callback must be a function');
+    // }
     _getDisposeCallbacksCollection(node, true).push(callback);
 };
 
