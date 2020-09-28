@@ -12,7 +12,7 @@ export let getComponentNameForNode = (node) => {
     let tagNameLower = (node && node.tagName || '').toLowerCase();
     if (tagNameLower && isComponentRegistered(tagNameLower)) {
         // Try to determine that this node can be considered a *custom* element; see https://github.com/knockout/knockout/issues/1603
-        if (tagNameLower.includes('-') || ('' + node) === "[object HTMLUnknownElement]") {
+        if (~tagNameLower.indexOf('-') || ('' + node) === "[object HTMLUnknownElement]") {
             return tagNameLower;
         }
     }
