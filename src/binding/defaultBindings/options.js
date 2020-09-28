@@ -139,13 +139,11 @@ bindingHandlers.options = {
             }
         };
 
-        let _optionsAfterRender = allBindings.has('optionsAfterRender') && allBindings.get('optionsAfterRender'),
-            callback = (typeof _optionsAfterRender === 'function') ? 
-                (arrayEntry, newOptions) => {
-                    _setSelectionCallback(arrayEntry, newOptions);
-                    ignoreDependencyDetection(allBindings.get('optionsAfterRender'), null, [newOptions[0], arrayEntry !== CAPTION_PLACEHOLDER ? arrayEntry : undefined]);
-                } : 
-                _setSelectionCallback;
+        let _optionsAfterRender = allBindings.get('optionsAfterRender'),
+            callback = (typeof _optionsAfterRender !== 'function') ? _setSelectionCallback : (arrayEntry, newOptions) => {
+                _setSelectionCallback(arrayEntry, newOptions);
+                ignoreDependencyDetection(_optionsAfterRender, null, [newOptions[0], arrayEntry !== CAPTION_PLACEHOLDER ? arrayEntry : undefined]);
+            };
 
         setDomNodeChildrenFromArrayMapping(element, filteredArray, optionForArrayItem, arrayToDomNodeChildrenOptions, callback);
 
