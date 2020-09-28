@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod3-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod4-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod3'; // inserted by rollup intro
+    const version = '3.5.1-mod4'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -2413,13 +2413,16 @@
         if (!config) {
             throw new Error('Invalid configuration for ' + componentName);
         }
-        if (isComponentRegistered(componentName)) {
+        if (defaultConfigRegistry.has(componentName)) {
             throw new Error('Component ' + componentName + ' is already registered');
         }
         defaultConfigRegistry.set(componentName, config);
     };
 
-    const isComponentRegistered = componentName => defaultConfigRegistry.has(componentName);
+    /**
+     * @type {function(string):boolean}
+     */
+    const isComponentRegistered = defaultConfigRegistry.has.bind(defaultConfigRegistry);
 
     const unregisterComponent = (componentName) => {
         defaultConfigRegistry.delete(componentName);
@@ -2428,7 +2431,7 @@
 
     const defaultLoader = {
         getConfig(componentName, callback) {
-            let result = isComponentRegistered(componentName) ? defaultConfigRegistry.get(componentName) : null;
+            let result = defaultConfigRegistry.has(componentName) ? defaultConfigRegistry.get(componentName) : null;
             callback(result);
         },
         
@@ -2495,7 +2498,8 @@
                 if (!elemNode) {
                     errorCallback('Cannot find element with ID ' + elementIdOrNode);
                 }
-            } else if (_isDomElement(elementIdOrNode)) {
+            } else if (elementIdOrNode && elementIdOrNode.tagName && elementIdOrNode.nodeType === 1) {
+                // isDomElement-check (= less precise than `instanceof HTMLElement' but a lot cheaper) 
                 elemNode = elementIdOrNode;
             } else {
                 errorCallback('Unknown element type: ' + elementIdOrNode);
@@ -2559,9 +2563,6 @@
         return cloneNodes(elemInstance.childNodes);
     };
 
-    // not as precise as `instanceof HTMLElement' but a lot cheaper 
-    const _isDomElement = obj => obj && obj.tagName && obj.nodeType === 1;
-
     const _isDocumentFragment = obj => obj && obj.nodeType === 11;
 
     const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
@@ -2598,7 +2599,7 @@
         let tagNameLower = (node && node.tagName || '').toLowerCase();
         if (tagNameLower && isComponentRegistered(tagNameLower)) {
             // Try to determine that this node can be considered a *custom* element; see https://github.com/knockout/knockout/issues/1603
-            if (tagNameLower.includes('-') || ('' + node) === "[object HTMLUnknownElement]") {
+            if (~tagNameLower.indexOf('-') || ('' + node) === "[object HTMLUnknownElement]") {
                 return tagNameLower;
             }
         }
@@ -2707,28 +2708,25 @@
         }
 
         getBindings(node, bindingContext) {
-            let bindingsString = this._getBindingsString(node, bindingContext),
+            let bindingsString = this._getBindingsString(node),
                 parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node) : null;
             return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ false);
         }
 
         getBindingAccessors(node, bindingContext) {
-            let bindingsString = this._getBindingsString(node, bindingContext),
+            let bindingsString = this._getBindingsString(node),
                 parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node, {'valueAccessors': true}) : null;
             return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ true);
         }
 
         // The following function is only used internally by this default provider.
         // It's not part of the interface definition for a general binding provider.
-        _getBindingsString(node, bindingContext) {
-            switch (node.nodeType) {
-                case 1:
-                    return node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME); // Element
-                case 8:
-                    return virtualNodeBindingValue(node);  // Comment
-                default: 
-                    return null;
-            }
+        _getBindingsString(node) {
+            let nodeType = node.nodeType;
+            // 1 == element, 8 == comment
+            return nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) :
+                   nodeType === 8 ? virtualNodeBindingValue(node) :
+                   null;    
         }
 
         // The following function is only used internally by this default provider.
@@ -5551,13 +5549,11 @@
                 }
             };
 
-            let _optionsAfterRender = allBindings.has('optionsAfterRender') && allBindings.get('optionsAfterRender'),
-                callback = (typeof _optionsAfterRender === 'function') ? 
-                    (arrayEntry, newOptions) => {
-                        _setSelectionCallback(arrayEntry, newOptions);
-                        ignoreDependencyDetection(allBindings.get('optionsAfterRender'), null, [newOptions[0], arrayEntry !== CAPTION_PLACEHOLDER ? arrayEntry : undefined]);
-                    } : 
-                    _setSelectionCallback;
+            let _optionsAfterRender = allBindings.get('optionsAfterRender'),
+                callback = (typeof _optionsAfterRender !== 'function') ? _setSelectionCallback : (arrayEntry, newOptions) => {
+                    _setSelectionCallback(arrayEntry, newOptions);
+                    ignoreDependencyDetection(_optionsAfterRender, null, [newOptions[0], arrayEntry !== CAPTION_PLACEHOLDER ? arrayEntry : undefined]);
+                };
 
             setDomNodeChildrenFromArrayMapping(element, filteredArray, optionForArrayItem, arrayToDomNodeChildrenOptions, callback);
 
