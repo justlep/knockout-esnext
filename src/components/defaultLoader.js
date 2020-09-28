@@ -20,13 +20,16 @@ export const registerComponent = (componentName, config) => {
     if (!config) {
         throw new Error('Invalid configuration for ' + componentName);
     }
-    if (isComponentRegistered(componentName)) {
+    if (defaultConfigRegistry.has(componentName)) {
         throw new Error('Component ' + componentName + ' is already registered');
     }
     defaultConfigRegistry.set(componentName, config);
 };
 
-export const isComponentRegistered = componentName => defaultConfigRegistry.has(componentName);
+/**
+ * @type {function(string):boolean}
+ */
+export const isComponentRegistered = defaultConfigRegistry.has.bind(defaultConfigRegistry);
 
 export const unregisterComponent = (componentName) => {
     defaultConfigRegistry.delete(componentName);
@@ -35,7 +38,7 @@ export const unregisterComponent = (componentName) => {
 
 export const defaultLoader = {
     getConfig(componentName, callback) {
-        let result = isComponentRegistered(componentName) ? defaultConfigRegistry.get(componentName) : null;
+        let result = defaultConfigRegistry.has(componentName) ? defaultConfigRegistry.get(componentName) : null;
         callback(result);
     },
     
@@ -102,7 +105,8 @@ const _resolveTemplate = (errorCallback, templateConfig, callback) => {
             if (!elemNode) {
                 errorCallback('Cannot find element with ID ' + elementIdOrNode);
             }
-        } else if (_isDomElement(elementIdOrNode)) {
+        } else if (elementIdOrNode && elementIdOrNode.tagName && elementIdOrNode.nodeType === 1) {
+            // isDomElement-check (= less precise than `instanceof HTMLElement' but a lot cheaper) 
             elemNode = elementIdOrNode;
         } else {
             errorCallback('Unknown element type: ' + elementIdOrNode);
@@ -165,9 +169,6 @@ const _cloneNodesFromTemplateSourceElement = (elemInstance) => {
     // understand <template> and just treat it as a regular container
     return cloneNodes(elemInstance.childNodes);
 };
-
-// not as precise as `instanceof HTMLElement' but a lot cheaper 
-const _isDomElement = obj => obj && obj.tagName && obj.nodeType === 1;
 
 const _isDocumentFragment = obj => obj && obj.nodeType === 11;
 
