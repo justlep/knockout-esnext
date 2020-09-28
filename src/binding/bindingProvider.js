@@ -23,28 +23,25 @@ export class KoBindingProvider {
     }
 
     getBindings(node, bindingContext) {
-        let bindingsString = this._getBindingsString(node, bindingContext),
+        let bindingsString = this._getBindingsString(node),
             parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node) : null;
         return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ false);
     }
 
     getBindingAccessors(node, bindingContext) {
-        let bindingsString = this._getBindingsString(node, bindingContext),
+        let bindingsString = this._getBindingsString(node),
             parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node, {'valueAccessors': true}) : null;
         return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ true);
     }
 
     // The following function is only used internally by this default provider.
     // It's not part of the interface definition for a general binding provider.
-    _getBindingsString(node, bindingContext) {
-        switch (node.nodeType) {
-            case 1:
-                return node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME); // Element
-            case 8:
-                return virtualNodeBindingValue(node);  // Comment
-            default: 
-                return null;
-        }
+    _getBindingsString(node) {
+        let nodeType = node.nodeType;
+        // 1 == element, 8 == comment
+        return nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) :
+               nodeType === 8 ? virtualNodeBindingValue(node) :
+               null;    
     }
 
     // The following function is only used internally by this default provider.
