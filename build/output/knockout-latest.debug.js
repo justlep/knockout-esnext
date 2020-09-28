@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod3-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1'; // inserted by rollup intro
+    const version = '3.5.1-mod3'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -32,6 +32,65 @@
     const getDomData = (node, key) => {
         let dataForNode = node[DATASTORE_PROP];
         return dataForNode && dataForNode[key];
+    };
+
+    /**
+     * Returns a function that removes a given item from an array located under the node's domData[itemArrayDomDataKey].
+     * If the array IS or BECOMES empty, it will be deleted from the domData. 
+     * @return {function(Node, *): void}
+     */
+    const getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToRemove) => {
+        let dataForNode = node[DATASTORE_PROP],
+            itemArray = dataForNode && dataForNode[itemArrayDomDataKey];
+
+        if (itemArray) {
+            let index = itemArray.indexOf(itemToRemove);
+            if (index === 0) {
+                itemArray.shift();
+            } else if (index > 0) {
+                itemArray.splice(index, 1);
+            }
+            if (!itemArray.length) {
+                dataForNode[itemArrayDomDataKey] = undefined;
+            }
+        }
+    };
+
+    /**
+     * Returns a function that adds a given item to an array located under the node's domData[itemArrayDomDataKey].
+     * If the domData or the array didn't exist, either will be created.
+     * @param {string} itemArrayDomDataKey
+     * @return {function(Node, *): void}
+     */
+    const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToAdd) => {
+        let dataForNode = node[DATASTORE_PROP] || (node[DATASTORE_PROP] = Object.create(null)),
+            itemArray = dataForNode[itemArrayDomDataKey];
+        
+        if (itemArray) {
+            itemArray.push(itemToAdd);
+        } else {
+            dataForNode[itemArrayDomDataKey] = [itemToAdd];
+        }
+    };
+
+    /**
+     * Returns a function that will 
+     *  (1) run all (function-)items of an array located under the node's domData[itemArrayDomDataKey], passing the node as parameter
+     *  (2) clear the node's DOM data
+     * @param {string} itemArrayDomDataKey
+     * @return {function(Node): void}
+     */
+    const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node) => {
+        let dataForNode = node[DATASTORE_PROP];
+        if (dataForNode) {
+            let itemArray = dataForNode[itemArrayDomDataKey];
+            if (itemArray) {
+                for (let i = 0, _fns = itemArray.slice(0), len = _fns.length; i < len; i++) {
+                    _fns[i](node);
+                }
+            }
+            delete node[DATASTORE_PROP];
+        }    
     };
 
     const setDomData = (node, key, value) => {
@@ -131,38 +190,20 @@
     const isInitialDependency = () => currentFrame ? currentFrame.isInitial : undefined;
     const getCurrentComputed = () => currentFrame ? currentFrame.computed : undefined;
 
-    const DOM_DATA_KEY = nextDomDataKey();
+    const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
     const CLEANABLE_NODE_TYPES = {1: true, 8: true, 9: true};                   // Element, Comment, Document
     const CLEANABLE_NODE_TYPES_WITH_DESCENDENTS = {1: true, 8: false, 9: true}; // Element, Comment(not), Document
 
-    const _getDisposeCallbacksCollection = (node, createIfNotFound) => {
-        let allDisposeCallbacks = getDomData(node, DOM_DATA_KEY);
-        if ((allDisposeCallbacks === undefined) && createIfNotFound) {
-            allDisposeCallbacks = [];
-            setDomData(node, DOM_DATA_KEY, allDisposeCallbacks);
-        }
-        return allDisposeCallbacks;
-    };
-
-    const _destroyCallbacksCollection = (node) => setDomData(node, DOM_DATA_KEY, undefined);
 
     /** @type {function} */
     let _cleanExternalData = null;
     const _overrideCleanExternalData = (fn) => _cleanExternalData = fn;
 
+    const _runDisposalCallbacksAndClearDomData = getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
     const _cleanSingleNode = (node) => {
-        // Run all the dispose callbacks
-        let callbacks = _getDisposeCallbacksCollection(node, false);
-        if (callbacks) {
-            callbacks = callbacks.slice(0); // Clone, as the array may be modified during iteration (typically, callbacks will remove themselves)
-             for (let i = 0; i < callbacks.length; i++) {
-                 callbacks[i](node);
-             }
-        }
-
-        // Erase the DOM data
-        clearDomData(node);
+        // Run all the dispose callbacks & ease the DOM data
+        _runDisposalCallbacksAndClearDomData(node);
 
         // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
         if (_cleanExternalData) {
@@ -172,17 +213,27 @@
         // Clear any immediate-child comment nodes, as these wouldn't have been found by
         // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
         if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
-            _cleanNodesInList(node.childNodes, true/*onlyComments*/);
+            let cleanableNodesList = node.childNodes;
+            if (cleanableNodesList.length) {
+                _cleanNodesInList(cleanableNodesList, true /*onlyComments*/);
+            }
         }
     };
 
+    /**
+     * @param {HTMLCollection|NodeList} nodeList
+     * @param {boolean} [onlyComments]
+     * @private
+     */
     const _cleanNodesInList = (nodeList, onlyComments) => {
-        let cleanedNodes = [], 
+        let cleanedNodes = [],
+            cleanedNodesIndex = -1,    
             lastCleanedNode;
         
-         for (let i = 0; i < nodeList.length; i++) {
-            if (!onlyComments || nodeList[i].nodeType === 8) {
-                _cleanSingleNode(cleanedNodes[cleanedNodes.length] = lastCleanedNode = nodeList[i]);
+        for (let i = 0, node; i < nodeList.length; i++) {
+            node = nodeList[i]; 
+            if (!onlyComments || node.nodeType === 8) {
+                _cleanSingleNode(cleanedNodes[++cleanedNodesIndex] = lastCleanedNode = node);
                 if (nodeList[i] !== lastCleanedNode) {
                     while (i-- && !cleanedNodes.includes(nodeList[i])) {
                         // just do
@@ -192,48 +243,30 @@
         }
     };
 
-    const addDisposeCallback = (node, callback) => {
-        if (typeof callback !== 'function') {
-            throw new Error('Callback must be a function');
-        }
-        _getDisposeCallbacksCollection(node, true).push(callback);
-    };
+    /** @type {function(Node, Function): void} */
+    const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
-    const removeDisposeCallback = (node, callback) => {
-        let callbacksCollection = _getDisposeCallbacksCollection(node, false);
-        if (callbacksCollection) {
-            let index = callbacksCollection.length ? callbacksCollection.indexOf(callback) : -1;
-            if (index === 0) {
-                callbacksCollection.shift();
-            } else if (index > 0) {
-                callbacksCollection.splice(index, 1);
-            }
-            if (!callbacksCollection.length) {
-                _destroyCallbacksCollection(node);
-            }
-        }
-    };
+    /** @type {function(Node, Function): void} */
+    const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY); 
 
     const cleanNode = (node) => {
-        ignoreDependencyDetection(() => {
-            // First clean this node, where applicable
-            if (CLEANABLE_NODE_TYPES[node.nodeType]) {
+        if (CLEANABLE_NODE_TYPES[node.nodeType]) {
+            ignoreDependencyDetection(() => {
+                // First clean this node, where applicable
                 _cleanSingleNode(node);
                 // ... then its descendants, where applicable
                 if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
-                    _cleanNodesInList(node.getElementsByTagName('*'));
+                    let cleanableNodesList = node.getElementsByTagName('*');
+                    if (cleanableNodesList.length) {
+                        _cleanNodesInList(cleanableNodesList);
+                    }
                 }
-            }
-        });
+            });
+        }
         return node;
     };
 
-    const removeNode = (node) => {
-        cleanNode(node);
-        if (node.parentNode) {
-            node.parentNode.removeChild(node);
-        }
-    };
+    const removeNode = (node) => cleanNode(node).remove();
 
     const emptyDomNode = (domNode) => {
         let child;
@@ -1288,7 +1321,7 @@
                 if (selfIsObservable && pendingValue === this) {
                     pendingValue = this._evalIfChanged ? this._evalIfChanged() : this();
                 }
-                let shouldNotify = notifyNextChange || (didUpdate && this.isDifferent(previousValue, pendingValue));
+                let shouldNotify = notifyNextChange || (didUpdate && (!this.equalityComparer || !this.equalityComparer(previousValue, pendingValue)));
 
                 didUpdate = notifyNextChange = ignoreBeforeChange = false;
 
@@ -1315,7 +1348,8 @@
             this._recordUpdate = () => didUpdate = true;
 
             this._notifyNextChangeIfValueIsDifferent = () => {
-                if (this.isDifferent(previousValue, this.peek(true /*evaluate*/))) {
+                let equalityComparer = this.equalityComparer;
+                if (!equalityComparer || !equalityComparer(previousValue, this.peek(true /*evaluate*/))) {
                     notifyNextChange = true;
                 }
             };
@@ -1344,9 +1378,10 @@
             return total;
         },
 
-        isDifferent(oldValue, newValue) {
-            return !this.equalityComparer || !this.equalityComparer(oldValue, newValue);
-        },
+        // /** @deprecated */
+        // isDifferent(oldValue, newValue) {
+        //     return !this.equalityComparer || !this.equalityComparer(oldValue, newValue);
+        // },
 
         toString() {
           return '[object Object]';
@@ -1488,9 +1523,6 @@
 
         return _computedObservable;
     }
-
-    // Utility function that disposes a given dependencyTracking entry
-    const computedDisposeDependencyCallback = (id, entryToDispose) => (entryToDispose && entryToDispose.dispose) && entryToDispose.dispose();
 
     // This function gets called each time a dependency is detected while evaluating a computed.
     // It's factored out as a shared function to avoid creating unnecessary function instances during evaluation.
@@ -1704,7 +1736,8 @@
                 computedObservable.dispose();
                 changed = true; // When evaluation causes a disposal, make sure all dependent computeds get notified so they'll see the new state
             } else {
-                changed = computedObservable.isDifferent(state.latestValue, newValue);
+                let equalityComparer = computedObservable.equalityComparer;
+                changed = !equalityComparer || !equalityComparer(state.latestValue, newValue);
             }
 
             if (changed) {
@@ -1749,9 +1782,10 @@
 
                 // For each subscription no longer being used, remove it from the active subscriptions list and dispose it
                 if (dependencyDetectionContext.disposalCount && !state.isSleeping) {
-                    let __disposalCandidates = dependencyDetectionContext.disposalCandidates;
-                    for (let key of Object.keys(__disposalCandidates)) {
-                        computedDisposeDependencyCallback(key, __disposalCandidates[key]);
+                    for (let entryToDispose of Object.values(dependencyDetectionContext.disposalCandidates)) {
+                        if (entryToDispose && entryToDispose.dispose) {
+                            entryToDispose.dispose();
+                        }
                     }
                 }
 
@@ -3356,8 +3390,10 @@
             }
             // Write
             // Ignore writes if the value hasn't changed
-            let newValue = arguments[0];
-            if (_self.isDifferent(_lastValue, newValue)) {
+            let newValue = arguments[0],
+                equalityComparer = _self.equalityComparer;
+            
+            if (!equalityComparer || !equalityComparer(_lastValue, newValue)) {
                 _self.valueWillMutate();
                 _self[LATEST_VALUE_KEY] = newValue;
                 _self.valueHasMutated();
