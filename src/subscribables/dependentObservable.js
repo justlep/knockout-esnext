@@ -338,7 +338,8 @@ const COMPUTED_PROTOTYPE = {
             computedObservable.dispose();
             changed = true; // When evaluation causes a disposal, make sure all dependent computeds get notified so they'll see the new state
         } else {
-            changed = computedObservable.isDifferent(state.latestValue, newValue);
+            let equalityComparer = computedObservable.equalityComparer;
+            changed = !equalityComparer || !equalityComparer(state.latestValue, newValue);
         }
 
         if (changed) {

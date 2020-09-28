@@ -140,7 +140,7 @@ export const SUBSCRIBABLE_PROTOTYPE = {
             if (selfIsObservable && pendingValue === this) {
                 pendingValue = this._evalIfChanged ? this._evalIfChanged() : this();
             }
-            let shouldNotify = notifyNextChange || (didUpdate && this.isDifferent(previousValue, pendingValue));
+            let shouldNotify = notifyNextChange || (didUpdate && (!this.equalityComparer || !this.equalityComparer(previousValue, pendingValue)));
 
             didUpdate = notifyNextChange = ignoreBeforeChange = false;
 
@@ -167,7 +167,8 @@ export const SUBSCRIBABLE_PROTOTYPE = {
         this._recordUpdate = () => didUpdate = true;
 
         this._notifyNextChangeIfValueIsDifferent = () => {
-            if (this.isDifferent(previousValue, this.peek(true /*evaluate*/))) {
+            let equalityComparer = this.equalityComparer;
+            if (!equalityComparer || !equalityComparer(previousValue, this.peek(true /*evaluate*/))) {
                 notifyNextChange = true;
             }
         };
@@ -196,9 +197,10 @@ export const SUBSCRIBABLE_PROTOTYPE = {
         return total;
     },
 
-    isDifferent(oldValue, newValue) {
-        return !this.equalityComparer || !this.equalityComparer(oldValue, newValue);
-    },
+    // /** @deprecated */
+    // isDifferent(oldValue, newValue) {
+    //     return !this.equalityComparer || !this.equalityComparer(oldValue, newValue);
+    // },
 
     toString() {
       return '[object Object]';

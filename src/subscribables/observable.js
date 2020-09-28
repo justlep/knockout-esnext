@@ -21,8 +21,10 @@ export const observable = function (initialValue) {
         }
         // Write
         // Ignore writes if the value hasn't changed
-        let newValue = arguments[0];
-        if (_self.isDifferent(_lastValue, newValue)) {
+        let newValue = arguments[0],
+            equalityComparer = _self.equalityComparer;
+        
+        if (!equalityComparer || !equalityComparer(_lastValue, newValue)) {
             _self.valueWillMutate();
             _self[LATEST_VALUE_KEY] = newValue;
             _self.valueHasMutated();
