@@ -1,6 +1,8 @@
 const {terser} = require('rollup-plugin-terser');
 const pkg = require('./package.json');
 
+import createRollupInlineMacrosPlugin from './rollup-plugin-inline-macros';
+
 const buildTarget = (process.env.BUILD_TARGET_ENV || '').toLowerCase();
 const isTargetDist = buildTarget === 'dist';
 
@@ -65,6 +67,7 @@ export default {
         }
     ],
     plugins: [
+        createRollupInlineMacrosPlugin({verbose: true}),
         {
             name: '__post-dist-build-message__',
             buildEnd: (err) => !err && isTargetDist && showPublishNote()
