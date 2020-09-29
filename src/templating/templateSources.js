@@ -39,8 +39,7 @@ const TEMPLATES_DOM_DATA_KEY = nextDomDataKey();
 
 const SKIP_TEMPLATE_TYPE = Symbol();
 
-const _getTemplateDomData = (element) => getDomData(element, TEMPLATES_DOM_DATA_KEY) || {};
-const _setTemplateDomData = (element, data) => setDomData(element, TEMPLATES_DOM_DATA_KEY, data);
+const _getTemplateDomData = (element) => getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}; //@inline
 
 export class DomElementTemplate {
     constructor(element /*, skipTemplateType */) {
@@ -92,7 +91,7 @@ export class DomElementTemplate {
                 let text = this.text();
                 if (text && text !== templateData.textData) {
                     nodes = parseHtmlForTemplateNodes(text, element.ownerDocument);
-                    _setTemplateDomData(element, {containerData: nodes, textData: text, alwaysCheckText: true});
+                    setDomData(element, TEMPLATES_DOM_DATA_KEY, {containerData: nodes, textData: text, alwaysCheckText: true});
                 }
             }
             return nodes;
@@ -102,7 +101,7 @@ export class DomElementTemplate {
         if (this.templateType !== undefined) {
             this.text('');   // clear the text from the node
         }
-        _setTemplateDomData(element, {containerData: valueToWrite});
+        setDomData(element, TEMPLATES_DOM_DATA_KEY, {containerData: valueToWrite});
     }
 }
 
@@ -126,7 +125,7 @@ export class AnonymousTemplate extends DomElementTemplate {
                 templateData.textData = templateData.containerData.innerHTML;
             }
             return templateData.textData;
-        } 
-        _setTemplateDomData(this.domElement, {textData: arguments[0]});
+        }
+        setDomData(this.domElement, TEMPLATES_DOM_DATA_KEY, {textData: arguments[0]});
     }
 }

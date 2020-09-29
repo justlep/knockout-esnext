@@ -38,7 +38,7 @@ export const unregisterComponent = (componentName) => {
 
 export const defaultLoader = {
     getConfig(componentName, callback) {
-        let result = defaultConfigRegistry.has(componentName) ? defaultConfigRegistry.get(componentName) : null;
+        let result = defaultConfigRegistry.get(componentName) || null;
         callback(result);
     },
     

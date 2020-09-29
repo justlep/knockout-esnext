@@ -1,4 +1,4 @@
-import {moveCleanedNodesToContainerElement, unwrapObservable, stringTrim} from './utils';
+import {moveCleanedNodesToContainerElement, unwrapObservable} from './utils';
 import {emptyDomNode} from './utils.domNodes';
 
 const NONE = [0, '', ''],
@@ -7,22 +7,22 @@ const NONE = [0, '', ''],
     TR = [3, '<table><tbody><tr>', '</tr></tbody></table>'],
     SELECT = [1, '<select multiple="multiple">', '</select>'],
     LOOKUP = {
-        'thead': TABLE,
-        'tbody': TABLE,
-        'tfoot': TABLE,
-        'tr': TBODY,
-        'td': TR,
-        'th': TR,
-        'option': SELECT,
-        'optgroup': SELECT
+        thead: TABLE, THEAD: TABLE,
+        tbody: TABLE, TBODY: TABLE,
+        tfoot: TABLE, TFOOT: TABLE,
+        tr: TBODY, TR: TBODY, 
+        td: TR, TD: TR,
+        th: TR, TH: TR,
+        option: SELECT, OPTION: SELECT,
+        optgroup: SELECT, OPTGROUP: SELECT
     },
-    TAGS_REGEX = /^(?:<!--.*?-->\s*?)*?<([a-z]+)[\s>]/;
+    TAGS_REGEX = /^(?:<!--.*?-->\s*?)*?<([a-zA-Z]+)[\s>]/;
 
-const _getWrap = (tags) => (TAGS_REGEX.test(tags) && LOOKUP[RegExp.$1]) || NONE;
-
-const _simpleHtmlParse = (html, documentContext) => {
-    documentContext || (documentContext = document);
-    let windowContext = documentContext['parentWindow'] || documentContext['defaultView'] || window;
+export const parseHtmlFragment = (html, documentContext) => {
+    if (!documentContext) {
+        documentContext = document;
+    }
+    let windowContext = documentContext.parentWindow || documentContext.defaultView || window;
 
     // Based on jQuery's "clean" function, but only accounting for table-related elements.
     // If you have referenced jQuery, this won't be used anyway - KO will use jQuery's "clean" function directly
@@ -33,8 +33,8 @@ const _simpleHtmlParse = (html, documentContext) => {
     // (possibly a text node) in front of the comment. So, KO does not attempt to workaround this IE issue automatically at present.
 
     // Trim whitespace, otherwise indexOf won't work as expected
-    let tags = stringTrim(html).toLowerCase(), div = documentContext.createElement('div'),
-        wrap = _getWrap(tags),
+    let div = documentContext.createElement('div'),
+        wrap = (TAGS_REGEX.test((html || '').trim()) && LOOKUP[RegExp.$1]) || NONE,
         depth = wrap[0];
 
     // Go to html and back, then peel off extra wrappers
@@ -54,10 +54,14 @@ const _simpleHtmlParse = (html, documentContext) => {
         div = div.lastChild;
     }
 
-    return [...div.lastChild.childNodes];
+    // return [...div.lastChild.childNodes];
+    // Rest operator is slow (manual creation of nodes array is 60% faster in FF81, 80% faster in Chrome; re-check in the future)
+    let nodesArray = [];
+    for (let i = 0, nodeList = div.lastChild.childNodes, len = nodeList.length; i < len; i++) {
+        nodesArray[i] = nodeList[i];
+    }
+    return nodesArray;
 };
-
-export const parseHtmlFragment = (html, documentContext) => _simpleHtmlParse(html, documentContext);
 
 export const parseHtmlForTemplateNodes = (html, documentContext) => {
     let nodes = parseHtmlFragment(html, documentContext);
