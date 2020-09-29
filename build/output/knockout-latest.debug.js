@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod5-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod6-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod5'; // inserted by rollup intro
+    const version = '3.5.1-mod6'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -2315,22 +2315,22 @@
         TR = [3, '<table><tbody><tr>', '</tr></tbody></table>'],
         SELECT = [1, '<select multiple="multiple">', '</select>'],
         LOOKUP = {
-            'thead': TABLE,
-            'tbody': TABLE,
-            'tfoot': TABLE,
-            'tr': TBODY,
-            'td': TR,
-            'th': TR,
-            'option': SELECT,
-            'optgroup': SELECT
+            thead: TABLE, THEAD: TABLE,
+            tbody: TABLE, TBODY: TABLE,
+            tfoot: TABLE, TFOOT: TABLE,
+            tr: TBODY, TR: TBODY, 
+            td: TR, TD: TR,
+            th: TR, TH: TR,
+            option: SELECT, OPTION: SELECT,
+            optgroup: SELECT, OPTGROUP: SELECT
         },
-        TAGS_REGEX = /^(?:<!--.*?-->\s*?)*?<([a-z]+)[\s>]/;
+        TAGS_REGEX = /^(?:<!--.*?-->\s*?)*?<([a-zA-Z]+)[\s>]/;
 
-    const _getWrap = (tags) => (TAGS_REGEX.test(tags) && LOOKUP[RegExp.$1]) || NONE;
-
-    const _simpleHtmlParse = (html, documentContext) => {
-        documentContext || (documentContext = document);
-        let windowContext = documentContext['parentWindow'] || documentContext['defaultView'] || window;
+    const parseHtmlFragment = (html, documentContext) => {
+        if (!documentContext) {
+            documentContext = document;
+        }
+        let windowContext = documentContext.parentWindow || documentContext.defaultView || window;
 
         // Based on jQuery's "clean" function, but only accounting for table-related elements.
         // If you have referenced jQuery, this won't be used anyway - KO will use jQuery's "clean" function directly
@@ -2341,8 +2341,8 @@
         // (possibly a text node) in front of the comment. So, KO does not attempt to workaround this IE issue automatically at present.
 
         // Trim whitespace, otherwise indexOf won't work as expected
-        let tags = stringTrim(html).toLowerCase(), div = documentContext.createElement('div'),
-            wrap = _getWrap(tags),
+        let div = documentContext.createElement('div'),
+            wrap = (TAGS_REGEX.test((html || '').trim()) && LOOKUP[RegExp.$1]) || NONE,
             depth = wrap[0];
 
         // Go to html and back, then peel off extra wrappers
@@ -2362,10 +2362,14 @@
             div = div.lastChild;
         }
 
-        return [...div.lastChild.childNodes];
+        // return [...div.lastChild.childNodes];
+        // Rest operator is slow (manual creation of nodes array is 60% faster in FF81, 80% faster in Chrome; re-check in the future)
+        let nodesArray = [];
+        for (let i = 0, nodeList = div.lastChild.childNodes, len = nodeList.length; i < len; i++) {
+            nodesArray[i] = nodeList[i];
+        }
+        return nodesArray;
     };
-
-    const parseHtmlFragment = (html, documentContext) => _simpleHtmlParse(html, documentContext);
 
     const parseHtmlForTemplateNodes = (html, documentContext) => {
         let nodes = parseHtmlFragment(html, documentContext);
@@ -2425,7 +2429,7 @@
 
     const defaultLoader = {
         getConfig(componentName, callback) {
-            let result = defaultConfigRegistry.has(componentName) ? defaultConfigRegistry.get(componentName) : null;
+            let result = defaultConfigRegistry.get(componentName) || null;
             callback(result);
         },
         
@@ -4316,9 +4320,6 @@
 
     const SKIP_TEMPLATE_TYPE = Symbol();
 
-    const _getTemplateDomData = (element) => getDomData(element, TEMPLATES_DOM_DATA_KEY) || {};
-    const _setTemplateDomData = (element, data) => setDomData(element, TEMPLATES_DOM_DATA_KEY, data);
-
     class DomElementTemplate {
         constructor(element /*, skipTemplateType */) {
             this.domElement = element;
@@ -4357,7 +4358,7 @@
         nodes(/* valueToWrite */) {
             let element = this.domElement;
             if (!arguments.length) {
-                let templateData = _getTemplateDomData(element),
+                let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
                     nodes = templateData.containerData || (
                             this.templateType === TEMPLATE_TEMPLATE ? element.content :
                             this.templateType === TEMPLATE_ELEMENT ? element : undefined);
@@ -4369,7 +4370,7 @@
                     let text = this.text();
                     if (text && text !== templateData.textData) {
                         nodes = parseHtmlForTemplateNodes(text, element.ownerDocument);
-                        _setTemplateDomData(element, {containerData: nodes, textData: text, alwaysCheckText: true});
+                        setDomData(element, TEMPLATES_DOM_DATA_KEY, {containerData: nodes, textData: text, alwaysCheckText: true});
                     }
                 }
                 return nodes;
@@ -4379,7 +4380,7 @@
             if (this.templateType !== undefined) {
                 this.text('');   // clear the text from the node
             }
-            _setTemplateDomData(element, {containerData: valueToWrite});
+            setDomData(element, TEMPLATES_DOM_DATA_KEY, {containerData: valueToWrite});
         }
     }
 
@@ -4398,13 +4399,13 @@
          */
         text(/* valueToWrite */) {
             if (!arguments.length) {
-                let templateData = _getTemplateDomData(this.domElement);
+                let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
                 if (templateData.textData === undefined && templateData.containerData) {
                     templateData.textData = templateData.containerData.innerHTML;
                 }
                 return templateData.textData;
-            } 
-            _setTemplateDomData(this.domElement, {textData: arguments[0]});
+            }
+            setDomData(this.domElement, TEMPLATES_DOM_DATA_KEY, {textData: arguments[0]});
         }
     }
 
