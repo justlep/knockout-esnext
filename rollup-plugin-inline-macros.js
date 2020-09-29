@@ -7,7 +7,7 @@ const SUPPORTED_FILENAMES_REGEX = /\.(?:js|esm|es6)$/i;
 const getParamPlaceholderForIndex = (index) => `%${index}%`;
 
 /**
- * A rollup plugin that scans each file for const arrow functions marked with a trailing '//@inline' comment.
+ * A rollup plugin that scans each file for pure const arrow functions marked with a trailing '//@inline' comment.
  * Invocations of those functions within the same file are then replaced with the actual arrow-function code,
  * much like early Pascal "inline" functions or macros in other languages.  
  * Helpful to keep sources DRY while boosting performance in hot executions paths by saving some function calls.
@@ -30,7 +30,7 @@ const getParamPlaceholderForIndex = (index) => `%${index}%`;
  */
 export default function createRollupInlineMacrosPlugin(opts = {verbose: false}) {
     return {
-        name: 'arrow-macros',
+        name: 'inline-macros',
         transform(code, id) {
             const currentFile = basename(id);
             if (!SUPPORTED_FILENAMES_REGEX.test(currentFile)) {
