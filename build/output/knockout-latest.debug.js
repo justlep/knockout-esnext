@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod4-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod5-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod4'; // inserted by rollup intro
+    const version = '3.5.1-mod5'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -287,40 +287,36 @@
     // "Virtual elements" is an abstraction on top of the usual DOM API which understands the notion that comment nodes
 
     const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
+
     const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
-    const MATCHED_END_COMMENT_DATA_KEY = '__ko_matchedEndComment__';
+    const SYM_MATCHED_END_COMMENT = Symbol('__ko_matchedEndComment__');
     const HTML_TAGS_WITH_OPTIONAL_CLOSING_CHILDREN = {ul: true, ol: true};
 
     const allowedBindings = {};
-
     const allowedVirtualElementBindings = allowedBindings;
 
-    const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue);
+    const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline
+
     const hasBindingValue = _isStartComment;
 
-    const _isEndComment = (node) => (node.nodeType === 8) && END_COMMENT_REGEX.test(node.nodeValue);
-
-    const _isUnmatchedEndComment = (node) => _isEndComment(node) && !(getDomData(node, MATCHED_END_COMMENT_DATA_KEY));
-
     const _getVirtualChildren = (startComment, allowUnbalanced) => {
-            let currentNode = startComment,
+            let currentNode = startComment.nextSibling,
                 depth = 1,
+                childIndex = -1,
                 children = [];
             
-            while (currentNode = currentNode.nextSibling) {
-                if (_isEndComment(currentNode)) {
-                    setDomData(currentNode, MATCHED_END_COMMENT_DATA_KEY, true);
-                    depth--;
-                    if (depth === 0) {
+            while (currentNode) {
+                if (((currentNode.nodeType === 8) && END_COMMENT_REGEX.test(currentNode.nodeValue))) {
+                    currentNode[SYM_MATCHED_END_COMMENT] = true;
+                    if (!--depth) {
                         return children;
                     }
                 }
-
-                children.push(currentNode);
-
-                if (_isStartComment(currentNode)) {
+                children[++childIndex] = currentNode;
+                if (((currentNode.nodeType === 8) && START_COMMENT_REGEX.test(currentNode.nodeValue))) {
                     depth++;
                 }
+                currentNode = currentNode.nextSibling;
             }
             if (!allowUnbalanced) {
                 throw new Error('Cannot find closing comment tag to match: ' + startComment.nodeValue);
@@ -331,10 +327,8 @@
     const _getMatchingEndComment = (startComment, allowUnbalanced) => {
         let allVirtualChildren = _getVirtualChildren(startComment, allowUnbalanced);
         if (allVirtualChildren) {
-            if (allVirtualChildren.length > 0) {
-                return allVirtualChildren[allVirtualChildren.length - 1].nextSibling;
-            }
-            return startComment.nextSibling;
+            let totalVirtualChildren = allVirtualChildren.length;
+            return (totalVirtualChildren ? allVirtualChildren[totalVirtualChildren - 1] : startComment).nextSibling;
         }
         return null; // Must have no matching end comment, and allowUnbalanced is true
     };
@@ -349,25 +343,26 @@
             if (captureRemaining) {
                 // We already hit an unbalanced node and are now just scooping up all subsequent nodes
                 captureRemaining.push(childNode);
-            } else if (_isStartComment(childNode)) {
+            } else if (((childNode.nodeType === 8) && START_COMMENT_REGEX.test(childNode.nodeValue))) {
                 let matchingEndComment = _getMatchingEndComment(childNode, /* allowUnbalanced: */ true);
                 if (matchingEndComment) {
                     childNode = matchingEndComment; // It's a balanced tag, so skip immediately to the end of this virtual set
                 } else {
                     captureRemaining = [childNode]; // It's unbalanced, so start capturing from this point
                 }
-            } else if (_isEndComment(childNode)) {
+            } else if (((childNode.nodeType === 8) && END_COMMENT_REGEX.test(childNode.nodeValue))) {
                 captureRemaining = [childNode];     // It's unbalanced (if it wasn't, we'd have skipped over it already), so start capturing
             }
+            
             childNode = childNode.nextSibling;
         }
         return captureRemaining;
     };
 
-    const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes;
+    const childNodes = (node) => ((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes;
 
     const emptyNode = (node) => {
-        if (!_isStartComment(node)) {
+        if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
             emptyDomNode(node);
             return;
         }
@@ -378,7 +373,7 @@
     };
 
     const setDomNodeChildren$1 = (node, childNodes) => {
-        if (!_isStartComment(node)) {
+        if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
             setDomNodeChildren(node, childNodes);
             return;
         }
@@ -392,7 +387,7 @@
     const prepend = (containerNode, nodeToPrepend) => {
         let insertBeforeNode;
 
-        if (_isStartComment(containerNode)) {
+        if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
             // Start comments must always have a parent and at least one following sibling (the end comment)
             insertBeforeNode = containerNode.nextSibling;
             containerNode = containerNode.parentNode;
@@ -415,7 +410,7 @@
         // Children of start comments must always have a parent and at least one following sibling (the end comment)
         let insertBeforeNode = insertAfterNode.nextSibling;
 
-        if (_isStartComment(containerNode)) {
+        if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
             containerNode = containerNode.parentNode;
         }
 
@@ -427,35 +422,34 @@
     };
 
     const firstChild = (node) => {
-        if (!_isStartComment(node)) {
+        if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
             let _nodeFirstChild = node.firstChild; 
-            if (_nodeFirstChild && _isEndComment(_nodeFirstChild)) {
+            if (_nodeFirstChild && ((_nodeFirstChild.nodeType === 8) && END_COMMENT_REGEX.test(_nodeFirstChild.nodeValue))) {
                 throw new Error('Found invalid end comment, as the first child of ' + node);
             }
             return _nodeFirstChild;
         } 
         let _nodeNextSibling = node.nextSibling;
-        if (!_nodeNextSibling|| _isEndComment(_nodeNextSibling)) {
+        if (!_nodeNextSibling|| ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
             return null;
         }
         return _nodeNextSibling;
     };
 
     const nextSibling = (node) => {
-        if (_isStartComment(node)) {
+        if (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
             node = _getMatchingEndComment(node);
         }
         let _nodeNextSibling = node.nextSibling;
-        if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
-            if (_isUnmatchedEndComment(_nodeNextSibling)) {
+        if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
+            if (!_nodeNextSibling[SYM_MATCHED_END_COMMENT]) {
+                // unmatched end comment!
                 throw Error('Found end comment without a matching opening comment, as child of ' + node);
             } 
             return null;
         }
         return _nodeNextSibling;
     };
-
-    const virtualNodeBindingValue = (node) => START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null;
 
     const normaliseVirtualElementDomStructure = (elementVerified) => {
         // Workaround for https://github.com/SteveSanderson/knockout/issues/155
@@ -2689,6 +2683,7 @@
 
     const DEFAULT_BINDING_ATTRIBUTE_NAME = "data-bind";
 
+
     class KoBindingProvider {
 
         // getter/setter only added to allow external scripts (jasmine) to replace the provider via 'ko.bindingProvider.instance'
@@ -2708,25 +2703,15 @@
         }
 
         getBindings(node, bindingContext) {
-            let bindingsString = this._getBindingsString(node),
+            let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
                 parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node) : null;
             return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ false);
         }
 
         getBindingAccessors(node, bindingContext) {
-            let bindingsString = this._getBindingsString(node),
+            let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
                 parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node, {'valueAccessors': true}) : null;
             return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ true);
-        }
-
-        // The following function is only used internally by this default provider.
-        // It's not part of the interface definition for a general binding provider.
-        _getBindingsString(node) {
-            let nodeType = node.nodeType;
-            // 1 == element, 8 == comment
-            return nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) :
-                   nodeType === 8 ? virtualNodeBindingValue(node) :
-                   null;    
         }
 
         // The following function is only used internally by this default provider.
@@ -2780,9 +2765,12 @@
         // Also bindings should not operate on <template> elements since this breaks in Internet Explorer
         // and because such elements' contents are always intended to be bound in a different context
         // from where they appear in the document.
-        'script': true,
-        'textarea': true,
-        'template': true
+        script: 1,
+        SCRIPT: 1,
+        textarea: 1,
+        TEXTAREA: 1,
+        template: 1,
+        TEMPLATE: 1
     };
 
 
@@ -3128,7 +3116,7 @@
         if (shouldApplyBindings) {
             bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext)['bindingContextForDescendants'];
         }
-        if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[tagNameLower(nodeVerified)]) {
+        if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
             _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
         }
     }

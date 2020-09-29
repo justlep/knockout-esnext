@@ -2,7 +2,7 @@
   "name": "knockout-esnext",
   "description": "A modernized fork of Knockout.js intended for ES6+ browsers only",
   "homepage": "http://knockoutjs.com/",
-  "version": "3.5.1-mod4",
+  "version": "3.5.1-mod5",
   "license": "MIT",
   "author": "The Knockout.js team",
   "main": "build/output/knockout-latest.js",
