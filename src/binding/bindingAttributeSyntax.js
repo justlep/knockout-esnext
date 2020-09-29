@@ -5,7 +5,7 @@ import {getCurrentComputed} from '../subscribables/dependencyDetection';
 import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposal';
 import {dependentObservable, pureComputed} from '../subscribables/dependentObservable';
 import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
-import {unwrapObservable, tagNameLower} from '../utils';
+import {unwrapObservable} from '../utils';
 import {getBindingHandler} from './bindingHandlers';
 import {Subscribable} from '../subscribables/subscribable';
 import {bindingProviderInstance} from './bindingProvider';
@@ -27,9 +27,12 @@ const BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES = {
     // Also bindings should not operate on <template> elements since this breaks in Internet Explorer
     // and because such elements' contents are always intended to be bound in a different context
     // from where they appear in the document.
-    'script': true,
-    'textarea': true,
-    'template': true
+    script: 1,
+    SCRIPT: 1,
+    textarea: 1,
+    TEXTAREA: 1,
+    template: 1,
+    TEMPLATE: 1
 };
 
 
@@ -375,7 +378,7 @@ function _applyBindingsToNodeAndDescendantsInternal(bindingContext, nodeVerified
     if (shouldApplyBindings) {
         bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext)['bindingContextForDescendants'];
     }
-    if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[tagNameLower(nodeVerified)]) {
+    if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
         _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
     }
 }
