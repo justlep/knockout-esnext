@@ -46,7 +46,7 @@ export const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArra
     } else {
         dataForNode[itemArrayDomDataKey] = [itemToAdd];
     }
-}
+};
 
 /**
  * Returns a function that will 
@@ -66,7 +66,7 @@ export const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomD
         }
         delete node[DATASTORE_PROP];
     }    
-}
+};
 
 export const setDomData = (node, key, value) => {
     // Make sure we don't actually create a new domData key if we are actually deleting a value
