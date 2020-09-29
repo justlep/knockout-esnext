@@ -77,38 +77,40 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false}) 
                         let {name, params, invocationRegex, bodyWithPlaceholders} = macro,
                             isPossibleInvocationLine = ~line.indexOf(name + '(');
                         
-                        if (isPossibleInvocationLine) {
-                            let changedLine = line.replace(invocationRegex, (matchedInvocation, invPrefixChar, invParamsString) => {
-                                // FIXME invocations like foo("hey,foo") won't work, but that's ok for now
-                                let invParams = invParamsString.split(',').map(s => s.trim());
-                                // LOG(lineIndex, `Checking invocation of '${name}'`);
-                                if (invParams.length !== params.length) {
-                                    LOG(lineIndex, `(!) Mismatch macro signature <> invocation: \n -> macro: ${name}\n -> usage: ${line}\n\n`);
-                                    return matchedInvocation;
-                                }
-                                
-                                let replacedInvocation = invPrefixChar + bodyWithPlaceholders;
-                                
-                                invParams.forEach((paramName, i) => {
-                                    let placeholderRegex = new RegExp(getParamPlaceholderForIndex(i), 'g');
-                                    replacedInvocation = replacedInvocation.replace(placeholderRegex, paramName);
-                                });
-                                
-                                return replacedInvocation;
+                        if (!isPossibleInvocationLine) {
+                            continue;
+                        }
+                        
+                        let changedLine = line.replace(invocationRegex, (matchedInvocation, invPrefixChar, invParamsString) => {
+                            // FIXME invocations like foo("hey,foo") won't work, but that's ok for now
+                            let invParams = invParamsString.split(',').map(s => s.trim());
+                            // LOG(lineIndex, `Checking invocation of '${name}'`);
+                            if (invParams.length !== params.length) {
+                                LOG(lineIndex, `(!) Mismatch macro signature <> invocation: \n -> macro: ${name}\n -> usage: ${line}\n\n`);
+                                return matchedInvocation;
+                            }
+                            
+                            let replacedInvocation = invPrefixChar + bodyWithPlaceholders;
+                            
+                            invParams.forEach((paramName, i) => {
+                                let placeholderRegex = new RegExp(getParamPlaceholderForIndex(i), 'g');
+                                replacedInvocation = replacedInvocation.replace(placeholderRegex, paramName);
                             });
                             
-                            if (changedLine !== line) {
-                                if (!originalLines) {
-                                    originalLines = lines.slice(); // lazy-copy original lines before any changes
-                                }
-                                let iterationString = lineIteration > 1 ? `  [iteration #${lineIteration}]` : '';
-                                LOG(lineIndex, `Inlined invocation of ${name}()${iterationString}\nOLD:  ${originalLines[lineIndex].trim()}\nNEW:  ${changedLine.trim()}\n`);
-                                line = changedLine;
-                                lines[lineIndex] = changedLine;
-                                
-                                // re-iterate, because macros may be using other macros
-                                shouldScanForInvocations = true;
+                            return replacedInvocation;
+                        });
+                        
+                        if (changedLine !== line) {
+                            if (!originalLines) {
+                                originalLines = lines.slice(); // lazy-copy original lines before any changes
                             }
+                            let iterationLogString = lineIteration > 1 ? `  [iteration #${lineIteration}]` : '';
+                            LOG(lineIndex, `Inlined invocation of ${name}()${iterationLogString}\nOLD:  ${originalLines[lineIndex].trim()}\nNEW:  ${changedLine.trim()}\n`);
+                            line = changedLine;
+                            lines[lineIndex] = changedLine;
+                            
+                            // re-iterate, because macros may be using other macros
+                            shouldScanForInvocations = true;
                         }
                     }
                 }
