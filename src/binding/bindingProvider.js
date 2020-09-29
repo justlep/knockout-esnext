@@ -1,8 +1,20 @@
-import {hasBindingValue, virtualNodeBindingValue} from '../virtualElements';
+import {hasBindingValue, START_COMMENT_REGEX} from '../virtualElements';
 import {preProcessBindings} from './expressionRewriting';
 import {addBindingsForCustomElement, getComponentNameForNode, _setNativeBindingProviderInstance} from '../components/customElements';
 
 const DEFAULT_BINDING_ATTRIBUTE_NAME = "data-bind";
+
+const virtualNodeBindingValue = (node) => START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null; //@inline
+
+/**
+ * The following function is only used internally by this default provider.
+ * It's not part of the interface definition for a general binding provider.
+ * @param {Node|HTMLElement} node - type 1 === element, type 8 === comment  
+ * @return {string|null}
+ * @private
+ */
+const _getBindingsString = node => node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null; //@inline
+
 
 export class KoBindingProvider {
 
@@ -23,25 +35,15 @@ export class KoBindingProvider {
     }
 
     getBindings(node, bindingContext) {
-        let bindingsString = this._getBindingsString(node),
+        let bindingsString = _getBindingsString(node),
             parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node) : null;
         return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ false);
     }
 
     getBindingAccessors(node, bindingContext) {
-        let bindingsString = this._getBindingsString(node),
+        let bindingsString = _getBindingsString(node),
             parsedBindings = bindingsString ? this.parseBindingsString(bindingsString, bindingContext, node, {'valueAccessors': true}) : null;
         return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ true);
-    }
-
-    // The following function is only used internally by this default provider.
-    // It's not part of the interface definition for a general binding provider.
-    _getBindingsString(node) {
-        let nodeType = node.nodeType;
-        // 1 == element, 8 == comment
-        return nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) :
-               nodeType === 8 ? virtualNodeBindingValue(node) :
-               null;    
     }
 
     // The following function is only used internally by this default provider.

@@ -5,46 +5,41 @@
 //
 // The point of all this is to support containerless templates (e.g., <!-- ko foreach:someCollection -->blah<!-- /ko -->)
 // without having to scatter special cases all over the binding and templating code.
-
-import {getDomData, setDomData} from './utils.domData';
 import {emptyDomNode, setDomNodeChildren as utilsSetDomNodeChildren} from './utils.domNodes';
 import {removeNode} from './utils.domNodeDisposal';
 
-const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
+export const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
+
 const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
-const MATCHED_END_COMMENT_DATA_KEY = '__ko_matchedEndComment__';
+const SYM_MATCHED_END_COMMENT = Symbol('__ko_matchedEndComment__');
 const HTML_TAGS_WITH_OPTIONAL_CLOSING_CHILDREN = {ul: true, ol: true};
 
 export const allowedBindings = {};
-
 export const allowedVirtualElementBindings = allowedBindings;
 
-const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue);
+const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline
+const _isEndComment = (node) => (node.nodeType === 8) && END_COMMENT_REGEX.test(node.nodeValue); //@inline
+
 export const hasBindingValue = _isStartComment;
 
-const _isEndComment = (node) => (node.nodeType === 8) && END_COMMENT_REGEX.test(node.nodeValue);
-
-const _isUnmatchedEndComment = (node) => _isEndComment(node) && !(getDomData(node, MATCHED_END_COMMENT_DATA_KEY));
-
 const _getVirtualChildren = (startComment, allowUnbalanced) => {
-        let currentNode = startComment,
+        let currentNode = startComment.nextSibling,
             depth = 1,
+            childIndex = -1,
             children = [];
         
-        while (currentNode = currentNode.nextSibling) {
+        while (currentNode) {
             if (_isEndComment(currentNode)) {
-                setDomData(currentNode, MATCHED_END_COMMENT_DATA_KEY, true);
-                depth--;
-                if (depth === 0) {
+                currentNode[SYM_MATCHED_END_COMMENT] = true;
+                if (!--depth) {
                     return children;
                 }
             }
-
-            children.push(currentNode);
-
+            children[++childIndex] = currentNode;
             if (_isStartComment(currentNode)) {
                 depth++;
             }
+            currentNode = currentNode.nextSibling;
         }
         if (!allowUnbalanced) {
             throw new Error('Cannot find closing comment tag to match: ' + startComment.nodeValue);
@@ -55,10 +50,8 @@ const _getVirtualChildren = (startComment, allowUnbalanced) => {
 const _getMatchingEndComment = (startComment, allowUnbalanced) => {
     let allVirtualChildren = _getVirtualChildren(startComment, allowUnbalanced);
     if (allVirtualChildren) {
-        if (allVirtualChildren.length > 0) {
-            return allVirtualChildren[allVirtualChildren.length - 1].nextSibling;
-        }
-        return startComment.nextSibling;
+        let totalVirtualChildren = allVirtualChildren.length;
+        return (totalVirtualChildren ? allVirtualChildren[totalVirtualChildren - 1] : startComment).nextSibling;
     }
     return null; // Must have no matching end comment, and allowUnbalanced is true
 };
@@ -83,6 +76,7 @@ const _getUnbalancedChildTags = (node) => {
         } else if (_isEndComment(childNode)) {
             captureRemaining = [childNode];     // It's unbalanced (if it wasn't, we'd have skipped over it already), so start capturing
         }
+        
         childNode = childNode.nextSibling;
     }
     return captureRemaining;
@@ -171,15 +165,14 @@ export const nextSibling = (node) => {
     }
     let _nodeNextSibling = node.nextSibling;
     if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
-        if (_isUnmatchedEndComment(_nodeNextSibling)) {
+        if (!_nodeNextSibling[SYM_MATCHED_END_COMMENT]) {
+            // unmatched end comment!
             throw Error('Found end comment without a matching opening comment, as child of ' + node);
         } 
         return null;
     }
     return _nodeNextSibling;
 };
-
-export const virtualNodeBindingValue = (node) => START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null;
 
 export const normaliseVirtualElementDomStructure = (elementVerified) => {
     // Workaround for https://github.com/SteveSanderson/knockout/issues/155
