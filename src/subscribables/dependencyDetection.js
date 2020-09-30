@@ -29,7 +29,7 @@ export const ignoreDependencyDetection = (callback, callbackTarget, callbackArgs
 // or 9,007,199,254,740,992. If you created 1,000,000 IDs per second, it would
 // take over 285 years to reach that number.
 // Reference http://blog.vjeux.com/2010/javascript/javascript-max_int-number-limits.html
-const _getId = () => ++lastId;
+const _getId = () => ++lastId; //@inline
 
 export const registerDependency = (subscribable) => {
     if (currentFrame) {
