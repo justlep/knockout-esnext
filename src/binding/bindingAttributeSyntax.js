@@ -310,32 +310,18 @@ export const bindingEvent = {
 // so that it always gets the latest value and all dependencies are captured. This is used
 // by ko.applyBindingsToNode and _getBindingsAndMakeAccessors.
 const _makeAccessorsFromFunction = (callback) => {
-    let source = ignoreDependencyDetection(callback),
-        target = source && Object.create(null);
-    if (target) {
-        for (let key of Object.keys(source)) {
-            target[key] = () => callback()[key];
-        }
+    let source = ignoreDependencyDetection(callback);
+    if (!source) {
+        return null;
+    }
+    let target  = Object.create(null);
+    for (let key of Object.keys(source)) {
+        target[key] = () => callback()[key];
     }
     return target;
 };
 
-// Given a bindings function or object, create and return a new object that contains
-// binding value-accessors functions. This is used by ko.applyBindingsToNode.
-function _makeBindingAccessors(bindings, context, node) {
-    if (typeof bindings === 'function') {
-        return _makeAccessorsFromFunction(() => bindings(context, node));
-    }
-    let target = Object.create(null);
-    for (let key of Object.keys(bindings)) {
-        let val = bindings[key];
-        target[key] = () => val;
-    }
-    return target;
-}
-
-
-function _applyBindingsToDescendantsInternal(bindingContext, elementOrVirtualElement) {
+const _applyBindingsToDescendantsInternal = (bindingContext, elementOrVirtualElement) => {
     let nextInQueue = firstChild(elementOrVirtualElement);
 
     if (nextInQueue) {
@@ -363,7 +349,7 @@ function _applyBindingsToDescendantsInternal(bindingContext, elementOrVirtualEle
     bindingEvent.notify(elementOrVirtualElement, EVENT_CHILDREN_COMPLETE);
 }
 
-function _applyBindingsToNodeAndDescendantsInternal(bindingContext, nodeVerified) {
+const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified) => {
     let bindingContextForDescendants = bindingContext,
         isElement = (nodeVerified.nodeType === 1);
 
@@ -379,7 +365,7 @@ function _applyBindingsToNodeAndDescendantsInternal(bindingContext, nodeVerified
     }
 }
 
-function _topologicalSortBindings(bindings) {
+const _topologicalSortBindings = (bindings) => {
     // Depth-first sort
     let result = [],                // The list of key/handler pairs that we will return
         bindingsConsidered = {},    // A temporary record of which bindings are already in 'result'
@@ -566,6 +552,7 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
     };
 };
 
+// TODO inline
 const _getBindingContext = (viewModelOrBindingContext, extendContextCallback) => {
     if (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) {
         return viewModelOrBindingContext;
@@ -578,8 +565,20 @@ export const applyBindingAccessorsToNode = (node, bindings, viewModelOrBindingCo
 };
 
 export const applyBindingsToNode = (node, bindings, viewModelOrBindingContext) => {
-    let context = _getBindingContext(viewModelOrBindingContext);
-    return applyBindingAccessorsToNode(node, _makeBindingAccessors(bindings, context, node), context);
+    let context = _getBindingContext(viewModelOrBindingContext),
+        /** @type {Object} - a new bindings object that contains binding value-accessors functions */
+        bindingsWithAccessors;
+
+    if (typeof bindings === 'function') {
+        bindingsWithAccessors = _makeAccessorsFromFunction(() => bindings(context, node));
+    } else {
+        bindingsWithAccessors = Object.create(null);
+        for (let key of Object.keys(bindings)) {
+            let val = bindings[key];
+            bindingsWithAccessors[key] = () => val;
+        }
+    }
+    return applyBindingAccessorsToNode(node, bindingsWithAccessors, context);
 };
 
 export const applyBindingsToDescendants = (viewModelOrBindingContext, rootNode) => {
