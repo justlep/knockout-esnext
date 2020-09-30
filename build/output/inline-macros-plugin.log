@@ -1,0 +1,160 @@
+Rollup inline-macros plugin
+Start: Wed, 30 Sep 2020 17:56:19 GMT
+
+
+------- src/virtualElements.js --------
+
+[virtualElements.js:19]
+Found macro: "_isStartComment" 
+
+[virtualElements.js:20]
+Found macro: "_isEndComment" 
+
+[virtualElements.js:31]
+Inlined: "_isEndComment"
+OLD:  if (_isEndComment(currentNode)) {
+NEW:  if (((currentNode.nodeType === 8) && END_COMMENT_REGEX.test(currentNode.nodeValue))) {
+
+[virtualElements.js:38]
+Inlined: "_isStartComment"
+OLD:  if (_isStartComment(currentNode)) {
+NEW:  if (((currentNode.nodeType === 8) && START_COMMENT_REGEX.test(currentNode.nodeValue))) {
+
+[virtualElements.js:58]
+Inlined: "_isStartComment"
+OLD:  export const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes;
+NEW:  export const childNodes = (node) => ((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes;
+
+[virtualElements.js:61]
+Inlined: "_isStartComment"
+OLD:  if (!_isStartComment(node)) {
+NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
+
+[virtualElements.js:72]
+Inlined: "_isStartComment"
+OLD:  if (!_isStartComment(node)) {
+NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
+
+[virtualElements.js:86]
+Inlined: "_isStartComment"
+OLD:  if (_isStartComment(containerNode)) {
+NEW:  if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
+
+[virtualElements.js:109]
+Inlined: "_isStartComment"
+OLD:  if (_isStartComment(containerNode)) {
+NEW:  if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
+
+[virtualElements.js:121]
+Inlined: "_isStartComment"
+OLD:  if (!_isStartComment(node)) {
+NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
+
+[virtualElements.js:123]
+Inlined: "_isEndComment"
+OLD:  if (_nodeFirstChild && _isEndComment(_nodeFirstChild)) {
+NEW:  if (_nodeFirstChild && ((_nodeFirstChild.nodeType === 8) && END_COMMENT_REGEX.test(_nodeFirstChild.nodeValue))) {
+
+[virtualElements.js:129]
+Inlined: "_isEndComment"
+OLD:  if (!_nodeNextSibling|| _isEndComment(_nodeNextSibling)) {
+NEW:  if (!_nodeNextSibling|| ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
+
+[virtualElements.js:136]
+Inlined: "_isStartComment"
+OLD:  if (_isStartComment(node)) {
+NEW:  if (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
+
+[virtualElements.js:140]
+Inlined: "_isEndComment"
+OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
+NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
+
+
+------- src/subscribables/dependencyDetection.js --------
+
+[dependencyDetection.js:32]
+Found macro: "_getId" 
+
+[dependencyDetection.js:39]
+Inlined: "_getId"
+OLD:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
+NEW:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
+
+
+------- src/templating/templateSources.js --------
+
+[templateSources.js:42]
+Found macro: "_getTemplateDomData" 
+
+[templateSources.js:82]
+Inlined: "_getTemplateDomData"
+OLD:  let templateData = _getTemplateDomData(element),
+NEW:  let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
+
+[templateSources.js:123]
+Inlined: "_getTemplateDomData"
+OLD:  let templateData = _getTemplateDomData(this.domElement);
+NEW:  let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
+
+
+------- src/binding/bindingProvider.js --------
+
+[bindingProvider.js:7]
+Found macro: "virtualNodeBindingValue" 
+
+[bindingProvider.js:16]
+Found macro: "_getBindingsString" 
+
+[bindingProvider.js:38]
+Inlined: "_getBindingsString"
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
+
+[bindingProvider.js:38]
+Inlined: "virtualNodeBindingValue"  [iteration #2]
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
+
+[bindingProvider.js:44]
+Inlined: "_getBindingsString"
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
+
+[bindingProvider.js:44]
+Inlined: "virtualNodeBindingValue"  [iteration #2]
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
+
+
+------- src/binding/bindingAttributeSyntax.js --------
+
+[bindingAttributeSyntax.js:555]
+Found macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
+
+[bindingAttributeSyntax.js:560]
+Inlined: "_getBindingContext"
+OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
+NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
+
+[bindingAttributeSyntax.js:564]
+Inlined: "_getBindingContext"
+OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
+NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
+
+[bindingAttributeSyntax.js:582]
+Inlined: "_getBindingContext"
+OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
+NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
+
+[bindingAttributeSyntax.js:595]
+Inlined: "_getBindingContext"
+OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
+NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
+
+
+
+=================================================
+Rollup inline-macros plugin finished successfully
+Found macros: 7 | Inlined usages: 23
+=================================================

@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod6-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod7-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod6'; // inserted by rollup intro
+    const version = '3.5.1-mod7'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -168,20 +168,12 @@
         }
     };
 
-    // Return a unique ID that can be assigned to an observable for dependency tracking.
-    // Theoretically, you could eventually overflow the number storage size, resulting
-    // in duplicate IDs. But in JavaScript, the largest exact integral value is 2^53
-    // or 9,007,199,254,740,992. If you created 1,000,000 IDs per second, it would
-    // take over 285 years to reach that number.
-    // Reference http://blog.vjeux.com/2010/javascript/javascript-max_int-number-limits.html
-    const _getId = () => ++lastId;
-
     const registerDependency = (subscribable) => {
         if (currentFrame) {
             if (!isSubscribable(subscribable)) {
                 throw new Error('Only subscribable things can act as dependencies');
             }
-            currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
+            currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
         }
     };
 
@@ -290,7 +282,6 @@
 
     const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
     const SYM_MATCHED_END_COMMENT = Symbol('__ko_matchedEndComment__');
-    const HTML_TAGS_WITH_OPTIONAL_CLOSING_CHILDREN = {ul: true, ol: true};
 
     const allowedBindings = {};
     const allowedVirtualElementBindings = allowedBindings;
@@ -331,32 +322,6 @@
             return (totalVirtualChildren ? allVirtualChildren[totalVirtualChildren - 1] : startComment).nextSibling;
         }
         return null; // Must have no matching end comment, and allowUnbalanced is true
-    };
-
-    const _getUnbalancedChildTags = (node) => {
-        // e.g., from <div>OK</div><!-- ko blah --><span>Another</span>, returns: <!-- ko blah --><span>Another</span>
-        //       from <div>OK</div><!-- /ko --><!-- /ko -->,             returns: <!-- /ko --><!-- /ko -->
-        let childNode = node.firstChild, 
-            captureRemaining = null;
-        
-        while (childNode) {
-            if (captureRemaining) {
-                // We already hit an unbalanced node and are now just scooping up all subsequent nodes
-                captureRemaining.push(childNode);
-            } else if (((childNode.nodeType === 8) && START_COMMENT_REGEX.test(childNode.nodeValue))) {
-                let matchingEndComment = _getMatchingEndComment(childNode, /* allowUnbalanced: */ true);
-                if (matchingEndComment) {
-                    childNode = matchingEndComment; // It's a balanced tag, so skip immediately to the end of this virtual set
-                } else {
-                    captureRemaining = [childNode]; // It's unbalanced, so start capturing from this point
-                }
-            } else if (((childNode.nodeType === 8) && END_COMMENT_REGEX.test(childNode.nodeValue))) {
-                captureRemaining = [childNode];     // It's unbalanced (if it wasn't, we'd have skipped over it already), so start capturing
-            }
-            
-            childNode = childNode.nextSibling;
-        }
-        return captureRemaining;
     };
 
     const childNodes = (node) => ((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes;
@@ -449,37 +414,6 @@
             return null;
         }
         return _nodeNextSibling;
-    };
-
-    const normaliseVirtualElementDomStructure = (elementVerified) => {
-        // Workaround for https://github.com/SteveSanderson/knockout/issues/155
-        // (IE <= 8 or IE 9 quirks mode parses your HTML weirdly, treating closing </li> tags as if they don't exist, thereby moving comment nodes
-        // that are direct descendants of <ul> into the preceding <li>)
-        const tagNameLower = elementVerified.tagName && elementVerified.tagName.toLowerCase();
-        if (tagNameLower && !HTML_TAGS_WITH_OPTIONAL_CLOSING_CHILDREN[tagNameLower]) {
-            return;
-        }
-        
-        // Scan immediate children to see if they contain unbalanced comment tags. If they do, those comment tags
-        // must be intended to appear *after* that child, so move them there.
-        let childNode = elementVerified.firstChild;
-        while (childNode) {
-            if (childNode.nodeType === 1) {
-                let unbalancedTags = _getUnbalancedChildTags(childNode);
-                if (unbalancedTags) {
-                    // Fix up the DOM by moving the unbalanced tags to where they most likely were intended to be placed - *after* the child
-                    let nodeToInsertBefore = childNode.nextSibling;
-                     for (let i = 0; i < unbalancedTags.length; i++) {
-                        if (nodeToInsertBefore) {
-                            elementVerified.insertBefore(unbalancedTags[i], nodeToInsertBefore);
-                        } else {
-                            elementVerified.appendChild(unbalancedTags[i]);
-                        }
-                    }
-                }
-            }
-            childNode = childNode.nextSibling;
-        }
     };
 
     // For any options that may affect various areas of Knockout and aren't directly associated with data binding.
@@ -855,8 +789,6 @@
         return result;
     };
 
-    const createSymbolOrString = identifier => Symbol(identifier);
-
     const getFormFields = (form, fieldName) => {
         let fields = [...form.getElementsByTagName('input'), ...form.getElementsByTagName('textarea')];
         let isMatchingField = (typeof fieldName === 'string') ? (field) => field.name === fieldName
@@ -965,7 +897,6 @@
         setElementName: setElementName,
         range: range,
         makeArray: makeArray,
-        createSymbolOrString: createSymbolOrString,
         getFormFields: getFormFields,
         stringifyJson: stringifyJson,
         postJson: postJson
@@ -3052,32 +2983,18 @@
     // so that it always gets the latest value and all dependencies are captured. This is used
     // by ko.applyBindingsToNode and _getBindingsAndMakeAccessors.
     const _makeAccessorsFromFunction = (callback) => {
-        let source = ignoreDependencyDetection(callback),
-            target = source && Object.create(null);
-        if (target) {
-            for (let key of Object.keys(source)) {
-                target[key] = () => callback()[key];
-            }
+        let source = ignoreDependencyDetection(callback);
+        if (!source) {
+            return null;
+        }
+        let target  = Object.create(null);
+        for (let key of Object.keys(source)) {
+            target[key] = () => callback()[key];
         }
         return target;
     };
 
-    // Given a bindings function or object, create and return a new object that contains
-    // binding value-accessors functions. This is used by ko.applyBindingsToNode.
-    function _makeBindingAccessors(bindings, context, node) {
-        if (typeof bindings === 'function') {
-            return _makeAccessorsFromFunction(() => bindings(context, node));
-        }
-        let target = Object.create(null);
-        for (let key of Object.keys(bindings)) {
-            let val = bindings[key];
-            target[key] = () => val;
-        }
-        return target;
-    }
-
-
-    function _applyBindingsToDescendantsInternal(bindingContext, elementOrVirtualElement) {
+    const _applyBindingsToDescendantsInternal = (bindingContext, elementOrVirtualElement) => {
         let nextInQueue = firstChild(elementOrVirtualElement);
 
         if (nextInQueue) {
@@ -3103,15 +3020,11 @@
             }
         }
         bindingEvent.notify(elementOrVirtualElement, EVENT_CHILDREN_COMPLETE);
-    }
+    };
 
-    function _applyBindingsToNodeAndDescendantsInternal(bindingContext, nodeVerified) {
-        let bindingContextForDescendants = bindingContext;
-
-        let isElement = (nodeVerified.nodeType === 1);
-        if (isElement) {// Workaround IE <= 8 HTML parsing weirdness
-            normaliseVirtualElementDomStructure(nodeVerified);
-        }
+    const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified) => {
+        let bindingContextForDescendants = bindingContext,
+            isElement = (nodeVerified.nodeType === 1);
 
         // Perf optimisation: Apply bindings only if...
         // (1) We need to store the binding info for the node (all element nodes)
@@ -3123,9 +3036,9 @@
         if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
             _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
         }
-    }
+    };
 
-    function _topologicalSortBindings(bindings) {
+    const _topologicalSortBindings = (bindings) => {
         // Depth-first sort
         let result = [],                // The list of key/handler pairs that we will return
             bindingsConsidered = {},    // A temporary record of which bindings are already in 'result'
@@ -3161,7 +3074,7 @@
             _pushBinding(bindingKey);
         }
         return result;
-    }
+    };
 
     const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
         let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {});
@@ -3312,33 +3225,34 @@
         };
     };
 
-    const _getBindingContext = (viewModelOrBindingContext, extendContextCallback) => {
-        if (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) {
-            return viewModelOrBindingContext;
-        }
-        return new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback);
-    };
-
     const applyBindingAccessorsToNode = (node, bindings, viewModelOrBindingContext) => {
-        if (node.nodeType === 1) {
-            // If it's an element, workaround IE <= 8 HTML parsing weirdness
-            normaliseVirtualElementDomStructure(node);
-        }
-        return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext));
+        return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
     };
 
     const applyBindingsToNode = (node, bindings, viewModelOrBindingContext) => {
-        let context = _getBindingContext(viewModelOrBindingContext);
-        return applyBindingAccessorsToNode(node, _makeBindingAccessors(bindings, context, node), context);
+        let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
+            /** @type {Object} - a new bindings object that contains binding value-accessors functions */
+            bindingsWithAccessors;
+
+        if (typeof bindings === 'function') {
+            bindingsWithAccessors = _makeAccessorsFromFunction(() => bindings(context, node));
+        } else {
+            bindingsWithAccessors = Object.create(null);
+            for (let key of Object.keys(bindings)) {
+                let val = bindings[key];
+                bindingsWithAccessors[key] = () => val;
+            }
+        }
+        return applyBindingAccessorsToNode(node, bindingsWithAccessors, context);
     };
 
     const applyBindingsToDescendants = (viewModelOrBindingContext, rootNode) => {
         if (rootNode.nodeType === 1 || rootNode.nodeType === 8) {
-            _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext), rootNode);
+            _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
         }
     };
 
-    const applyBindings = function(viewModelOrBindingContext, rootNode, extendContextCallback) {
+    function applyBindings(viewModelOrBindingContext, rootNode, extendContextCallback) {
         if (arguments.length < 2) {
             rootNode = document.body;
             if (!rootNode) {
@@ -3347,8 +3261,8 @@
         } else if (!rootNode || (rootNode.nodeType !== 1 && rootNode.nodeType !== 8)) {
             throw Error("ko.applyBindings: first parameter should be your view model; second parameter should be a DOM node");
         }
-        _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
-    };
+        _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
+    }
 
     // Retrieving binding context from arbitrary nodes
     // We can only do something meaningful for elements and comment nodes (in particular, not text nodes, as IE can't store domdata for them)
