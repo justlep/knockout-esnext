@@ -347,7 +347,7 @@ const _applyBindingsToDescendantsInternal = (bindingContext, elementOrVirtualEle
         }
     }
     bindingEvent.notify(elementOrVirtualElement, EVENT_CHILDREN_COMPLETE);
-}
+};
 
 const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified) => {
     let bindingContextForDescendants = bindingContext,
@@ -363,7 +363,7 @@ const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified
     if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
         _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
     }
-}
+};
 
 const _topologicalSortBindings = (bindings) => {
     // Depth-first sort
@@ -401,7 +401,7 @@ const _topologicalSortBindings = (bindings) => {
         _pushBinding(bindingKey);
     }
     return result;
-}
+};
 
 const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
     let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {});
@@ -552,20 +552,16 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
     };
 };
 
-// TODO inline
-const _getBindingContext = (viewModelOrBindingContext, extendContextCallback) => {
-    if (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) {
-        return viewModelOrBindingContext;
-    }
-    return new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback);
-};
+const _getBindingContext = (viewModelOrBindingContext, extendContextCallback) => //@inline
+            (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : 
+                                new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback);
 
 export const applyBindingAccessorsToNode = (node, bindings, viewModelOrBindingContext) => {
-    return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext));
+    return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 };
 
 export const applyBindingsToNode = (node, bindings, viewModelOrBindingContext) => {
-    let context = _getBindingContext(viewModelOrBindingContext),
+    let context = _getBindingContext(viewModelOrBindingContext, undefined),
         /** @type {Object} - a new bindings object that contains binding value-accessors functions */
         bindingsWithAccessors;
 
@@ -583,11 +579,11 @@ export const applyBindingsToNode = (node, bindings, viewModelOrBindingContext) =
 
 export const applyBindingsToDescendants = (viewModelOrBindingContext, rootNode) => {
     if (rootNode.nodeType === 1 || rootNode.nodeType === 8) {
-        _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext), rootNode);
+        _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
     }
 };
 
-export const applyBindings = function(viewModelOrBindingContext, rootNode, extendContextCallback) {
+export function applyBindings(viewModelOrBindingContext, rootNode, extendContextCallback) {
     if (arguments.length < 2) {
         rootNode = document.body;
         if (!rootNode) {
@@ -597,7 +593,7 @@ export const applyBindings = function(viewModelOrBindingContext, rootNode, exten
         throw Error("ko.applyBindings: first parameter should be your view model; second parameter should be a DOM node");
     }
     _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
-};
+}
 
 // Retrieving binding context from arbitrary nodes
 // We can only do something meaningful for elements and comment nodes (in particular, not text nodes, as IE can't store domdata for them)
