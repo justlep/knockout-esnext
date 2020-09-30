@@ -3,9 +3,10 @@ import {format} from 'util';
 import {writeFileSync} from 'fs';
 
 const MARKER_COMMENT = '//@inline';
-const MACRO_DEFINITION_REGEX = /^\*?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^{].*?);?\s*\/\/@inline/;
+const MACRO_DEFINITION_REGEX = /^\s*(?:export )?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^;]*);?\s*?\/\/@inline(?:-(multiline))?/;
 const SUPPORTED_FILENAMES_REGEX = /\.(?:js|esm|es6)$/i;
 const LOGGED_PLUGIN_NAME = 'Rollup inline-macros plugin';
+const FLAG_MULTILINE_EXPRESSION = 'multiline';
 
 const getParamPlaceholderForIndex = (index) => `%${index}%`;
 
@@ -26,8 +27,9 @@ const getParamPlaceholderForIndex = (index) => `%${index}%`;
  * 
  * 
  * Current limitations:
- *   - only single-line arrow functions are supported
- *   - invocation parameters that are no variable names (e.g. object literals or strings) MUST NOT contain commas 
+ *   - multiline-expressions MUST NOT contain line-comments (except the initial inline-marker comment) 
+ *   - the invocation must match the number of formal parameters (optional parameters MUST be passed as undefined)
+ *   - invocation parameters that are no identifiers (e.g. object literals or strings) MUST NOT contain commas 
  * 
  * Author: Lennart Pegel - https://github.com/justlep
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)  
@@ -51,8 +53,8 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
             }
         },
         buildEnd(err) {
-            let summaryLine1 = `${LOGGED_PLUGIN_NAME} finished ${totalErrors ? `with error(s)`  : 'successfully'}`,
-                summaryLine2 = `Found macros: ${totalMacros} | Inlined usages: ${totalReplacements} | Errors: ${totalErrors}`,
+            let summaryLine1 = `${LOGGED_PLUGIN_NAME} finished ${totalErrors ? `with ${totalErrors} ERROR${totalErrors === 1 ? '' : 'S'}`  : 'successfully'}`,
+                summaryLine2 = `Found macros: ${totalMacros} | Inlined usages: ${totalReplacements}`,
                 hr = '='.repeat(Math.max(summaryLine1.length, summaryLine2.length)),
                 summary = `\n\n${hr}\n${summaryLine1}\n${summaryLine2}\n${hr}`;
             console.log(summary);
@@ -91,23 +93,50 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
                 originalLines;
             
             // (1) find arrow functions marked as macro
-            lines.forEach((line, lineIndex) => {
-                let match = ~line.indexOf(MARKER_COMMENT) && line.match(MACRO_DEFINITION_REGEX);
-                if (match) {
-                    let [, name, paramsString, body] = match,
-                        invocationRegex = new RegExp(`([^a-zA-Z._~$])${name}\\(([^)]*?)\\)`, 'g'), // groups = prefixChar, paramsString
-                        params = paramsString.replace(/\s/g,'').split(','),
-                        bodyWithPlaceholders = !params.length ? body : params.reduce((body, paramName, i) => {
-                            let paramRegex = new RegExp(`([^a-zA-Z._~$])${paramName}([^a-zA-Z_~$])`, 'g');
-                            return body.replace(paramRegex, (m, prefix, suffix) => `${prefix}${getParamPlaceholderForIndex(i)}${suffix}`);
-                        }, `(${body})`),
-                        macro = {name, params, body, bodyWithPlaceholders, invocationRegex};
-
-                    macrosByDefinitionLine.set(lineIndex, macro);
-                    LOG(lineIndex, 'Found macro: "%s"', macro.name);
-                    totalMacros++;
+            for (let lineIndex = 0, len = lines.length, line, match; lineIndex < len; lineIndex++) {
+                line = lines[lineIndex];
+                if (!(match = ~line.indexOf(MARKER_COMMENT) && line.match(MACRO_DEFINITION_REGEX))) {
+                    continue;
                 }
-            });
+                let [, name, paramsString, body] = match,
+                    trimmedBody = body.trim(),
+                    isMultilineExpression = !trimmedBody || trimmedBody === FLAG_MULTILINE_EXPRESSION,
+                    hasFunctionBody = trimmedBody === '{',
+                    skipLines = 0;
+
+                if (hasFunctionBody) {
+                    LOG(lineIndex, '(!) Non-single-expression function bodies are not yet supported');
+                    totalErrors++;
+                    continue;
+                }
+                
+                if (isMultilineExpression) {
+                    // Expressions that span over multiple lines will be trimmed line-wise & concatenated
+                    // - An empty'ish or comment line is considered the end of the macro
+                    // - Since we're not parsing code here, trailing '// comments' will break the expression!
+                    for (let lookaheadLineIndex = lineIndex + 1; lookaheadLineIndex < len; lookaheadLineIndex++) {
+                        let _trimmedLine = lines[lookaheadLineIndex].trim();
+                        if (!_trimmedLine || /^\s*\/[/*]/.test(_trimmedLine)) {
+                            skipLines = (lookaheadLineIndex - lineIndex);  
+                            break;
+                        }
+                        trimmedBody += ' ' + _trimmedLine.replace(/;\s*$/, '');
+                    }
+                } 
+                
+                let invocationRegex = new RegExp(`([^a-zA-Z._~$])${name}\\(([^)]*?)\\)`, 'g'), // groups = prefixChar, paramsString
+                    params = paramsString.replace(/\s/g,'').split(','),
+                    bodyWithPlaceholders = !params.length ? trimmedBody : params.reduce((body, paramName, i) => {
+                        let paramRegex = new RegExp(`([^a-zA-Z._~$])${paramName}([^a-zA-Z_~$])`, 'g');
+                        return body.replace(paramRegex, (m, prefix, suffix) => `${prefix}${getParamPlaceholderForIndex(i)}${suffix}`);
+                    }, `(${trimmedBody})`),
+                    macro = {name, params, body: trimmedBody, bodyWithPlaceholders, invocationRegex};
+
+                macrosByDefinitionLine.set(lineIndex, macro);
+                LOG(lineIndex, 'Found macro: "%s"', macro.name, isMultilineExpression ? ' (MULTI-LINE-EXPRESSION)' : '');
+                totalMacros++;
+                lineIndex += skipLines; // non-zero if we had multiline-expressions
+            }
             
             // (2) replace usages
             lines.forEach((line, lineIndex) => {
@@ -132,7 +161,7 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
                             let invParams = invParamsString.split(',').map(s => s.trim());
                             // LOG(lineIndex, `Checking invocation of '${name}'`);
                             if (invParams.length !== params.length) {
-                                LOG(lineIndex, `[ERROR] Mismatch macro signature <> invocation: \n -> macro: ${name}\n -> usage: ${line}\n`);
+                                LOG(lineIndex, `[ERROR] Mismatch formal parameters (${params.length}) <> invocation (${invParams.length}): \n -> macro: ${name}\n -> usage: ${line}\n`);
                                 totalErrors++;
                                 return matchedInvocation;
                             }
