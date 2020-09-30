@@ -12,7 +12,6 @@ export const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
 
 const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
 const SYM_MATCHED_END_COMMENT = Symbol('__ko_matchedEndComment__');
-const HTML_TAGS_WITH_OPTIONAL_CLOSING_CHILDREN = {ul: true, ol: true};
 
 export const allowedBindings = {};
 export const allowedVirtualElementBindings = allowedBindings;
@@ -54,32 +53,6 @@ const _getMatchingEndComment = (startComment, allowUnbalanced) => {
         return (totalVirtualChildren ? allVirtualChildren[totalVirtualChildren - 1] : startComment).nextSibling;
     }
     return null; // Must have no matching end comment, and allowUnbalanced is true
-};
-
-const _getUnbalancedChildTags = (node) => {
-    // e.g., from <div>OK</div><!-- ko blah --><span>Another</span>, returns: <!-- ko blah --><span>Another</span>
-    //       from <div>OK</div><!-- /ko --><!-- /ko -->,             returns: <!-- /ko --><!-- /ko -->
-    let childNode = node.firstChild, 
-        captureRemaining = null;
-    
-    while (childNode) {
-        if (captureRemaining) {
-            // We already hit an unbalanced node and are now just scooping up all subsequent nodes
-            captureRemaining.push(childNode);
-        } else if (_isStartComment(childNode)) {
-            let matchingEndComment = _getMatchingEndComment(childNode, /* allowUnbalanced: */ true);
-            if (matchingEndComment) {
-                childNode = matchingEndComment; // It's a balanced tag, so skip immediately to the end of this virtual set
-            } else {
-                captureRemaining = [childNode]; // It's unbalanced, so start capturing from this point
-            }
-        } else if (_isEndComment(childNode)) {
-            captureRemaining = [childNode];     // It's unbalanced (if it wasn't, we'd have skipped over it already), so start capturing
-        }
-        
-        childNode = childNode.nextSibling;
-    }
-    return captureRemaining;
 };
 
 export const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes;
