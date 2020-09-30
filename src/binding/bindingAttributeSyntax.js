@@ -1,4 +1,4 @@
-import {childNodes, nextSibling, firstChild, normaliseVirtualElementDomStructure, allowedVirtualElementBindings} from '../virtualElements';
+import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 import {getDomData, getOrSetDomData, nextDomDataKey} from '../utils.domData';
 import {isObservable} from '../subscribables/observableUtils';
 import {getCurrentComputed} from '../subscribables/dependencyDetection';
@@ -364,12 +364,8 @@ function _applyBindingsToDescendantsInternal(bindingContext, elementOrVirtualEle
 }
 
 function _applyBindingsToNodeAndDescendantsInternal(bindingContext, nodeVerified) {
-    let bindingContextForDescendants = bindingContext;
-
-    let isElement = (nodeVerified.nodeType === 1);
-    if (isElement) {// Workaround IE <= 8 HTML parsing weirdness
-        normaliseVirtualElementDomStructure(nodeVerified);
-    }
+    let bindingContextForDescendants = bindingContext,
+        isElement = (nodeVerified.nodeType === 1);
 
     // Perf optimisation: Apply bindings only if...
     // (1) We need to store the binding info for the node (all element nodes)
@@ -578,10 +574,6 @@ const _getBindingContext = (viewModelOrBindingContext, extendContextCallback) =>
 };
 
 export const applyBindingAccessorsToNode = (node, bindings, viewModelOrBindingContext) => {
-    if (node.nodeType === 1) {
-        // If it's an element, workaround IE <= 8 HTML parsing weirdness
-        normaliseVirtualElementDomStructure(node);
-    }
     return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext));
 };
 

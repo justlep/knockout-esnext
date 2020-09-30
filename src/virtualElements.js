@@ -174,33 +174,3 @@ export const nextSibling = (node) => {
     return _nodeNextSibling;
 };
 
-export const normaliseVirtualElementDomStructure = (elementVerified) => {
-    // Workaround for https://github.com/SteveSanderson/knockout/issues/155
-    // (IE <= 8 or IE 9 quirks mode parses your HTML weirdly, treating closing </li> tags as if they don't exist, thereby moving comment nodes
-    // that are direct descendants of <ul> into the preceding <li>)
-    const tagNameLower = elementVerified.tagName && elementVerified.tagName.toLowerCase();
-    if (tagNameLower && !HTML_TAGS_WITH_OPTIONAL_CLOSING_CHILDREN[tagNameLower]) {
-        return;
-    }
-    
-    // Scan immediate children to see if they contain unbalanced comment tags. If they do, those comment tags
-    // must be intended to appear *after* that child, so move them there.
-    let childNode = elementVerified.firstChild;
-    while (childNode) {
-        if (childNode.nodeType === 1) {
-            let unbalancedTags = _getUnbalancedChildTags(childNode);
-            if (unbalancedTags) {
-                // Fix up the DOM by moving the unbalanced tags to where they most likely were intended to be placed - *after* the child
-                let nodeToInsertBefore = childNode.nextSibling;
-                 for (let i = 0; i < unbalancedTags.length; i++) {
-                    if (nodeToInsertBefore) {
-                        elementVerified.insertBefore(unbalancedTags[i], nodeToInsertBefore);
-                    } else {
-                        elementVerified.appendChild(unbalancedTags[i]);
-                    }
-                }
-            }
-        }
-        childNode = childNode.nextSibling;
-    }
-};
