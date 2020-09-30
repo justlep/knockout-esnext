@@ -67,7 +67,10 @@ export default {
         }
     ],
     plugins: [
-        createRollupInlineMacrosPlugin({verbose: true}),
+        createRollupInlineMacrosPlugin({
+            verbose: false,
+            logFile: isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log'
+        }),
         {
             name: '__post-dist-build-message__',
             buildEnd: (err) => !err && isTargetDist && showPublishNote()

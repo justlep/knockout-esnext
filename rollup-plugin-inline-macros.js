@@ -1,16 +1,20 @@
-import {basename} from 'path';
+import {basename, join, relative, sep} from 'path';
+import {format} from 'util';
+import {writeFileSync} from 'fs';
 
 const MARKER_COMMENT = '//@inline';
 const MACRO_DEFINITION_REGEX = /^\*?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^{].*?);?\s*\/\/@inline/;
 const SUPPORTED_FILENAMES_REGEX = /\.(?:js|esm|es6)$/i;
+const LOGGED_PLUGIN_NAME = 'Rollup inline-macros plugin';
 
 const getParamPlaceholderForIndex = (index) => `%${index}%`;
+
 
 /**
  * A rollup plugin that scans each file for pure const arrow functions marked with a trailing '//@inline' comment.
  * Invocations of those functions within the same file are then replaced with the actual arrow-function code,
  * much like early Pascal "inline" functions or macros in other languages.  
- * Helpful to keep sources DRY while boosting performance in hot executions paths by saving some function calls.
+ * Helpful to keep sources DRY while boosting performance in hot execution paths by saving some function calls.
  *
  * Example:
  *   const _isLowercaseString = (s) => typeof s === 'string' && s.toLowerCase() === s; //@inline
@@ -28,18 +32,60 @@ const getParamPlaceholderForIndex = (index) => `%${index}%`;
  * Author: Lennart Pegel - https://github.com/justlep
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)  
  */
-export default function createRollupInlineMacrosPlugin(opts = {verbose: false}) {
+export default function createRollupInlineMacrosPlugin(opts = {verbose: false, logFile: null}) {
+    let logFilePath = opts.logFile && join(__dirname, opts.logFile),
+        logEntriesForFile,
+        totalMacros,
+        totalReplacements,
+        totalErrors;
+    
     return {
         name: 'inline-macros',
+        buildStart() {
+            logEntriesForFile = logFilePath && [];
+            totalMacros = 0;
+            totalReplacements = 0;
+            totalErrors = 0;
+            if (logFilePath) {
+                writeFileSync(logFilePath, `${LOGGED_PLUGIN_NAME}\nStart: ${new Date().toUTCString()}\n\n`);
+            }
+        },
+        buildEnd(err) {
+            let summaryLine1 = `${LOGGED_PLUGIN_NAME} finished ${totalErrors ? `with error(s)`  : 'successfully'}`,
+                summaryLine2 = `Found macros: ${totalMacros} | Inlined usages: ${totalReplacements} | Errors: ${totalErrors}`,
+                hr = '='.repeat(Math.max(summaryLine1.length, summaryLine2.length)),
+                summary = `\n\n${hr}\n${summaryLine1}\n${summaryLine2}\n${hr}`;
+            console.log(summary);
+            if (logFilePath) {
+                logEntriesForFile.push(summary);
+                if (err) {
+                    logEntriesForFile.push(err.toString());
+                }
+                writeFileSync(logFilePath, logEntriesForFile.join('\n\n'), {flag: 'a'});
+                console.log(`Logs for ${LOGGED_PLUGIN_NAME} written to:\n${logFilePath}\n`);
+            }
+        },
         transform(code, id) {
-            const currentFile = basename(id);
-            if (!SUPPORTED_FILENAMES_REGEX.test(currentFile)) {
+            const currentFilename = basename(id);
+            const currentRelativeFilePath = sep === '\\' ? relative(__dirname, id).replace(/\\/g, '/') : relative(__dirname, id);
+            if (!SUPPORTED_FILENAMES_REGEX.test(currentFilename)) {
                 return {code, map: null};
             }
             /** @type {Map<number, InlineMacro>} */
             const macrosByDefinitionLine = new Map();
-            const LOG = opts.verbose ? (lineIndex, msg, ...args) => console.log(`[${currentFile}:${lineIndex + 1}] ${msg}`, ...args) 
-                                     : () => null;
+            
+            let filePathToLogOnce = `\n------- ${currentRelativeFilePath} --------\n\n`;
+            
+            const LOG = (lineIndex, msg, ...args) => {
+                let line = filePathToLogOnce + format(`[${currentFilename}:${lineIndex + 1}]\n${msg}`, ...args);
+                if (logEntriesForFile) {
+                    logEntriesForFile.push(line);
+                }
+                if (opts.verbose) {
+                    console.log('\n' + line);
+                }
+                filePathToLogOnce = '';
+            } 
             
             let lines = code.split('\n'),
                 originalLines;
@@ -58,8 +104,8 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false}) 
                         macro = {name, params, body, bodyWithPlaceholders, invocationRegex};
 
                     macrosByDefinitionLine.set(lineIndex, macro);
-                    //LOG(lineIndex, 'Found macro: %o', macro);
-                    LOG(lineIndex, 'Found macro: %s', macro.name);
+                    LOG(lineIndex, 'Found macro: "%s"', macro.name);
+                    totalMacros++;
                 }
             });
             
@@ -86,7 +132,8 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false}) 
                             let invParams = invParamsString.split(',').map(s => s.trim());
                             // LOG(lineIndex, `Checking invocation of '${name}'`);
                             if (invParams.length !== params.length) {
-                                LOG(lineIndex, `(!) Mismatch macro signature <> invocation: \n -> macro: ${name}\n -> usage: ${line}\n\n`);
+                                LOG(lineIndex, `[ERROR] Mismatch macro signature <> invocation: \n -> macro: ${name}\n -> usage: ${line}\n`);
+                                totalErrors++;
                                 return matchedInvocation;
                             }
                             
@@ -105,9 +152,10 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false}) 
                                 originalLines = lines.slice(); // lazy-copy original lines before any changes
                             }
                             let iterationLogString = lineIteration > 1 ? `  [iteration #${lineIteration}]` : '';
-                            LOG(lineIndex, `Inlined invocation of ${name}()${iterationLogString}\nOLD:  ${originalLines[lineIndex].trim()}\nNEW:  ${changedLine.trim()}\n`);
+                            LOG(lineIndex, `Inlined: "${name}"${iterationLogString}\nOLD:  ${originalLines[lineIndex].trim()}\nNEW:  ${changedLine.trim()}`);
                             line = changedLine;
                             lines[lineIndex] = changedLine;
+                            totalReplacements++;
                             
                             // re-iterate, because macros may be using other macros
                             shouldScanForInvocations = true;
