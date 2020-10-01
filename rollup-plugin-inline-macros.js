@@ -8,11 +8,12 @@ const SUPPORTED_FILENAMES_REGEX = /\.(?:js|esm|es6)$/i;
 const LOGGED_PLUGIN_NAME = 'Rollup inline-macros plugin';
 const FLAG_MULTILINE_EXPRESSION = 'multiline';
 
-const getParamPlaceholderForIndex = (index) => `%${index}%`;
+const getParamPlaceholderForIndex = (index) => `%~%>${index}<%~%`; // regex-safe + unlikely to exist anywhere inside macro code
+const getParamPlaceholderReplacementRegexForIndex = (index) => new RegExp(getParamPlaceholderForIndex(index), 'g');
 
 
 /**
- * A rollup plugin that scans each file for pure const arrow functions marked with a trailing '//@inline' comment.
+ * A rollup plugin that scans each file for const arrow functions marked with a trailing '//@inline' comment.
  * Invocations of those functions within the same file are then replaced with the actual arrow-function code,
  * much like early Pascal "inline" functions or macros in other languages.  
  * Helpful to keep sources DRY while boosting performance in hot execution paths by saving some function calls.
@@ -28,13 +29,13 @@ const getParamPlaceholderForIndex = (index) => `%${index}%`;
  * 
  * Current limitations:
  *   - multiline-expressions MUST NOT contain line-comments (except the initial inline-marker comment) 
- *   - the invocation must match the number of formal parameters (optional parameters MUST be passed as undefined)
+ *   - the invocation must match the number of formal parameters (optional parameters MUST be passed explicitly as undefined)
  *   - invocation parameters that are no identifiers (e.g. object literals or strings) MUST NOT contain commas 
  * 
  * Author: Lennart Pegel - https://github.com/justlep
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)  
  */
-export default function createRollupInlineMacrosPlugin(opts = {verbose: false, logFile: null}) {
+export default function createRollupInlineMacrosPlugin(opts = {verbose: false, logFile: null, versionName: null}) {
     let logFilePath = opts.logFile && join(__dirname, opts.logFile),
         logEntriesForFile,
         totalMacros,
@@ -49,7 +50,9 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
             totalReplacements = 0;
             totalErrors = 0;
             if (logFilePath) {
-                writeFileSync(logFilePath, `${LOGGED_PLUGIN_NAME}\nStart: ${new Date().toUTCString()}\n\n`);
+                // write log file header
+                let versionInfo = opts.versionName ? `\nfor ${opts.versionName}\n` : '';
+                writeFileSync(logFilePath, `\nRunning ${LOGGED_PLUGIN_NAME}${versionInfo}\n`);
             }
         },
         buildEnd(err) {
@@ -59,6 +62,7 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
                 summary = `\n\n${hr}\n${summaryLine1}\n${summaryLine2}\n${hr}`;
             console.log(summary);
             if (logFilePath) {
+                // write log file lines & summary
                 logEntriesForFile.push(summary);
                 if (err) {
                     logEntriesForFile.push(err.toString());
@@ -73,7 +77,7 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
             if (!SUPPORTED_FILENAMES_REGEX.test(currentFilename)) {
                 return {code, map: null};
             }
-            /** @type {Map<number, InlineMacro>} */
+            /** @type {Map<number, RollupInlineMacrosPlugin_InlineMacro>} */
             const macrosByDefinitionLine = new Map();
             
             let filePathToLogOnce = `\n------- ${currentRelativeFilePath} --------\n\n`;
@@ -169,7 +173,7 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
                             let replacedInvocation = invPrefixChar + bodyWithPlaceholders;
                             
                             invParams.forEach((paramName, i) => {
-                                let placeholderRegex = new RegExp(getParamPlaceholderForIndex(i), 'g');
+                                let placeholderRegex = getParamPlaceholderReplacementRegexForIndex(i);
                                 replacedInvocation = replacedInvocation.replace(placeholderRegex, paramName);
                             });
                             
@@ -200,7 +204,7 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
 }
 
 /**
- * @typedef InlineMacro
+ * @typedef RollupInlineMacrosPlugin_InlineMacro
  * @property {string} name - the function name
  * @property {string[]} params - names of the formal parameters in the function definition
  * @property {string} body - the function body code
