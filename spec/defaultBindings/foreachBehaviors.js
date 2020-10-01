@@ -485,63 +485,6 @@ describe('Binding: Foreach', function() {
                                              + '</ul>');
     });
 
-    it('Should be able to use containerless templates directly inside UL elements even when closing LI tags are omitted', function() {
-        // Represents issue https://github.com/SteveSanderson/knockout/issues/155
-        // Certain closing tags, including </li> are optional (http://www.w3.org/TR/html5/syntax.html#syntax-tag-omission)
-        // Most browsers respect your positioning of closing </li> tags, but IE <= 7 doesn't, and treats your markup
-        // as if it was written as below:
-
-        // Your actual markup: "<ul><li>Header item</li><!-- ko foreach: someitems --><li data-bind='text: $data'></li><!-- /ko --></ul>";
-        // How IE <= 8 treats it:
-        testNode.innerHTML =   "<ul><li>Header item<!-- ko foreach: someitems --><li data-bind='text: $data'><!-- /ko --></ul>";
-        var viewModel = {
-            someitems: [ 'Alpha', 'Beta' ]
-        };
-        ko.applyBindings(viewModel, testNode);
-        var match = testNode.innerHTML.toLowerCase().match(/<\/li>/g);
-        // Any of the following results are acceptable.
-        if (!match) {
-            // Opera 11.5 doesn't add any closing </li> tags
-            expect(testNode).toContainHtml('<ul><li>header item<!-- ko foreach: someitems --><li data-bind="text: $data">alpha<li data-bind="text: $data">beta<!-- /ko --></ul>');
-        } else if (match.length == 3) {
-            // Modern browsers implicitly re-add the closing </li> tags
-            expect(testNode).toContainHtml('<ul><li>header item</li><!-- ko foreach: someitems --><li data-bind="text: $data">alpha</li><li data-bind="text: $data">beta</li><!-- /ko --></ul>');
-        } else {
-            // ... but IE < 8 doesn't add ones that immediately precede a <li>
-            expect(testNode).toContainHtml('<ul><li>header item</li><!-- ko foreach: someitems --><li data-bind="text: $data">alpha<li data-bind="text: $data">beta</li><!-- /ko --></ul>');
-        }
-    });
-
-    it('Should be able to nest containerless templates directly inside UL elements, even on IE < 8 with its bizarre HTML parsing/formatting', function() {
-        // Represents https://github.com/SteveSanderson/knockout/issues/212
-        // This test starts with the following DOM structure:
-        //    <ul>
-        //        <!-- ko foreach: ['A', 'B'] -->
-        //        <!-- ko if: $data == 'B' -->
-        //        <li data-bind='text: $data'>
-        //            <!-- /ko -->
-        //            <!-- /ko -->
-        //        </li>
-        //    </ul>
-        // Note that:
-        //   1. The closing comments are inside the <li> to simulate IE<8's weird parsing
-        //   2. We have to build this with manual DOM operations, otherwise IE<8 will deform it in a different weird way
-        // It would be a more authentic test if we could set up the scenario using .innerHTML and then let the browser do whatever parsing it does normally,
-        // but unfortunately IE varies its weirdness according to whether it's really parsing an HTML doc, or whether you're using .innerHTML.
-
-        testNode.innerHTML = "";
-        testNode.appendChild(document.createElement("ul"));
-        testNode.firstChild.appendChild(document.createComment("ko foreach: ['A', 'B']"));
-        testNode.firstChild.appendChild(document.createComment("ko if: $data == 'B'"));
-        testNode.firstChild.appendChild(document.createElement("li"));
-        testNode.firstChild.lastChild.setAttribute("data-bind", "text: $data");
-        testNode.firstChild.lastChild.appendChild(document.createComment("/ko"));
-        testNode.firstChild.lastChild.appendChild(document.createComment("/ko"));
-
-        ko.applyBindings(null, testNode);
-        expect(testNode).toContainText("B");
-    });
-
     it('Should be able to give an alias to $data using \"as\"', function() {
         testNode.innerHTML = "<div data-bind='foreach: { data: someItems, as: \"item\" }'><span data-bind='text: item'></span></div>";
         var someItems = ['alpha', 'beta'];
