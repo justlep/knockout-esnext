@@ -370,6 +370,8 @@ export const makeArray = (arrayLikeObject) => {
     return result;
 };
 
+export const createSymbolOrString = identifier => Symbol(identifier);
+
 export const getFormFields = (form, fieldName) => {
     let fields = [...form.getElementsByTagName('input'), ...form.getElementsByTagName('textarea')];
     let isMatchingField = (typeof fieldName === 'string') ? (field) => field.name === fieldName
