@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod7-esnext
+for Knockout JavaScript library v3.5.1-mod8-esnext
 
 
 ------- src/virtualElements.js --------
@@ -70,6 +70,17 @@ NEW:  if (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 Inlined: "_isEndComment"
 OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
+
+
+------- src/memoization.js --------
+
+[memoization.js:8]
+Found macro: "parseMemoText" 
+
+[memoization.js:50]
+Inlined: "parseMemoText"
+OLD:  memoId = parseMemoText(nodeValue);
+NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
 
 
 ------- src/subscribables/dependencyDetection.js --------
@@ -157,5 +168,5 @@ NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext &&
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 7 | Inlined usages: 23
+Found macros: 8 | Inlined usages: 24
 =================================================

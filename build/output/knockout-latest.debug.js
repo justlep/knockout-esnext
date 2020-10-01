@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod7-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod8-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod7'; // inserted by rollup intro
+    const version = '3.5.1-mod8'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -789,6 +789,8 @@
         return result;
     };
 
+    const createSymbolOrString = identifier => Symbol(identifier);
+
     const getFormFields = (form, fieldName) => {
         let fields = [...form.getElementsByTagName('input'), ...form.getElementsByTagName('textarea')];
         let isMatchingField = (typeof fieldName === 'string') ? (field) => field.name === fieldName
@@ -897,6 +899,7 @@
         setElementName: setElementName,
         range: range,
         makeArray: makeArray,
+        createSymbolOrString: createSymbolOrString,
         getFormFields: getFormFields,
         stringifyJson: stringifyJson,
         postJson: postJson
@@ -3746,40 +3749,31 @@
         };
     }
 
-    const _memosMap = new Map();
+    /** @type {Map<string, function>} */
+    const _memoMap = new Map();
 
-    const _randomMax8HexChars = () => (((1 + Math.random()) * 0x100000000) | 0).toString(16).substring(1);
+    const MEMO_ID_PREFIX = Math.random() + '_';
+    const MEMO_TEXT_START = '[ko_memo:'; // length 9 (= magic number used inside `parseMemoText`)
 
-    const _generateRandomId = () => _randomMax8HexChars() + _randomMax8HexChars();
+    const parseMemoText = (memoText) => memoText.startsWith(MEMO_TEXT_START) ? memoText.substr(9, memoText.length - 10) : null; //@inline
 
-    const _findMemoNodes = (rootNode, appendToArray) => {
-        if (!rootNode) {
-            return;
-        }
-        if (rootNode.nodeType === 8) {
-            let memoId = parseMemoText(rootNode.nodeValue);
-            if (memoId !== null) {
-                appendToArray.push({domNode: rootNode, memoId: memoId});
-            }
-        } else if (rootNode.nodeType === 1) {
-            for (let i = 0, childNodes = rootNode.childNodes, j = childNodes.length; i < j; i++) {
-                _findMemoNodes(childNodes[i], appendToArray);
-            }
-        }
-    };
+    let _nextMemoId = 1;
 
+    // exported for knockout-internal performance optimizations only
+    let _hasMemoizedCallbacks = false;
 
     const memoize = (callback) => {
         if (typeof callback !== "function") {
             throw new Error("You can only pass a function to ko.memoization.memoize()");
         }
-        let memoId = _generateRandomId();
-        _memosMap.set(memoId, callback);
-        return "<!--[ko_memo:" + memoId + "]-->";
+        let memoId = MEMO_ID_PREFIX + (_nextMemoId++);
+        _memoMap.set(memoId, callback);
+        _hasMemoizedCallbacks = true;
+        return '<!--' + MEMO_TEXT_START + memoId + ']-->';
     };
 
     const unmemoize = (memoId, callbackParams) => {
-        let callback = _memosMap.get(memoId);
+        let callback = _memoMap.get(memoId);
         if (!callback) {
             throw new Error("Couldn't find any memo with ID " + memoId + ". Perhaps it's already been unmemoized.");
         }
@@ -3787,30 +3781,47 @@
             callbackParams ? callback(...callbackParams) : callback();
             return true;
         } finally {
-            delete _memosMap.delete(memoId);
+            _memoMap.delete(memoId);
+            _hasMemoizedCallbacks = !!_memoMap.size;
         }
     };
 
     const unmemoizeDomNodeAndDescendants = (domNode, extraCallbackParamsArray) => {
+        if (!_hasMemoizedCallbacks || !domNode) {
+            return;
+        }
         let memos = [];
-        _findMemoNodes(domNode, memos);
-        for (let i = 0, j = memos.length; i < j; i++) {
-            let node = memos[i].domNode;
-            let combinedParams = [node];
-            if (extraCallbackParamsArray) {
-                arrayPushAll(combinedParams, extraCallbackParamsArray);
-            }
-            unmemoize(memos[i].memoId, combinedParams);
-            node.nodeValue = ''; // Neuter this node so we don't try to unmemoize it again
-            if (node.parentNode) {
-                node.parentNode.removeChild(node); // If possible, erase it totally (not always possible - someone else might just hold a reference to it then call unmemoizeDomNodeAndDescendants again)
+
+        // (1) find memo comments in sub-tree
+        for (let node = domNode, nextNodes = []; node; node = nextNodes && nextNodes.shift()) {
+            let nodeType = node.nodeType;
+            if (nodeType === 8) {
+                let nodeValue = node.nodeValue, // local nodeValue looks redundant but will reduce size of inlined `parseMemoText` call
+                    memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
+                if (memoId) {
+                    memos.push({node, memoId});
+                }
+            } else if (nodeType === 1) {
+                let childNodes = node.childNodes;
+                if (childNodes.length) {
+                    if (nextNodes.length) {
+                        nextNodes.unshift(...childNodes);
+                    } else {
+                        nextNodes = [...childNodes];
+                    }
+                }
             }
         }
-    };
-
-    const parseMemoText = (memoText) => {
-        let match = memoText.match(/^\[ko_memo:(.*?)]$/);
-        return match ? match[1] : null;
+        
+        // (2) unmemoize & run memoized callbacks
+        for (let memo of memos) {
+            let node = memo.node,
+                combinedParams = extraCallbackParamsArray ? [node, ...extraCallbackParamsArray] : [node];
+            
+            unmemoize(memo.memoId, combinedParams);
+            node.nodeValue = ''; // Neuter this node so we don't try to unmemoize it again
+            node.remove(); // If possible, erase it totally (not always possible - someone else might just hold a reference to it then call unmemoizeDomNodeAndDescendants again)
+        }
     };
 
     const MEMOIZE_DATA_BINDING_ATTR_SYNTAX_REGEX = /(<([a-z]+\d*)(?:\s+(?!data-bind\s*=\s*)[a-z0-9-]+(?:=(?:"[^"]*"|'[^']*'|[^>]*))?)*\s+)data-bind\s*=\s*(["'])([\s\S]*?)\3/gi;
@@ -4448,9 +4459,11 @@
             (node) => (node.nodeType === 1 || node.nodeType === 8) && applyBindings(bindingContext, node)
         );
         
-        _invokeForEachNodeInContinuousRange(firstNode, lastNode, 
-            (node) => (node.nodeType === 1 || node.nodeType === 8) && unmemoizeDomNodeAndDescendants(node, [bindingContext])
-        );
+        if (_hasMemoizedCallbacks) {
+            _invokeForEachNodeInContinuousRange(firstNode, lastNode,
+                (node) => (node.nodeType === 1 || node.nodeType === 8) && unmemoizeDomNodeAndDescendants(node, [bindingContext])
+            );
+        }
 
         // Make sure any changes done by applyBindings or unmemoize are reflected in the array
         fixUpContinuousNodeArray(continuousNodeArray, parentNode);
