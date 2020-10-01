@@ -2,8 +2,9 @@ import {isInitialDependency, ignoreDependencyDetection} from '../../subscribable
 import {EVENT_CHILDREN_COMPLETE, bindingEvent} from '../bindingAttributeSyntax';
 import {setDomNodeChildrenFromArrayMapping} from '../editDetection/arrayToDomNodeChildren';
 import {readSelectOrOptionValue, writeSelectOrOptionValue} from '../selectExtensions';
-import {unwrapObservable, setOptionNodeSelectionState, triggerEvent} from '../../utils';
+import {setOptionNodeSelectionState, triggerEvent} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 const CAPTION_PLACEHOLDER = Symbol();
 

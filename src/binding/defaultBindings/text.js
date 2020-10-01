@@ -1,6 +1,7 @@
-import {unwrapObservable, setTextContent} from '../../utils';
+import {setTextContent} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
 import {allowedVirtualElementBindings} from '../../virtualElements';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.text = {
     init() {

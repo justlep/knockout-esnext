@@ -1,4 +1,4 @@
-import {isObservable} from './subscribables/observableUtils';
+import {isObservable, unwrapObservable} from './subscribables/observableUtils';
 import {cleanNode, removeNode} from './utils.domNodeDisposal';
 import {firstChild, nextSibling, setDomNodeChildren as virtualElementsSetDomNodeChildren} from './virtualElements';
 import {onError} from './onError';
@@ -330,8 +330,6 @@ export const triggerEvent = (element, eventType) => {
     }
     throw new Error('The supplied element doesn\'t support dispatchEvent');
 };
-
-export const unwrapObservable = (value) => isObservable(value) ? value() : value;
 
 export const setTextContent = (element, textContent) => {
     let value = unwrapObservable(textContent);

@@ -13,7 +13,7 @@ import {cancelTask, runEarly, resetForTesting, scheduleTask, _scheduler, _overri
 import {options} from './options';
 import {computed, dependentObservable, pureComputed} from './subscribables/dependentObservable';
 import {observable} from './subscribables/observable';
-import {isWritableObservable, isSubscribable, isComputed, isPureComputed, isObservable, isObservableArray} from './subscribables/observableUtils';
+import {isWritableObservable, isSubscribable, isComputed, isPureComputed, isObservable, isObservableArray, unwrapObservable} from './subscribables/observableUtils';
 import {Subscribable} from './subscribables/subscribable';
 import {observableArray} from './subscribables/observableArray';
 import {memoize, unmemoize, parseMemoText, unmemoizeDomNodeAndDescendants} from './memoization';
@@ -37,7 +37,6 @@ import {KoBindingProvider} from './binding/bindingProvider';
 import {addBindingsForCustomElement, getComponentNameForNode, _overrideGetComponentNameForNode} from './components/customElements';
 import './binding/defaultBindings/allDefaultBindings';
 import {readSelectOrOptionValue, writeSelectOrOptionValue} from './binding/selectExtensions';
-import {unwrapObservable} from './utils';
 
 const expressionRewriting = {
     bindingRewriteValidators,
@@ -76,7 +75,8 @@ const ko = {
             set cleanExternalData(fn) { _overrideCleanExternalData(fn); },
             addDisposeCallback,
             removeDisposeCallback
-        }
+        },
+        unwrapObservable
     }, utils),
     unwrap: unwrapObservable,
     removeNode,

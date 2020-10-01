@@ -1,5 +1,5 @@
-import {unwrapObservable} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 const __visibleBindingUpdateFn = (element, valueAccessor) => {
     let value = unwrapObservable(valueAccessor()),

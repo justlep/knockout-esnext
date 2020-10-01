@@ -1,10 +1,9 @@
 import {isInitialDependency, getDependenciesCount, ignoreDependencyDetection} from '../../subscribables/dependencyDetection';
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
 import {registerEventHandler, addOrRemoveItem} from '../../utils';
-import {unwrapObservable} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
 import {computed, pureComputed} from '../../subscribables/dependentObservable';
-import {isWritableObservable} from '../../subscribables/observableUtils';
+import {isWritableObservable, unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.checked = {
     after: ['value', 'attr'],

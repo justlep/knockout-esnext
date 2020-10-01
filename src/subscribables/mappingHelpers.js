@@ -1,5 +1,4 @@
-import {isObservable} from './observableUtils';
-import {unwrapObservable} from '../utils';
+import {isObservable, unwrapObservable} from './observableUtils';
 
 const MAX_NESTED_OBSERVABLE_DEPTH = 10; // Escape the (unlikely) pathological case where an observable's current value is itself (or similar reference cycle)
 

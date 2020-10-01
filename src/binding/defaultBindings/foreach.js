@@ -1,6 +1,5 @@
 import {bindingRewriteValidators} from '../expressionRewriting';
-import {isObservable} from '../../subscribables/observableUtils';
-import {unwrapObservable} from '../../utils';
+import {isObservable, unwrapObservable} from '../../subscribables/observableUtils';
 import {bindingHandlers} from '../bindingHandlers';
 import {NativeTemplateEngine} from '../../templating/native/nativeTemplateEngine';
 import {allowedVirtualElementBindings} from '../../virtualElements';

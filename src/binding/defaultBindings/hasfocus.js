@@ -1,7 +1,8 @@
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
-import {unwrapObservable, registerEventHandler, triggerEvent} from '../../utils';
+import {registerEventHandler, triggerEvent} from '../../utils';
 import {ignoreDependencyDetection} from '../../subscribables/dependencyDetection';
 import {bindingHandlers} from '../bindingHandlers';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 const HAS_FOCUS_UPDATING_PROPERTY = Symbol('ko_hasfocusUpdating');
 const HAS_FOCUS_LAST_VALUE = Symbol('ko_hasfocusLastValue');

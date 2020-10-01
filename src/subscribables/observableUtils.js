@@ -3,6 +3,7 @@ export const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]);
 
 export const IS_OBSERVABLE = Symbol('IS_OBSERVABLE');
 export const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
+export const unwrapObservable = (value) => value && (value[IS_OBSERVABLE] ? value() : value);
 
 export const IS_OBSERVABLE_ARRAY = Symbol('IS_OBSERVABLE_ARRAY');
 export const isObservableArray = (obj) => !!(obj && obj[IS_OBSERVABLE_ARRAY]);
@@ -14,4 +15,4 @@ export const IS_PURE_COMPUTED = Symbol('IS_PURE_COMPUTED');
 export const isPureComputed = (obj) => !!(obj && obj[IS_PURE_COMPUTED]);
 
 export const isWritableObservable = (obj) => !!(obj && (obj[IS_COMPUTED] ? obj.hasWriteFunction : obj[IS_OBSERVABLE]));
-export const isWriteable = isWritableObservable; 
+export const isWriteable = isWritableObservable;

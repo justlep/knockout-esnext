@@ -1,5 +1,5 @@
-import {unwrapObservable} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.attr = {
     update(element, valueAccessor, allBindings) {

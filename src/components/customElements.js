@@ -1,6 +1,5 @@
 import {isComponentRegistered} from './defaultLoader';
-import {unwrapObservable} from '../utils';
-import {isWritableObservable} from '../subscribables/observableUtils';
+import {isWritableObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {computed} from '../subscribables/dependentObservable';
 
 

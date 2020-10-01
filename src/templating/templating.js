@@ -1,8 +1,8 @@
 import {nextSibling, setDomNodeChildren, emptyNode, childNodes, allowedBindings} from '../virtualElements';
 import {unmemoizeDomNodeAndDescendants, _hasMemoizedCallbacks} from '../memoization';
-import {fixUpContinuousNodeArray, replaceDomNodes, moveCleanedNodesToContainerElement, unwrapObservable, domNodeIsAttachedToDocument} from '../utils';
+import {fixUpContinuousNodeArray, replaceDomNodes, moveCleanedNodesToContainerElement, domNodeIsAttachedToDocument} from '../utils';
 import {ensureTemplateIsRewritten} from './templateRewriting';
-import {isObservableArray, isObservable} from '../subscribables/observableUtils';
+import {isObservableArray, isObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {bindingRewriteValidators, keyValueArrayContainsKey} from '../binding/expressionRewriting';
 import {applyBindings, bindingEvent, EVENT_CHILDREN_COMPLETE, KoBindingContext} from '../binding/bindingAttributeSyntax';
 import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';

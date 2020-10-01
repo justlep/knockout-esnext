@@ -1,6 +1,6 @@
 import {getCurrentComputed, getDependenciesCount} from '../../subscribables/dependencyDetection';
 import {bindingRewriteValidators} from '../expressionRewriting';
-import {cloneNodes, unwrapObservable} from '../../utils';
+import {cloneNodes} from '../../utils';
 import {childNodes, setDomNodeChildren, allowedVirtualElementBindings, emptyNode} from '../../virtualElements';
 import {bindingHandlers} from '../bindingHandlers';
 import {
@@ -10,6 +10,7 @@ import {
     applyBindingsToDescendants
 } from '../bindingAttributeSyntax';
 import {computed} from '../../subscribables/dependentObservable';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 const {startPossiblyAsyncContentBinding, notify} = bindingEvent;
 

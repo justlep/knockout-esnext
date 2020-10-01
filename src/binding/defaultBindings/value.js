@@ -1,10 +1,11 @@
 import {readSelectOrOptionValue, writeSelectOrOptionValue} from '../selectExtensions';
-import {registerEventHandler, setTimeoutWithCatchError, arrayGetDistinctValues, unwrapObservable, arrayRemoveItem} from '../../utils';
+import {registerEventHandler, setTimeoutWithCatchError, arrayGetDistinctValues, arrayRemoveItem} from '../../utils';
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
 import {EVENT_CHILDREN_COMPLETE, applyBindingAccessorsToNode, bindingEvent} from '../bindingAttributeSyntax';
 import {ignoreDependencyDetection} from '../../subscribables/dependencyDetection';
 import {bindingHandlers} from '../bindingHandlers';
 import {computed} from '../../subscribables/dependentObservable';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.value = {
     /** 

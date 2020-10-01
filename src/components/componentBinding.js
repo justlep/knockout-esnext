@@ -1,10 +1,11 @@
 import {applyBindingsToDescendants, bindingEvent, EVENT_DESCENDENTS_COMPLETE} from '../binding/bindingAttributeSyntax';
 import {allowedBindings, childNodes, emptyNode, setDomNodeChildren} from '../virtualElements';
 import {addDisposeCallback} from '../utils.domNodeDisposal';
-import {unwrapObservable, cloneNodes} from '../utils';
+import {cloneNodes} from '../utils';
 import {getComponent} from './loaderRegistry';
 import {bindingHandlers} from '../binding/bindingHandlers';
 import {computed} from '../subscribables/dependentObservable';
+import {unwrapObservable} from '../subscribables/observableUtils';
 
 let componentLoadingOperationUniqueId = 0;
 

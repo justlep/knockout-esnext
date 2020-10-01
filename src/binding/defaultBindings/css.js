@@ -1,6 +1,6 @@
-import {unwrapObservable} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
 import {stringTrim, toggleDomNodeCssClass} from '../../utils';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 const CLASSES_WRITTEN_BY_BINDING_KEY = Symbol('__ko__cssValue');
 

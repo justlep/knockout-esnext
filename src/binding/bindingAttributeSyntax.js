@@ -1,11 +1,10 @@
 import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 import {getDomData, getOrSetDomData, nextDomDataKey} from '../utils.domData';
-import {isObservable} from '../subscribables/observableUtils';
+import {isObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {getCurrentComputed} from '../subscribables/dependencyDetection';
 import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposal';
 import {dependentObservable, pureComputed} from '../subscribables/dependentObservable';
 import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
-import {unwrapObservable} from '../utils';
 import {getBindingHandler} from './bindingHandlers';
 import {Subscribable} from '../subscribables/subscribable';
 import {bindingProviderInstance} from './bindingProvider';

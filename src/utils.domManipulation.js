@@ -1,5 +1,6 @@
-import {moveCleanedNodesToContainerElement, unwrapObservable} from './utils';
+import {moveCleanedNodesToContainerElement} from './utils';
 import {emptyDomNode} from './utils.domNodes';
+import {unwrapObservable} from './subscribables/observableUtils';
 
 const NONE = [0, '', ''],
     TABLE = [1, '<table>', '</table>'],

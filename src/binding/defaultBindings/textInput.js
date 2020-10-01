@@ -1,7 +1,8 @@
-import {setTimeoutWithCatchError, registerEventHandler, unwrapObservable} from '../../utils';
+import {setTimeoutWithCatchError, registerEventHandler} from '../../utils';
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
 import {bindingHandlers} from '../bindingHandlers';
 import {computed} from '../../subscribables/dependentObservable';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.textInput = {
     /** 

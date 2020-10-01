@@ -1,9 +1,10 @@
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
 import {bindingEvent, EVENT_CHILDREN_COMPLETE} from '../bindingAttributeSyntax';
-import {registerEventHandler, unwrapObservable, setOptionNodeSelectionState} from '../../utils';
+import {registerEventHandler, setOptionNodeSelectionState} from '../../utils';
 import {computed} from '../../subscribables/dependentObservable';
 import {readSelectOrOptionValue} from '../selectExtensions';
 import {bindingHandlers} from '../bindingHandlers';
+import {unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.selectedOptions = {
     /**
