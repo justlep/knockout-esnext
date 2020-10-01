@@ -468,13 +468,17 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
                                     (bindingKey) => () => bindingsUpdater()[bindingKey]() : 
                                     (bindingKey) => bindings[bindingKey];
 
-        let allBindings = () => {
-            throw new Error('Use of allBindings as a function is no longer supported');
-        };
+        // let allBindings = () => {
+        //     throw new Error('Use of allBindings as a function is no longer supported');
+        // };
+        // ^^^ using a function and add custom methods to it is 98% slower than direct object literals in Firefox 81, 
+        //     plus the 'no longer supported' message has existed since 2013.. time to drop it  
 
         // The following is the 3.x allBindings API
-        allBindings.get = (key) => bindings[key] && getValueAccessor(key)();
-        allBindings.has = (key) => key in bindings;
+        let allBindings = {
+            get: (key) => bindings[key] && getValueAccessor(key)(),
+            has: (key) => key in bindings
+        };
 
         if (EVENT_CHILDREN_COMPLETE in bindings) {
             bindingEvent.subscribe(node, EVENT_CHILDREN_COMPLETE, () => {
