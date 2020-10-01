@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod8-esnext
+for Knockout JavaScript library v3.5.1-mod9-esnext
 
 
 ------- src/virtualElements.js --------
@@ -72,17 +72,6 @@ OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
-------- src/memoization.js --------
-
-[memoization.js:8]
-Found macro: "parseMemoText" 
-
-[memoization.js:50]
-Inlined: "parseMemoText"
-OLD:  memoId = parseMemoText(nodeValue);
-NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
-
-
 ------- src/subscribables/dependencyDetection.js --------
 
 [dependencyDetection.js:32]
@@ -92,6 +81,17 @@ Found macro: "_getId"
 Inlined: "_getId"
 OLD:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
 NEW:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
+
+
+------- src/memoization.js --------
+
+[memoization.js:8]
+Found macro: "parseMemoText" 
+
+[memoization.js:50]
+Inlined: "parseMemoText"
+OLD:  memoId = parseMemoText(nodeValue);
+NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
 
 
 ------- src/templating/templateSources.js --------
@@ -141,25 +141,25 @@ NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BIND
 
 ------- src/binding/bindingAttributeSyntax.js --------
 
-[bindingAttributeSyntax.js:555]
+[bindingAttributeSyntax.js:558]
 Found macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
 
-[bindingAttributeSyntax.js:560]
+[bindingAttributeSyntax.js:563]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
 
-[bindingAttributeSyntax.js:564]
+[bindingAttributeSyntax.js:567]
 Inlined: "_getBindingContext"
 OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
 NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
 
-[bindingAttributeSyntax.js:582]
+[bindingAttributeSyntax.js:585]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
 NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
 
-[bindingAttributeSyntax.js:595]
+[bindingAttributeSyntax.js:598]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
 NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);

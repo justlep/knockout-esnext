@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod8-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod9-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod8'; // inserted by rollup intro
+    const version = '3.5.1-mod9-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -122,17 +122,8 @@
     const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]);
 
     const IS_OBSERVABLE = Symbol('IS_OBSERVABLE');
-    //export const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
-    const isObservable = (obj) => {
-        if (!obj) {
-            return false;
-        }
-        if (obj.__ko_proto__) {
-            // TODO left this only for not breaking the asyncBehaviors.js tests; remove later 
-            throw Error("Invalid object that looks like an observable; possibly from another Knockout instance");
-        }
-        return !!obj[IS_OBSERVABLE];
-    };
+    const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
+    const unwrapObservable = (value) => value && (value[IS_OBSERVABLE] ? value() : value);
 
     const IS_OBSERVABLE_ARRAY = Symbol('IS_OBSERVABLE_ARRAY');
     const isObservableArray = (obj) => !!(obj && obj[IS_OBSERVABLE_ARRAY]);
@@ -750,8 +741,6 @@
         throw new Error('The supplied element doesn\'t support dispatchEvent');
     };
 
-    const unwrapObservable = (value) => isObservable(value) ? value() : value;
-
     const setTextContent = (element, textContent) => {
         let value = unwrapObservable(textContent);
         if (value === null || value === undefined) {
@@ -894,7 +883,6 @@
         valuesArePrimitiveAndEqual: valuesArePrimitiveAndEqual,
         registerEventHandler: registerEventHandler,
         triggerEvent: triggerEvent,
-        unwrapObservable: unwrapObservable,
         setTextContent: setTextContent,
         setElementName: setElementName,
         range: range,
@@ -3145,13 +3133,17 @@
                                         (bindingKey) => () => bindingsUpdater()[bindingKey]() : 
                                         (bindingKey) => bindings[bindingKey];
 
-            let allBindings = () => {
-                throw new Error('Use of allBindings as a function is no longer supported');
-            };
+            // let allBindings = () => {
+            //     throw new Error('Use of allBindings as a function is no longer supported');
+            // };
+            // ^^^ using a function and add custom methods to it is 98% slower than direct object literals in Firefox 81, 
+            //     plus the 'no longer supported' message has existed since 2013.. time to drop it  
 
             // The following is the 3.x allBindings API
-            allBindings.get = (key) => bindings[key] && getValueAccessor(key)();
-            allBindings.has = (key) => key in bindings;
+            let allBindings = {
+                get: (key) => bindings[key] && getValueAccessor(key)(),
+                has: (key) => key in bindings
+            };
 
             if (EVENT_CHILDREN_COMPLETE in bindings) {
                 bindingEvent.subscribe(node, EVENT_CHILDREN_COMPLETE, () => {
@@ -6032,7 +6024,8 @@
                 set cleanExternalData(fn) { _overrideCleanExternalData(fn); },
                 addDisposeCallback,
                 removeDisposeCallback
-            }
+            },
+            unwrapObservable
         }, utils),
         unwrap: unwrapObservable,
         removeNode,

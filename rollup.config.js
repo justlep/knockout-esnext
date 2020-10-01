@@ -6,17 +6,20 @@ import createRollupInlineMacrosPlugin from './rollup-plugin-inline-macros';
 const buildTarget = (process.env.BUILD_TARGET_ENV || '').toLowerCase();
 const isTargetDist = buildTarget === 'dist';
 
-const getVersionName = (versionSuffix) => `Knockout JavaScript library v${pkg.version}-esnext${versionSuffix || ''}`; 
+const getVersion = (versionSuffix) => `${pkg.version}-esnext${versionSuffix || ''}`;
+
+const getFullReleaseName = (versionSuffix) => `Knockout JavaScript library v${getVersion(versionSuffix)}`; 
 
 const getBanner = (versionSuffix = '') => `/*!
- * ${getVersionName(versionSuffix)}
+ * ${getFullReleaseName(versionSuffix)}
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - ${pkg.homepage}
  * License: ${pkg.licenses[0].type} (${pkg.licenses[0].url})
  */
 `;
 const getIntro = (debugEnabled) => 
-    `const DEBUG = ${!!debugEnabled}; // inserted by rollup intro\nconst version = '${pkg.version}'; // inserted by rollup intro`;
+    `const DEBUG = ${!!debugEnabled}; // inserted by rollup intro\n`+
+    `const version = '${getVersion()}'; // inserted by rollup intro`;
 
 const showPublishNote = () => console.log(`
 To publish, run:
@@ -72,7 +75,7 @@ export default {
         createRollupInlineMacrosPlugin({
             verbose: false,
             logFile: isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log',
-            versionName: getVersionName()
+            versionName: getFullReleaseName()
         }),
         {
             name: '__post-dist-build-message__',
