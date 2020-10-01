@@ -2,17 +2,7 @@ export const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
 export const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]);
 
 export const IS_OBSERVABLE = Symbol('IS_OBSERVABLE');
-//export const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
-export const isObservable = (obj) => {
-    if (!obj) {
-        return false;
-    }
-    if (obj.__ko_proto__) {
-        // TODO left this only for not breaking the asyncBehaviors.js tests; remove later 
-        throw Error("Invalid object that looks like an observable; possibly from another Knockout instance");
-    }
-    return !!obj[IS_OBSERVABLE];
-};
+export const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
 
 export const IS_OBSERVABLE_ARRAY = Symbol('IS_OBSERVABLE_ARRAY');
 export const isObservableArray = (obj) => !!(obj && obj[IS_OBSERVABLE_ARRAY]);

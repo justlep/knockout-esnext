@@ -37,12 +37,6 @@ describe('Observable', function() {
         });
     });
 
-    it('ko.isObservable should throw exception for value that has fake observable pointer', function () {
-        var x = ko.observable();
-        x.__ko_proto__= {};
-        expect(function () { ko.isObservable(x); }).toThrow();
-    });
-
     it('Should be able to write values to it', function () {
         var instance = new ko.observable();
         instance(123);

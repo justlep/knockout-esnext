@@ -649,9 +649,6 @@ function test_customObservable() {
         __proto__: ko.subscribable['fn'],
         valueHasMutated: function (this: ko.Observable) { this.notifySubscribers(this.peek()); },
         valueWillMutate: function (this: ko.Observable) { this.notifySubscribers(this.peek(), 'beforeChange'); },
-
-        // Make KO treat the observableAttribute function as an observable
-        __ko_proto__: ko.observable
     };
 }
 
