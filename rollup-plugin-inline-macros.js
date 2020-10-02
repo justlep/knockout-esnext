@@ -1,10 +1,11 @@
+import {createFilter} from '@rollup/pluginutils';
 import {basename, join, relative, sep} from 'path';
 import {format} from 'util';
 import {writeFileSync} from 'fs';
 
 const MARKER_COMMENT = '//@inline';
 const MACRO_DEFINITION_REGEX = /^\s*(?:export )?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^;]*);?\s*?\/\/@inline(?:-(multiline))?/;
-const SUPPORTED_FILENAMES_REGEX = /\.(?:js|esm|es6)$/i;
+const DEFAULT_INCLUDED_FILENAMES_REGEX = /\.(?:js|mjs)$/i;
 const LOGGED_PLUGIN_NAME = 'Rollup inline-macros plugin';
 const FLAG_MULTILINE_EXPRESSION = 'multiline';
 
@@ -36,8 +37,11 @@ const getParamPlaceholderReplacementRegexForIndex = (index) => new RegExp(getPar
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)  
  */
 export default function createRollupInlineMacrosPlugin(opts = {verbose: false, logFile: null, versionName: null}) {
-    let logFilePath = opts.logFile && join(__dirname, opts.logFile),
-        logEntriesForFile,
+    // Using Rollup's recommended include/exclude filter mechanism -> https://rollupjs.org/guide/en/#example-transformer
+    const canProcess = createFilter(opts.include || DEFAULT_INCLUDED_FILENAMES_REGEX, opts.exclude);
+    const logFilePath = opts.logFile && join(__dirname, opts.logFile);
+    
+    let logEntriesForFile,
         totalMacros,
         totalReplacements,
         totalErrors;
@@ -72,11 +76,11 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
             }
         },
         transform(code, id) {
+            if (!canProcess(id)) {
+                return;
+            }
             const currentFilename = basename(id);
             const currentRelativeFilePath = sep === '\\' ? relative(__dirname, id).replace(/\\/g, '/') : relative(__dirname, id);
-            if (!SUPPORTED_FILENAMES_REGEX.test(currentFilename)) {
-                return {code, map: null};
-            }
             /** @type {Map<number, RollupInlineMacrosPlugin_InlineMacro>} */
             const macrosByDefinitionLine = new Map();
             

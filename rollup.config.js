@@ -37,6 +37,7 @@ To publish, run:
 
 export default {
     input: 'src/ko.js',
+    treeshake: true,
     output: [
         {   // the minified version
             banner: getBanner(),
@@ -45,7 +46,6 @@ export default {
             format: 'umd',
             name: 'ko',
             sourcemap: false,
-            treeshake: false,
             strict: false,
             plugins: [terser()]
         },
@@ -55,7 +55,6 @@ export default {
             intro: getIntro(),
             format: 'esm',
             sourcemap: false,
-            treeshake: false,
             strict: false,
             plugins: [terser()]
         },
@@ -66,16 +65,15 @@ export default {
             format: 'umd',
             name: 'ko',
             sourcemap: true,
-            treeshake: false,
-            strict: false,
-            comments: 'all'
+            strict: false
         }
     ],
     plugins: [
         createRollupInlineMacrosPlugin({
-            verbose: false,
+            include: /\.js$/,
+            versionName: getFullReleaseName(),
             logFile: isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log',
-            versionName: getFullReleaseName()
+            verbose: false
         }),
         {
             name: '__post-dist-build-message__',
