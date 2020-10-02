@@ -13,7 +13,7 @@
     "test": "node spec/runner.node.js",
     "rollup-dist": "rollup -c --environment BUILD_TARGET_ENV:dist",
     "rollup-dev": "rollup -c --environment BUILD_TARGET_ENV:dev",
-    "lint": "eslint --max-warnings 5 src/**/*.js"
+    "lint": "eslint --max-warnings 5 src/"
   },
   "repository": {
     "type": "git",
