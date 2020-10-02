@@ -5,6 +5,7 @@ import createRollupInlineMacrosPlugin from './rollup-plugin-inline-macros';
 
 const buildTarget = (process.env.BUILD_TARGET_ENV || '').toLowerCase();
 const isTargetDist = buildTarget === 'dist';
+const isEnvTravis = process.env.TRAVIS === 'true';
 
 const getVersion = (versionSuffix) => `${pkg.version}-esnext${versionSuffix || ''}`;
 
@@ -72,8 +73,8 @@ export default {
         createRollupInlineMacrosPlugin({
             include: /\.js$/,
             versionName: getFullReleaseName(),
-            logFile: isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log',
-            verbose: process.env.TRAVIS === 'true'
+            logFile: !isEnvTravis && (isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log'),
+            verbose: isEnvTravis
         }),
         {
             name: '__post-dist-build-message__',
