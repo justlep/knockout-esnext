@@ -22,7 +22,8 @@ const _processTasks = () => {
     }
     // Each mark represents the end of a logical group of tasks and the number of these groups is
     // limited to prevent unchecked recursion.
-    let mark = _taskQueueLength, countMarks = 0;
+    let mark = _taskQueueLength, 
+        countMarks = 0;
 
     // _nextIndexToProcess keeps track of where we are in the queue; processTasks can be called recursively without issue
     for (let task; _nextIndexToProcess < _taskQueueLength;) {
