@@ -73,7 +73,7 @@ export default {
             include: /\.js$/,
             versionName: getFullReleaseName(),
             logFile: isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log',
-            verbose: false
+            verbose: process.env.TRAVIS === 'true'
         }),
         {
             name: '__post-dist-build-message__',
