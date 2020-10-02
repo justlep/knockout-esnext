@@ -1,23 +1,23 @@
 # Knockout ESNext [![Build Status](https://travis-ci.org/justlep/knockout-esnext.svg?branch=master)](https://travis-ci.org/justlep/knockout-esnext) 
 
-A complete overhaul of the [Knockout.js](https://knockoutjs.com/) library code and build process.
+A complete overhaul of the [Knockout.js](https://knockoutjs.com/) library and build process.
 
-For a slicker *Knockout.js* finally leaving behind the dark ages of ES5, Internet Explorer and jQuery.
+Making *Knockout.js* slicker, faster, more maintainable than ever.
 
 
 ### Changes (in code):
 * Rewrote all library code in ES6+ supported in all modern browsers
-* Using maps, classes, symbols, arrow functions where applicable & performance-wise useful
-* Replaced clumsy iterations, mappings (ko.utils.arrayForEach etc) with faster, in-place native pendants
+* Use native means for iterations, mappings etc. instead of former helper functions (like ko.utils.arrayForEach)
+* Reduced indirections by inlining function bodies via Rollup inline-macros plugin
 * Turned former *source fragments* into ES modules 
   * Retained most of the original names & structure, so catchup & diffing with original Knockout.js remains possible
   * Easy circular-dependency detection through ESM imports/exports
   * No more worries about loading order of fragments, no more file concatenation at all
-* Internals are now **namespace-agnostic** & self-contained   
+* Internals are now self-contained & **namespace-agnostic**
   * no more `ko.foo.bar` references or assignments internally
   * `ko.js` being the **only source of truth** about what is exposed publicly (including legacy aliases)
   * override-points like `ko.onError` are setters in `ko.js`, so we gain full control over what can be overridden
-* Removed historic browser support (IE, early Firefox etc)
+* Removed historic browser support (IE, earliest Firefox etc)
 * Removed jQuery support
 * Kept all ~1300 tests working with very few changes:
   * Added tests for type checking (`ko.isObservable` etc) in `basicTypeCheckBehaviors.js`
@@ -26,6 +26,7 @@ For a slicker *Knockout.js* finally leaving behind the dark ages of ES5, Interne
 ### Changes (build process):
 * Removed Google Closure Compiler and all code soothing its side-effects (`ko.exportSymbol`)
 * Using [Rollup](https://rollupjs.org/guide/en/) + [Terser](https://github.com/terser/terser) plugin for build & minification
+* Wrote Rollup plugin `rollup-plugin-inline-macros.js`, allowing to "inline" frequently used helper functions & avoid function calls in hot code paths
 * Now exporting the Knockout.js library in 3 flavors:
     * Minified UMD (`knockout.js`)
     * Minified ES Module (`knockout.esm.js`)
