@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod9-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod10-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -8,10 +8,10 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
     typeof define === 'function' && define.amd ? define(factory) :
-    (global = global || self, global.ko = factory());
+    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod9-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod10-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -23,16 +23,32 @@
         onError = fnOrNull;
     };
 
-    const DATASTORE_PROP = Symbol('ko-domdata');
+    const DOM_DATASTORE_PROP = Symbol('ko-domdata');
     const KEY_PREFIX = 'ko_' + Date.now().toString(36) + '_';
 
     let _keyCount = 0;
+    const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
 
     const getDomData = (node, key) => {
-        let dataForNode = node[DATASTORE_PROP];
+        let dataForNode = node[DOM_DATASTORE_PROP];
         return dataForNode && dataForNode[key];
     };
+
+    const setDomData = (node, key, value) => {
+        // Make sure we don't actually create a new domData key if we are actually deleting a value
+        let dataForNode = node[DOM_DATASTORE_PROP] || (value !== undefined && (node[DOM_DATASTORE_PROP] = {}));
+        if (dataForNode) {
+            dataForNode[key] = value;
+        }
+    };
+
+    /**
+     *
+     * @param {Node} node
+     * @return {boolean} - true if there was actually a domData deleted on the node
+     */
+    const clearDomData = (node) => !!node[DOM_DATASTORE_PROP] && delete node[DOM_DATASTORE_PROP];
 
     /**
      * Returns a function that removes a given item from an array located under the node's domData[itemArrayDomDataKey].
@@ -40,10 +56,10 @@
      * @return {function(Node, *): void}
      */
     const getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToRemove) => {
-        let dataForNode = node[DATASTORE_PROP],
-            itemArray = dataForNode && dataForNode[itemArrayDomDataKey];
+        let dataForNode = node[DOM_DATASTORE_PROP],
+            itemArray;
 
-        if (itemArray) {
+        if (dataForNode && (itemArray = dataForNode[itemArrayDomDataKey])) {
             let index = itemArray.indexOf(itemToRemove);
             if (index === 0) {
                 itemArray.shift();
@@ -63,8 +79,8 @@
      * @return {function(Node, *): void}
      */
     const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToAdd) => {
-        let dataForNode = node[DATASTORE_PROP] || (node[DATASTORE_PROP] = Object.create(null)),
-            itemArray = dataForNode[itemArrayDomDataKey];
+        let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
+            itemArray = dataForNode[itemArrayDomDataKey]; 
         
         if (itemArray) {
             itemArray.push(itemToAdd);
@@ -81,7 +97,7 @@
      * @return {function(Node): void}
      */
     const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node) => {
-        let dataForNode = node[DATASTORE_PROP];
+        let dataForNode = node[DOM_DATASTORE_PROP];
         if (dataForNode) {
             let itemArray = dataForNode[itemArrayDomDataKey];
             if (itemArray) {
@@ -89,34 +105,9 @@
                     _fns[i](node);
                 }
             }
-            delete node[DATASTORE_PROP];
+            delete node[DOM_DATASTORE_PROP];
         }    
     };
-
-    const setDomData = (node, key, value) => {
-        // Make sure we don't actually create a new domData key if we are actually deleting a value
-        let dataForNode = node[DATASTORE_PROP] || (value !== undefined && (node[DATASTORE_PROP] = Object.create(null)));
-        if (dataForNode) {
-            dataForNode[key] = value;
-        }
-    };
-
-    const getOrSetDomData = (node, key, value) => {
-        let dataForNode = node[DATASTORE_PROP] || (node[DATASTORE_PROP] = Object.create(null)),
-            existingValue = dataForNode[key];
-
-        return existingValue || (dataForNode[key] = value);
-    };
-
-    const clearDomData = (node) => {
-        if (node[DATASTORE_PROP]) {
-            delete node[DATASTORE_PROP];
-            return true; // Exposing "did clean" flag purely so specs can infer whether things have been cleaned up as intended
-        }
-        return false;
-    };
-
-    const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
     const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
     const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]);
@@ -915,7 +906,8 @@
         }
         // Each mark represents the end of a logical group of tasks and the number of these groups is
         // limited to prevent unchecked recursion.
-        let mark = _taskQueueLength, countMarks = 0;
+        let mark = _taskQueueLength, 
+            countMarks = 0;
 
         // _nextIndexToProcess keeps track of where we are in the queue; processTasks can be called recursively without issue
         for (let task; _nextIndexToProcess < _taskQueueLength;) {
@@ -2679,10 +2671,12 @@
     // pull frequently used methods closer (could become imports some day)
     // allows for faster access + efficient minification
 
-
-    const CONTEXT_SUBSCRIBABLE = Symbol('_subscribable');
-    const CONTEXT_ANCESTOR_BINDING_INFO = Symbol('_ancestorBindingInfo');
-    const CONTEXT_DATA_DEPENDENCY = Symbol('_dataDependency');
+    const CONTEXT_SUBSCRIBABLE = Symbol('subscribable');
+    const CONTEXT_ANCESTOR_BINDING_INFO = Symbol('ancestorBindingInfo');
+    const CONTEXT_DATA_DEPENDENCY = Symbol('dataDependency');
+    const INHERIT_PARENT_VM_DATA = Symbol('inheritParentVm');
+    const IS_BINDING_CONTEXT_INSTANCE = Symbol('isBindingCtx');
+    const BINDING_INFO_DOM_DATA_KEY = nextDomDataKey();
 
     // The following element types will not be recursed into during binding.
     const BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES = {
@@ -2699,14 +2693,11 @@
         TEMPLATE: 1
     };
 
-
-    const INHERIT_PARENT_VM_DATA = Symbol();
-
-    const IS_BINDING_CONTEXT_INSTANCE = Symbol();
-
     let _koReferenceForBindingContexts;
-
     const _setKoReferenceForBindingContexts = (ko) => _koReferenceForBindingContexts = ko;
+
+    const _getBindingInfoForNode = (node) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]; //@inline
+
 
     /**
      * The ko.bindingContext/KoBindingContext constructor is only called directly to create the root context. 
@@ -2717,7 +2708,7 @@
         constructor(dataItemOrAccessor, parentContext, dataItemAlias, extendCallback, options) {
             this[IS_BINDING_CONTEXT_INSTANCE] = true;
             
-            const shouldInheritData = dataItemOrAccessor === INHERIT_PARENT_VM_DATA;
+            const shouldInheritData = (dataItemOrAccessor === INHERIT_PARENT_VM_DATA);
             const realDataItemOrAccessor = shouldInheritData ? undefined : dataItemOrAccessor;
             const isFunc = (typeof realDataItemOrAccessor === 'function') && !isObservable(realDataItemOrAccessor);
             const dataDependency = options && options.dataDependency;
@@ -2855,10 +2846,8 @@
     // allows for replacing 'obj instanceof KoBindingContext' with faster obj[IS_BINDING_CONTEXT_INSTANCE]
     KoBindingContext.prototype[IS_BINDING_CONTEXT_INSTANCE] = true;
 
-    const BOUND_ELEMENT_DOM_DATA_KEY = nextDomDataKey();
-
     const _asyncContextDispose = (node) => {
-        let bindingInfo = getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY),
+        let bindingInfo = _getBindingInfoForNode(node),
             asyncContext = bindingInfo && bindingInfo.asyncContext;
         if (asyncContext) {
             bindingInfo.asyncContext = null;
@@ -2922,7 +2911,9 @@
         childrenComplete: EVENT_CHILDREN_COMPLETE,
         descendantsComplete: EVENT_DESCENDENTS_COMPLETE,
         subscribe(node, event, callback, context, options) {
-            let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {}),
+            (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
+            let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+                bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
                 eventSubscribable = bindingInfo.eventSubscribable || (bindingInfo.eventSubscribable = new Subscribable());
             
             if (options && options.notifyImmediately && bindingInfo.notifiedEvents[event]) {
@@ -2932,7 +2923,7 @@
         },
 
         notify(node, event) {
-            let bindingInfo = getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY);
+            let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
             if (!bindingInfo) {
                 return;
             }
@@ -2954,7 +2945,8 @@
         },
 
         startPossiblyAsyncContentBinding: function (node, bindingContext) {
-            let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {});
+            let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+                bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
             if (!bindingInfo.asyncContext) {
                 bindingInfo.asyncContext = new AsyncCompleteContext(node, bindingInfo, bindingContext[CONTEXT_ANCESTOR_BINDING_INFO]);
@@ -2978,7 +2970,7 @@
         if (!source) {
             return null;
         }
-        let target  = Object.create(null);
+        let target = {};
         for (let key of Object.keys(source)) {
             target[key] = () => callback()[key];
         }
@@ -3068,7 +3060,8 @@
     };
 
     const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
-        let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {});
+        let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+            bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
         // Prevent multiple applyBindings calls for the same node, except when a binding value is specified
         let alreadyBound = bindingInfo.alreadyBound;
@@ -3232,7 +3225,7 @@
         if (typeof bindings === 'function') {
             bindingsWithAccessors = _makeAccessorsFromFunction(() => bindings(context, node));
         } else {
-            bindingsWithAccessors = Object.create(null);
+            bindingsWithAccessors = {};
             for (let key of Object.keys(bindings)) {
                 let val = bindings[key];
                 bindingsWithAccessors[key] = () => val;
@@ -3262,13 +3255,14 @@
     // Retrieving binding context from arbitrary nodes
     // We can only do something meaningful for elements and comment nodes (in particular, not text nodes, as IE can't store domdata for them)
     const contextFor = (node) => {
-        let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY);
+        let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
         return bindingInfo ? bindingInfo.context : undefined;
     };
 
     const dataFor = (node) => {
-        // violating DRY here to save extra calls, and copy bindingInfo-retrieval code from ko.contextFor 
-        let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY),
+        // TODO check how often this gets called with falsy node; consider early-exit
+        // TODO check how often this gets called with nodeTypes other than 1|8, remove nodeType-check if neglectable  
+        let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
             context = bindingInfo && bindingInfo.context;
         return context ? context.$data : undefined;
     };

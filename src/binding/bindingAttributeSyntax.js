@@ -1,5 +1,5 @@
 import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
-import {getDomData, getOrSetDomData, nextDomDataKey} from '../utils.domData';
+import {DOM_DATASTORE_PROP, nextDomDataKey} from '../utils.domData';
 import {isObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {getCurrentComputed} from '../subscribables/dependencyDetection';
 import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposal';
@@ -14,10 +14,12 @@ import {bindingProviderInstance} from './bindingProvider';
 // pull frequently used methods closer (could become imports some day)
 // allows for faster access + efficient minification
 
-
-const CONTEXT_SUBSCRIBABLE = Symbol('_subscribable');
-const CONTEXT_ANCESTOR_BINDING_INFO = Symbol('_ancestorBindingInfo');
-const CONTEXT_DATA_DEPENDENCY = Symbol('_dataDependency');
+const CONTEXT_SUBSCRIBABLE = Symbol('subscribable');
+const CONTEXT_ANCESTOR_BINDING_INFO = Symbol('ancestorBindingInfo');
+const CONTEXT_DATA_DEPENDENCY = Symbol('dataDependency');
+const INHERIT_PARENT_VM_DATA = Symbol('inheritParentVm');
+const IS_BINDING_CONTEXT_INSTANCE = Symbol('isBindingCtx');
+const BINDING_INFO_DOM_DATA_KEY = nextDomDataKey();
 
 // The following element types will not be recursed into during binding.
 const BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES = {
@@ -34,14 +36,13 @@ const BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES = {
     TEMPLATE: 1
 };
 
-
-const INHERIT_PARENT_VM_DATA = Symbol();
-
-const IS_BINDING_CONTEXT_INSTANCE = Symbol();
-
 let _koReferenceForBindingContexts;
-
 export const _setKoReferenceForBindingContexts = (ko) => _koReferenceForBindingContexts = ko;
+
+const _getBindingInfoForNode = (node) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]; //@inline
+const _ensureNodeHasDomData = (node) => node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}); //@inline
+const _getOrAddBindingInfoInDomData = (domData) => domData[BINDING_INFO_DOM_DATA_KEY] || (domData[BINDING_INFO_DOM_DATA_KEY] = {}); //@inline
+
 
 /**
  * The ko.bindingContext/KoBindingContext constructor is only called directly to create the root context. 
@@ -52,7 +53,7 @@ export class KoBindingContext {
     constructor(dataItemOrAccessor, parentContext, dataItemAlias, extendCallback, options) {
         this[IS_BINDING_CONTEXT_INSTANCE] = true;
         
-        const shouldInheritData = dataItemOrAccessor === INHERIT_PARENT_VM_DATA;
+        const shouldInheritData = (dataItemOrAccessor === INHERIT_PARENT_VM_DATA);
         const realDataItemOrAccessor = shouldInheritData ? undefined : dataItemOrAccessor;
         const isFunc = (typeof realDataItemOrAccessor === 'function') && !isObservable(realDataItemOrAccessor);
         const dataDependency = options && options.dataDependency;
@@ -190,10 +191,8 @@ export class KoBindingContext {
 // allows for replacing 'obj instanceof KoBindingContext' with faster obj[IS_BINDING_CONTEXT_INSTANCE]
 KoBindingContext.prototype[IS_BINDING_CONTEXT_INSTANCE] = true;
 
-const BOUND_ELEMENT_DOM_DATA_KEY = nextDomDataKey();
-
 const _asyncContextDispose = (node) => {
-    let bindingInfo = getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY),
+    let bindingInfo = _getBindingInfoForNode(node, BINDING_INFO_DOM_DATA_KEY),
         asyncContext = bindingInfo && bindingInfo.asyncContext;
     if (asyncContext) {
         bindingInfo.asyncContext = null;
@@ -257,7 +256,9 @@ export const bindingEvent = {
     childrenComplete: EVENT_CHILDREN_COMPLETE,
     descendantsComplete: EVENT_DESCENDENTS_COMPLETE,
     subscribe(node, event, callback, context, options) {
-        let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {}),
+        _ensureNodeHasDomData(node);
+        let nodeDomData = _ensureNodeHasDomData(node),
+            bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
             eventSubscribable = bindingInfo.eventSubscribable || (bindingInfo.eventSubscribable = new Subscribable());
         
         if (options && options.notifyImmediately && bindingInfo.notifiedEvents[event]) {
@@ -267,7 +268,7 @@ export const bindingEvent = {
     },
 
     notify(node, event) {
-        let bindingInfo = getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY);
+        let bindingInfo = _getBindingInfoForNode(node);
         if (!bindingInfo) {
             return;
         }
@@ -289,7 +290,8 @@ export const bindingEvent = {
     },
 
     startPossiblyAsyncContentBinding: function (node, bindingContext) {
-        let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {});
+        let nodeDomData = _ensureNodeHasDomData(node),
+            bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 
         if (!bindingInfo.asyncContext) {
             bindingInfo.asyncContext = new AsyncCompleteContext(node, bindingInfo, bindingContext[CONTEXT_ANCESTOR_BINDING_INFO]);
@@ -313,7 +315,7 @@ const _makeAccessorsFromFunction = (callback) => {
     if (!source) {
         return null;
     }
-    let target  = Object.create(null);
+    let target = {};
     for (let key of Object.keys(source)) {
         target[key] = () => callback()[key];
     }
@@ -403,7 +405,8 @@ const _topologicalSortBindings = (bindings) => {
 };
 
 const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
-    let bindingInfo = getOrSetDomData(node, BOUND_ELEMENT_DOM_DATA_KEY, {});
+    let nodeDomData = _ensureNodeHasDomData(node),
+        bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 
     // Prevent multiple applyBindings calls for the same node, except when a binding value is specified
     let alreadyBound = bindingInfo.alreadyBound;
@@ -571,7 +574,7 @@ export const applyBindingsToNode = (node, bindings, viewModelOrBindingContext) =
     if (typeof bindings === 'function') {
         bindingsWithAccessors = _makeAccessorsFromFunction(() => bindings(context, node));
     } else {
-        bindingsWithAccessors = Object.create(null);
+        bindingsWithAccessors = {};
         for (let key of Object.keys(bindings)) {
             let val = bindings[key];
             bindingsWithAccessors[key] = () => val;
@@ -601,13 +604,14 @@ export function applyBindings(viewModelOrBindingContext, rootNode, extendContext
 // Retrieving binding context from arbitrary nodes
 // We can only do something meaningful for elements and comment nodes (in particular, not text nodes, as IE can't store domdata for them)
 export const contextFor = (node) => {
-    let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY);
+    let bindingInfo =  node && _getBindingInfoForNode(node);
     return bindingInfo ? bindingInfo.context : undefined;
 };
 
 export const dataFor = (node) => {
-    // violating DRY here to save extra calls, and copy bindingInfo-retrieval code from ko.contextFor 
-    let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && getDomData(node, BOUND_ELEMENT_DOM_DATA_KEY),
+    // TODO check how often this gets called with falsy node; consider early-exit
+    // TODO check how often this gets called with nodeTypes other than 1|8, remove nodeType-check if neglectable  
+    let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
         context = bindingInfo && bindingInfo.context;
     return context ? context.$data : undefined;
 };

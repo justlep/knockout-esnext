@@ -1,13 +1,30 @@
-const DATASTORE_PROP = Symbol('ko-domdata');
+
+export const DOM_DATASTORE_PROP = Symbol('ko-domdata');
 const KEY_PREFIX = 'ko_' + Date.now().toString(36) + '_';
 
 let _keyCount = 0;
+export const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
 
 export const getDomData = (node, key) => {
-    let dataForNode = node[DATASTORE_PROP];
+    let dataForNode = node[DOM_DATASTORE_PROP];
     return dataForNode && dataForNode[key];
 };
+
+export const setDomData = (node, key, value) => {
+    // Make sure we don't actually create a new domData key if we are actually deleting a value
+    let dataForNode = node[DOM_DATASTORE_PROP] || (value !== undefined && (node[DOM_DATASTORE_PROP] = {}));
+    if (dataForNode) {
+        dataForNode[key] = value;
+    }
+};
+
+/**
+ *
+ * @param {Node} node
+ * @return {boolean} - true if there was actually a domData deleted on the node
+ */
+export const clearDomData = (node) => !!node[DOM_DATASTORE_PROP] && delete node[DOM_DATASTORE_PROP];
 
 /**
  * Returns a function that removes a given item from an array located under the node's domData[itemArrayDomDataKey].
@@ -15,10 +32,10 @@ export const getDomData = (node, key) => {
  * @return {function(Node, *): void}
  */
 export const getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToRemove) => {
-    let dataForNode = node[DATASTORE_PROP],
-        itemArray = dataForNode && dataForNode[itemArrayDomDataKey];
+    let dataForNode = node[DOM_DATASTORE_PROP],
+        itemArray;
 
-    if (itemArray) {
+    if (dataForNode && (itemArray = dataForNode[itemArrayDomDataKey])) {
         let index = itemArray.indexOf(itemToRemove);
         if (index === 0) {
             itemArray.shift();
@@ -38,8 +55,8 @@ export const getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey = (item
  * @return {function(Node, *): void}
  */
 export const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToAdd) => {
-    let dataForNode = node[DATASTORE_PROP] || (node[DATASTORE_PROP] = Object.create(null)),
-        itemArray = dataForNode[itemArrayDomDataKey];
+    let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
+        itemArray = dataForNode[itemArrayDomDataKey]; 
     
     if (itemArray) {
         itemArray.push(itemToAdd);
@@ -56,7 +73,7 @@ export const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArra
  * @return {function(Node): void}
  */
 export const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node) => {
-    let dataForNode = node[DATASTORE_PROP];
+    let dataForNode = node[DOM_DATASTORE_PROP];
     if (dataForNode) {
         let itemArray = dataForNode[itemArrayDomDataKey];
         if (itemArray) {
@@ -64,31 +81,6 @@ export const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomD
                 _fns[i](node);
             }
         }
-        delete node[DATASTORE_PROP];
+        delete node[DOM_DATASTORE_PROP];
     }    
 };
-
-export const setDomData = (node, key, value) => {
-    // Make sure we don't actually create a new domData key if we are actually deleting a value
-    let dataForNode = node[DATASTORE_PROP] || (value !== undefined && (node[DATASTORE_PROP] = Object.create(null)));
-    if (dataForNode) {
-        dataForNode[key] = value;
-    }
-};
-
-export const getOrSetDomData = (node, key, value) => {
-    let dataForNode = node[DATASTORE_PROP] || (node[DATASTORE_PROP] = Object.create(null)),
-        existingValue = dataForNode[key];
-
-    return existingValue || (dataForNode[key] = value);
-};
-
-export const clearDomData = (node) => {
-    if (node[DATASTORE_PROP]) {
-        delete node[DATASTORE_PROP];
-        return true; // Exposing "did clean" flag purely so specs can infer whether things have been cleaned up as intended
-    }
-    return false;
-};
-
-export const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);

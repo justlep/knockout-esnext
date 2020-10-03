@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod9-esnext
+for Knockout JavaScript library v3.5.1-mod10-esnext
 
 
 ------- src/virtualElements.js --------
@@ -72,17 +72,6 @@ OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
-------- src/subscribables/dependencyDetection.js --------
-
-[dependencyDetection.js:32]
-Found macro: "_getId" 
-
-[dependencyDetection.js:39]
-Inlined: "_getId"
-OLD:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
-NEW:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
-
-
 ------- src/memoization.js --------
 
 [memoization.js:8]
@@ -92,6 +81,17 @@ Found macro: "parseMemoText"
 Inlined: "parseMemoText"
 OLD:  memoId = parseMemoText(nodeValue);
 NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
+
+
+------- src/subscribables/dependencyDetection.js --------
+
+[dependencyDetection.js:32]
+Found macro: "_getId" 
+
+[dependencyDetection.js:39]
+Inlined: "_getId"
+OLD:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
+NEW:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
 
 
 ------- src/templating/templateSources.js --------
@@ -141,32 +141,97 @@ NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BIND
 
 ------- src/binding/bindingAttributeSyntax.js --------
 
-[bindingAttributeSyntax.js:558]
+[bindingAttributeSyntax.js:42]
+Found macro: "_getBindingInfoForNode" 
+
+[bindingAttributeSyntax.js:43]
+Found macro: "_ensureNodeHasDomData" 
+
+[bindingAttributeSyntax.js:44]
+Found macro: "_getOrAddBindingInfoInDomData" 
+
+[bindingAttributeSyntax.js:561]
 Found macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
 
-[bindingAttributeSyntax.js:563]
+[bindingAttributeSyntax.js:195]
+[ERROR] Mismatch formal parameters (1) <> invocation (2): 
+ -> macro: _getBindingInfoForNode
+ -> usage:     let bindingInfo = _getBindingInfoForNode(node, BINDING_INFO_DOM_DATA_KEY),
+
+
+[bindingAttributeSyntax.js:259]
+Inlined: "_ensureNodeHasDomData"
+OLD:  _ensureNodeHasDomData(node);
+NEW:  (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
+
+[bindingAttributeSyntax.js:260]
+Inlined: "_ensureNodeHasDomData"
+OLD:  let nodeDomData = _ensureNodeHasDomData(node),
+NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+
+[bindingAttributeSyntax.js:261]
+Inlined: "_getOrAddBindingInfoInDomData"
+OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
+NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
+
+[bindingAttributeSyntax.js:271]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo = _getBindingInfoForNode(node);
+NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
+
+[bindingAttributeSyntax.js:293]
+Inlined: "_ensureNodeHasDomData"
+OLD:  let nodeDomData = _ensureNodeHasDomData(node),
+NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+
+[bindingAttributeSyntax.js:294]
+Inlined: "_getOrAddBindingInfoInDomData"
+OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
+NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
+
+[bindingAttributeSyntax.js:408]
+Inlined: "_ensureNodeHasDomData"
+OLD:  let nodeDomData = _ensureNodeHasDomData(node),
+NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+
+[bindingAttributeSyntax.js:409]
+Inlined: "_getOrAddBindingInfoInDomData"
+OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
+NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
+
+[bindingAttributeSyntax.js:566]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
 
-[bindingAttributeSyntax.js:567]
+[bindingAttributeSyntax.js:570]
 Inlined: "_getBindingContext"
 OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
 NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
 
-[bindingAttributeSyntax.js:585]
+[bindingAttributeSyntax.js:588]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
 NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
 
-[bindingAttributeSyntax.js:598]
+[bindingAttributeSyntax.js:601]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
 NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
 
+[bindingAttributeSyntax.js:607]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
+NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
+
+[bindingAttributeSyntax.js:614]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
+NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
+
 
 
 =================================================
-Rollup inline-macros plugin finished successfully
-Found macros: 8 | Inlined usages: 24
+Rollup inline-macros plugin finished with 1 ERROR
+Found macros: 11 | Inlined usages: 34
 =================================================
