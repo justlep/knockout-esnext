@@ -46,6 +46,9 @@ function _limitNotifySubscribers(value, event) {
     }
 }
 
+// TODO this is a duplicate of the same function in dependentObservable.js; remove duplication when RollupInline-Plugin supports global macros!
+const _updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline
+
 export const SUBSCRIBABLE_PROTOTYPE = {
     [IS_SUBSCRIBABLE]: true,
     
@@ -85,7 +88,7 @@ export const SUBSCRIBABLE_PROTOTYPE = {
     notifySubscribers(valueToNotify, event) {
         event = event || DEFAULT_EVENT;
         if (event === DEFAULT_EVENT) {
-            this.updateVersion();
+            _updateSubscribableVersion(this);
         }
         if (!this.hasSubscriptionsForEvent(event)) {
             return;
@@ -114,6 +117,7 @@ export const SUBSCRIBABLE_PROTOTYPE = {
         return this.getVersion() !== versionToCheck;
     },
 
+    /** @deprecated - use inlined {@link _updateSubscribableVersion} */
     updateVersion() {
         ++this._versionNumber;
     },
