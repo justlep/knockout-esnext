@@ -192,7 +192,7 @@ export class KoBindingContext {
 KoBindingContext.prototype[IS_BINDING_CONTEXT_INSTANCE] = true;
 
 const _asyncContextDispose = (node) => {
-    let bindingInfo = _getBindingInfoForNode(node, BINDING_INFO_DOM_DATA_KEY),
+    let bindingInfo = _getBindingInfoForNode(node),
         asyncContext = bindingInfo && bindingInfo.asyncContext;
     if (asyncContext) {
         bindingInfo.asyncContext = null;
