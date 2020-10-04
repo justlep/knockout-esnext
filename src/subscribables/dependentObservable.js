@@ -9,6 +9,9 @@ import {defineThrottleExtender} from './extenders';
 
 const COMPUTED_STATE = Symbol('_state');
 
+// TODO this is a duplicate of the same function in subscribable.js; remove duplication when RollupInline-Plugin supports global macros!
+const _updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline
+
 export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, options) {
     if (typeof evaluatorFunctionOrOptions === "object") {
         // Single-parameter syntax - everything is on this "options" param
@@ -80,7 +83,11 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
         _computedObservable[IS_PURE_COMPUTED] = true;
         state.pure = true;
         state.isSleeping = true;     // Starts off sleeping; will awake on the first subscription
-        Object.assign(_computedObservable, pureComputedOverrides);
+        //Object.assign(_computedObservable, pureComputedOverrides);
+        //above Object.assign for just 3 properties is 25% slower in Chrome85 & 50% slower in FF81 compared to manual assignment 
+        _computedObservable.afterSubscriptionRemove = _pureAfterSubscriptionRemove;
+        _computedObservable.beforeSubscriptionAdd = _pureBeforeSubscriptionAdd;
+        _computedObservable.getVersion = _pureGetVersion;
     } else if (options.deferEvaluation) {
         Object.assign(_computedObservable, deferEvaluationOverrides);
     }
@@ -346,7 +353,7 @@ const COMPUTED_PROTOTYPE = {
             if (!state.isSleeping) {
                 computedObservable.notifySubscribers(state.latestValue, "beforeChange");
             } else {
-                computedObservable.updateVersion();
+                _updateSubscribableVersion(computedObservable);
             }
 
             state.latestValue = newValue;
@@ -462,84 +469,86 @@ const COMPUTED_PROTOTYPE = {
     }
 };
 
-const pureComputedOverrides = {
-    beforeSubscriptionAdd(event) {
-        // If asleep, wake up the computed by subscribing to any dependencies.
-        let computedObservable = this,
-            state = computedObservable[COMPUTED_STATE];
-        if (!state.isDisposed && state.isSleeping && event === 'change') {
-            state.isSleeping = false;
-            if (state.isStale || computedObservable.haveDependenciesChanged()) {
-                state.dependencyTracking = null;
-                state.dependenciesCount = 0;
-                if (computedObservable.evaluateImmediate()) {
-                    computedObservable.updateVersion();
-                }
-            } else {
-                // First put the dependencies in order
-                let dependenciesOrder = [],
-                    __dependencyTracking = state.dependencyTracking;
-                
-                if (__dependencyTracking) {
-                    for (let id of Object.keys(__dependencyTracking)) {
-                        dependenciesOrder[__dependencyTracking[id]._order] = id;
-                    }
-                }
-                
-                // Next, subscribe to each one
-                dependenciesOrder.forEach((id, order) => {
-                    let dependency = __dependencyTracking[id],
-                        subscription = computedObservable.subscribeToDependency(dependency._target);
-                    subscription._order = order;
-                    subscription._version = dependency._version;
-                    __dependencyTracking[id] = subscription;
-                });
-                
-                // Waking dependencies may have triggered effects
-                if (computedObservable.haveDependenciesChanged()) {
-                    if (computedObservable.evaluateImmediate()) {
-                        computedObservable.updateVersion();
-                    }
-                }
+// pure overrides: beforeSubscriptionAdd, afterSubscriptionRemove, getVersion
+function _pureBeforeSubscriptionAdd(event) {
+    // If asleep, wake up the computed by subscribing to any dependencies.
+    let computedObservable = this,
+        state = computedObservable[COMPUTED_STATE];
+    if (!state.isDisposed && state.isSleeping && event === 'change') {
+        state.isSleeping = false;
+        if (state.isStale || computedObservable.haveDependenciesChanged()) {
+            state.dependencyTracking = null;
+            state.dependenciesCount = 0;
+            if (computedObservable.evaluateImmediate()) {
+                _updateSubscribableVersion(computedObservable);
             }
-
-            if (!state.isDisposed) {     // test since evaluating could trigger disposal
-                computedObservable.notifySubscribers(state.latestValue, "awake");
-            }
-        }
-    },
-    afterSubscriptionRemove(event) {
-        let state = this[COMPUTED_STATE];
-        if (!state.isDisposed && event === 'change' && !this.hasSubscriptionsForEvent('change')) {
-            let __dependencyTracking = state.dependencyTracking;
+        } else {
+            // First put the dependencies in order
+            let dependenciesOrder = [],
+                __dependencyTracking = state.dependencyTracking;
+            
             if (__dependencyTracking) {
                 for (let id of Object.keys(__dependencyTracking)) {
-                    let dependency = __dependencyTracking[id];
-                    if (dependency.dispose) {
-                        __dependencyTracking[id] = {
-                            _target: dependency._target,
-                            _order: dependency._order,
-                            _version: dependency._version
-                        };
-                        dependency.dispose();
-                    }
+                    dependenciesOrder[__dependencyTracking[id]._order] = id;
                 }
             }
-            state.isSleeping = true;
-            this.notifySubscribers(undefined, "asleep");
+            
+            // Next, subscribe to each one
+            dependenciesOrder.forEach((id, order) => {
+                let dependency = __dependencyTracking[id],
+                    subscription = computedObservable.subscribeToDependency(dependency._target);
+                subscription._order = order;
+                subscription._version = dependency._version;
+                __dependencyTracking[id] = subscription;
+            });
+            
+            // Waking dependencies may have triggered effects
+            if (computedObservable.haveDependenciesChanged()) {
+                if (computedObservable.evaluateImmediate()) {
+                    _updateSubscribableVersion(computedObservable);
+                }
+            }
         }
-    },
-    getVersion() {
-        // Because a pure computed is not automatically updated while it is sleeping, we can't
-        // simply return the version number. Instead, we check if any of the dependencies have
-        // changed and conditionally re-evaluate the computed observable.
-        let state = this[COMPUTED_STATE];
-        if (state.isSleeping && (state.isStale || this.haveDependenciesChanged())) {
-            this.evaluateImmediate();
+
+        if (!state.isDisposed) {     // test since evaluating could trigger disposal
+            computedObservable.notifySubscribers(state.latestValue, "awake");
         }
-        return SUBSCRIBABLE_PROTOTYPE.getVersion.call(this);
     }
-};
+}
+
+function _pureAfterSubscriptionRemove(event) {
+    let state = this[COMPUTED_STATE];
+    if (!state.isDisposed && event === 'change' && !this.hasSubscriptionsForEvent('change')) {
+        let __dependencyTracking = state.dependencyTracking;
+        if (__dependencyTracking) {
+            for (let id of Object.keys(__dependencyTracking)) {
+                let dependency = __dependencyTracking[id];
+                if (dependency.dispose) {
+                    __dependencyTracking[id] = {
+                        _target: dependency._target,
+                        _order: dependency._order,
+                        _version: dependency._version
+                    };
+                    dependency.dispose();
+                }
+            }
+        }
+        state.isSleeping = true;
+        this.notifySubscribers(undefined, "asleep");
+    }
+}
+
+function _pureGetVersion() {
+    // Because a pure computed is not automatically updated while it is sleeping, we can't
+    // simply return the version number. Instead, we check if any of the dependencies have
+    // changed and conditionally re-evaluate the computed observable.
+    let state = this[COMPUTED_STATE];
+    if (state.isSleeping && (state.isStale || this.haveDependenciesChanged())) {
+        this.evaluateImmediate();
+    }
+    return SUBSCRIBABLE_PROTOTYPE.getVersion.call(this);
+}
+
 
 const deferEvaluationOverrides = {
     beforeSubscriptionAdd(event) {
