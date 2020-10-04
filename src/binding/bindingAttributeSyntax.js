@@ -1,6 +1,6 @@
 import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 import {DOM_DATASTORE_PROP, nextDomDataKey} from '../utils.domData';
-import {isObservable, unwrapObservable} from '../subscribables/observableUtils';
+import {IS_OBSERVABLE, unwrapObservable} from '../subscribables/observableUtils';
 import {getCurrentComputed} from '../subscribables/dependencyDetection';
 import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposal';
 import {dependentObservable, pureComputed} from '../subscribables/dependentObservable';
@@ -51,11 +51,9 @@ const _getOrAddBindingInfoInDomData = (domData) => domData[BINDING_INFO_DOM_DATA
 export class KoBindingContext {
 
     constructor(dataItemOrAccessor, parentContext, dataItemAlias, extendCallback, options) {
-        this[IS_BINDING_CONTEXT_INSTANCE] = true;
-        
         const shouldInheritData = (dataItemOrAccessor === INHERIT_PARENT_VM_DATA);
         const realDataItemOrAccessor = shouldInheritData ? undefined : dataItemOrAccessor;
-        const isFunc = (typeof realDataItemOrAccessor === 'function') && !isObservable(realDataItemOrAccessor);
+        const isFunc = (typeof realDataItemOrAccessor === 'function') && !realDataItemOrAccessor[IS_OBSERVABLE];
         const dataDependency = options && options.dataDependency;
 
         let _subscribable = null;
@@ -69,7 +67,8 @@ export class KoBindingContext {
                 // an observable, the dependency is tracked, and those observables can later cause the binding
                 // context to be updated.
                 let dataItemOrObservable = isFunc ? realDataItemOrAccessor() : realDataItemOrAccessor,
-                    dataItem = unwrapObservable(dataItemOrObservable);
+                    // unwrapObservable
+                    dataItem = dataItemOrObservable && (dataItemOrObservable[IS_OBSERVABLE] ? dataItemOrObservable() : dataItemOrObservable);
 
                 if (parentContext) {
                     // Copy $root and any custom properties from the parent context
@@ -80,8 +79,8 @@ export class KoBindingContext {
                         this[CONTEXT_ANCESTOR_BINDING_INFO] = parentContext[CONTEXT_ANCESTOR_BINDING_INFO];
                     }
                 } else {
-                    this['$parents'] = [];
-                    this['$root'] = dataItem;
+                    this.$parents = [];
+                    this.$root = dataItem;
 
                     // Export 'ko' in the binding context so it will be available in bindings and templates
                     // even if 'ko' isn't exported as a global, such as when using an AMD loader.
@@ -92,10 +91,10 @@ export class KoBindingContext {
                 this[CONTEXT_SUBSCRIBABLE] = _subscribable;
 
                 if (shouldInheritData) {
-                    dataItem = this['$data'];
+                    dataItem = this.$data;
                 } else {
-                    this['$rawData'] = dataItemOrObservable;
-                    this['$data'] = dataItem;
+                    this.$rawData = dataItemOrObservable;
+                    this.$data = dataItem;
                 }
 
                 if (dataItemAlias) {
@@ -120,10 +119,10 @@ export class KoBindingContext {
                     this[CONTEXT_DATA_DEPENDENCY] = dataDependency;
                 }
 
-                return this['$data'];
+                return this.$data;
             };
 
-        if (options && options['exportDependencies']) {
+        if (options && options.exportDependencies) {
             // The "exportDependencies" option means that the calling code will track any dependencies and re-create
             // the binding context when they change.
             _updateContext();
@@ -152,12 +151,12 @@ export class KoBindingContext {
     createChildContext(dataItemOrAccessor, dataItemAlias, extendCallback, options) {
         if (!options && dataItemAlias && typeof dataItemAlias === 'object') {
             options = dataItemAlias;
-            dataItemAlias = options['as'];
-            extendCallback = options['extend'];
+            dataItemAlias = options.as;
+            extendCallback = options.extend;
         }
 
-        if (dataItemAlias && options && options['noChildContext']) {
-            let isFunc = typeof dataItemOrAccessor === 'function' && !isObservable(dataItemOrAccessor);
+        if (dataItemAlias && options && options.noChildContext) {
+            let isFunc = typeof dataItemOrAccessor === 'function' && !dataItemOrAccessor[IS_OBSERVABLE];
             return new KoBindingContext(INHERIT_PARENT_VM_DATA, this, null, (newContext) => {
                     if (extendCallback) {
                         extendCallback(newContext);
@@ -167,11 +166,12 @@ export class KoBindingContext {
         }
 
         return new KoBindingContext(dataItemOrAccessor, this, dataItemAlias, (newContext, parentContext) => {
+            let parents = parentContext.$parents;
             // Extend the context hierarchy by setting the appropriate pointers
-            newContext['$parentContext'] = parentContext;
-            newContext['$parent'] = parentContext['$data'];
-            newContext['$parents'] = (parentContext['$parents'] || []).slice();
-            newContext['$parents'].unshift(newContext['$parent']);
+            newContext.$parentContext = parentContext;
+            newContext.$parent = parentContext.$data;
+            newContext.$parents = (parentContext.$parents || []).slice();
+            newContext.$parents.unshift(newContext.$parent);
             if (extendCallback) {
                 extendCallback(newContext);
             }
@@ -359,7 +359,7 @@ const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified
     // (2) It might have bindings (e.g., it has a data-bind attribute, or it's a marker for a containerless template)
     let shouldApplyBindings = isElement || bindingProviderInstance.nodeHasBindings(nodeVerified);
     if (shouldApplyBindings) {
-        bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext)['bindingContextForDescendants'];
+        bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext).bindingContextForDescendants;
     }
     if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
         _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
@@ -524,10 +524,10 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
                 // Run init, ignoring any dependencies
                 if (typeof handlerInitFn === 'function') {
                     ignoreDependencyDetection(() => {
-                        let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend['$data'], contextToExtend);
+                        let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend);
 
                         // If this binding handler claims to control descendant bindings, make a note of this
-                        if (initResult && initResult['controlsDescendantBindings']) {
+                        if (initResult && initResult.controlsDescendantBindings) {
                             if (bindingHandlerThatControlsDescendantBindings !== undefined) {
                                 throw new Error("Multiple bindings (" + bindingHandlerThatControlsDescendantBindings + " and " + bindingKey + ") are trying to control descendant bindings of the same element. You cannot use these bindings together on the same element.");
                             }
@@ -539,7 +539,7 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
                 // Run update in its own computed wrapper
                 if (typeof handlerUpdateFn === 'function') {
                     dependentObservable(
-                        () => handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend['$data'], contextToExtend),
+                        () => handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend),
                         null,
                         {disposeWhenNodeIsRemoved: node}
                     );

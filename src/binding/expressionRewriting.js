@@ -1,4 +1,4 @@
-import {isObservable, isWritableObservable} from '../subscribables/observableUtils';
+import {IS_OBSERVABLE, isObservable, isWritableObservable} from '../subscribables/observableUtils';
 import {getBindingHandler} from './bindingHandlers';
 
 const JS_RESERVED_WORDS = {'true': true, 'false': true, 'null': true, 'undefined': true};
@@ -185,7 +185,7 @@ export const keyValueArrayContainsKey = (keyValueArray, key) => {
 // checkIfDifferent:    If true, and if the property being written is a writable observable, the value will only be written if
 //                      it is !== existing value on that writable observable
 export const writeValueToProperty = (property, allBindings, key, value, checkIfDifferent) => {
-    if (!property || !isObservable(property)) {
+    if (!property || !property[IS_OBSERVABLE]) {
         let propWriters = allBindings.get(PROPERTY_WRITERS_BINDING_KEY);
         if (propWriters && propWriters[key]) {
             propWriters[key](value);
