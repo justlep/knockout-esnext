@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod10-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod11-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod10-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod11-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -1174,7 +1174,7 @@
         notifySubscribers(valueToNotify, event) {
             event = event || DEFAULT_EVENT;
             if (event === DEFAULT_EVENT) {
-                this.updateVersion();
+                (this._versionNumber++);
             }
             if (!this.hasSubscriptionsForEvent(event)) {
                 return;
@@ -1203,6 +1203,7 @@
             return this.getVersion() !== versionToCheck;
         },
 
+        /** @deprecated - use inlined {@link _updateSubscribableVersion} */
         updateVersion() {
             ++this._versionNumber;
         },
@@ -1386,7 +1387,11 @@
             _computedObservable[IS_PURE_COMPUTED] = true;
             state.pure = true;
             state.isSleeping = true;     // Starts off sleeping; will awake on the first subscription
-            Object.assign(_computedObservable, pureComputedOverrides);
+            //Object.assign(_computedObservable, pureComputedOverrides);
+            //above Object.assign for just 3 properties is 25% slower in Chrome85 & 50% slower in FF81 compared to manual assignment 
+            _computedObservable.afterSubscriptionRemove = _pureAfterSubscriptionRemove;
+            _computedObservable.beforeSubscriptionAdd = _pureBeforeSubscriptionAdd;
+            _computedObservable.getVersion = _pureGetVersion;
         } else if (options$1.deferEvaluation) {
             Object.assign(_computedObservable, deferEvaluationOverrides);
         }
@@ -1652,7 +1657,7 @@
                 if (!state.isSleeping) {
                     computedObservable.notifySubscribers(state.latestValue, "beforeChange");
                 } else {
-                    computedObservable.updateVersion();
+                    (computedObservable._versionNumber++);
                 }
 
                 state.latestValue = newValue;
@@ -1768,84 +1773,86 @@
         }
     };
 
-    const pureComputedOverrides = {
-        beforeSubscriptionAdd(event) {
-            // If asleep, wake up the computed by subscribing to any dependencies.
-            let computedObservable = this,
-                state = computedObservable[COMPUTED_STATE];
-            if (!state.isDisposed && state.isSleeping && event === 'change') {
-                state.isSleeping = false;
-                if (state.isStale || computedObservable.haveDependenciesChanged()) {
-                    state.dependencyTracking = null;
-                    state.dependenciesCount = 0;
-                    if (computedObservable.evaluateImmediate()) {
-                        computedObservable.updateVersion();
-                    }
-                } else {
-                    // First put the dependencies in order
-                    let dependenciesOrder = [],
-                        __dependencyTracking = state.dependencyTracking;
-                    
-                    if (__dependencyTracking) {
-                        for (let id of Object.keys(__dependencyTracking)) {
-                            dependenciesOrder[__dependencyTracking[id]._order] = id;
-                        }
-                    }
-                    
-                    // Next, subscribe to each one
-                    dependenciesOrder.forEach((id, order) => {
-                        let dependency = __dependencyTracking[id],
-                            subscription = computedObservable.subscribeToDependency(dependency._target);
-                        subscription._order = order;
-                        subscription._version = dependency._version;
-                        __dependencyTracking[id] = subscription;
-                    });
-                    
-                    // Waking dependencies may have triggered effects
-                    if (computedObservable.haveDependenciesChanged()) {
-                        if (computedObservable.evaluateImmediate()) {
-                            computedObservable.updateVersion();
-                        }
-                    }
+    // pure overrides: beforeSubscriptionAdd, afterSubscriptionRemove, getVersion
+    function _pureBeforeSubscriptionAdd(event) {
+        // If asleep, wake up the computed by subscribing to any dependencies.
+        let computedObservable = this,
+            state = computedObservable[COMPUTED_STATE];
+        if (!state.isDisposed && state.isSleeping && event === 'change') {
+            state.isSleeping = false;
+            if (state.isStale || computedObservable.haveDependenciesChanged()) {
+                state.dependencyTracking = null;
+                state.dependenciesCount = 0;
+                if (computedObservable.evaluateImmediate()) {
+                    (computedObservable._versionNumber++);
                 }
-
-                if (!state.isDisposed) {     // test since evaluating could trigger disposal
-                    computedObservable.notifySubscribers(state.latestValue, "awake");
-                }
-            }
-        },
-        afterSubscriptionRemove(event) {
-            let state = this[COMPUTED_STATE];
-            if (!state.isDisposed && event === 'change' && !this.hasSubscriptionsForEvent('change')) {
-                let __dependencyTracking = state.dependencyTracking;
+            } else {
+                // First put the dependencies in order
+                let dependenciesOrder = [],
+                    __dependencyTracking = state.dependencyTracking;
+                
                 if (__dependencyTracking) {
                     for (let id of Object.keys(__dependencyTracking)) {
-                        let dependency = __dependencyTracking[id];
-                        if (dependency.dispose) {
-                            __dependencyTracking[id] = {
-                                _target: dependency._target,
-                                _order: dependency._order,
-                                _version: dependency._version
-                            };
-                            dependency.dispose();
-                        }
+                        dependenciesOrder[__dependencyTracking[id]._order] = id;
                     }
                 }
-                state.isSleeping = true;
-                this.notifySubscribers(undefined, "asleep");
+                
+                // Next, subscribe to each one
+                dependenciesOrder.forEach((id, order) => {
+                    let dependency = __dependencyTracking[id],
+                        subscription = computedObservable.subscribeToDependency(dependency._target);
+                    subscription._order = order;
+                    subscription._version = dependency._version;
+                    __dependencyTracking[id] = subscription;
+                });
+                
+                // Waking dependencies may have triggered effects
+                if (computedObservable.haveDependenciesChanged()) {
+                    if (computedObservable.evaluateImmediate()) {
+                        (computedObservable._versionNumber++);
+                    }
+                }
             }
-        },
-        getVersion() {
-            // Because a pure computed is not automatically updated while it is sleeping, we can't
-            // simply return the version number. Instead, we check if any of the dependencies have
-            // changed and conditionally re-evaluate the computed observable.
-            let state = this[COMPUTED_STATE];
-            if (state.isSleeping && (state.isStale || this.haveDependenciesChanged())) {
-                this.evaluateImmediate();
+
+            if (!state.isDisposed) {     // test since evaluating could trigger disposal
+                computedObservable.notifySubscribers(state.latestValue, "awake");
             }
-            return SUBSCRIBABLE_PROTOTYPE.getVersion.call(this);
         }
-    };
+    }
+
+    function _pureAfterSubscriptionRemove(event) {
+        let state = this[COMPUTED_STATE];
+        if (!state.isDisposed && event === 'change' && !this.hasSubscriptionsForEvent('change')) {
+            let __dependencyTracking = state.dependencyTracking;
+            if (__dependencyTracking) {
+                for (let id of Object.keys(__dependencyTracking)) {
+                    let dependency = __dependencyTracking[id];
+                    if (dependency.dispose) {
+                        __dependencyTracking[id] = {
+                            _target: dependency._target,
+                            _order: dependency._order,
+                            _version: dependency._version
+                        };
+                        dependency.dispose();
+                    }
+                }
+            }
+            state.isSleeping = true;
+            this.notifySubscribers(undefined, "asleep");
+        }
+    }
+
+    function _pureGetVersion() {
+        // Because a pure computed is not automatically updated while it is sleeping, we can't
+        // simply return the version number. Instead, we check if any of the dependencies have
+        // changed and conditionally re-evaluate the computed observable.
+        let state = this[COMPUTED_STATE];
+        if (state.isSleeping && (state.isStale || this.haveDependenciesChanged())) {
+            this.evaluateImmediate();
+        }
+        return SUBSCRIBABLE_PROTOTYPE.getVersion.call(this);
+    }
+
 
     const deferEvaluationOverrides = {
         beforeSubscriptionAdd(event) {
@@ -2068,7 +2075,7 @@
     // checkIfDifferent:    If true, and if the property being written is a writable observable, the value will only be written if
     //                      it is !== existing value on that writable observable
     const writeValueToProperty = (property, allBindings, key, value, checkIfDifferent) => {
-        if (!property || !isObservable(property)) {
+        if (!property || !property[IS_OBSERVABLE]) {
             let propWriters = allBindings.get(PROPERTY_WRITERS_BINDING_KEY);
             if (propWriters && propWriters[key]) {
                 propWriters[key](value);
@@ -2696,8 +2703,6 @@
     let _koReferenceForBindingContexts;
     const _setKoReferenceForBindingContexts = (ko) => _koReferenceForBindingContexts = ko;
 
-    const _getBindingInfoForNode = (node) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]; //@inline
-
 
     /**
      * The ko.bindingContext/KoBindingContext constructor is only called directly to create the root context. 
@@ -2706,11 +2711,9 @@
     class KoBindingContext {
 
         constructor(dataItemOrAccessor, parentContext, dataItemAlias, extendCallback, options) {
-            this[IS_BINDING_CONTEXT_INSTANCE] = true;
-            
             const shouldInheritData = (dataItemOrAccessor === INHERIT_PARENT_VM_DATA);
             const realDataItemOrAccessor = shouldInheritData ? undefined : dataItemOrAccessor;
-            const isFunc = (typeof realDataItemOrAccessor === 'function') && !isObservable(realDataItemOrAccessor);
+            const isFunc = (typeof realDataItemOrAccessor === 'function') && !realDataItemOrAccessor[IS_OBSERVABLE];
             const dataDependency = options && options.dataDependency;
 
             let _subscribable = null;
@@ -2724,7 +2727,8 @@
                     // an observable, the dependency is tracked, and those observables can later cause the binding
                     // context to be updated.
                     let dataItemOrObservable = isFunc ? realDataItemOrAccessor() : realDataItemOrAccessor,
-                        dataItem = unwrapObservable(dataItemOrObservable);
+                        // unwrapObservable
+                        dataItem = dataItemOrObservable && (dataItemOrObservable[IS_OBSERVABLE] ? dataItemOrObservable() : dataItemOrObservable);
 
                     if (parentContext) {
                         // Copy $root and any custom properties from the parent context
@@ -2735,8 +2739,8 @@
                             this[CONTEXT_ANCESTOR_BINDING_INFO] = parentContext[CONTEXT_ANCESTOR_BINDING_INFO];
                         }
                     } else {
-                        this['$parents'] = [];
-                        this['$root'] = dataItem;
+                        this.$parents = [];
+                        this.$root = dataItem;
 
                         // Export 'ko' in the binding context so it will be available in bindings and templates
                         // even if 'ko' isn't exported as a global, such as when using an AMD loader.
@@ -2747,10 +2751,10 @@
                     this[CONTEXT_SUBSCRIBABLE] = _subscribable;
 
                     if (shouldInheritData) {
-                        dataItem = this['$data'];
+                        dataItem = this.$data;
                     } else {
-                        this['$rawData'] = dataItemOrObservable;
-                        this['$data'] = dataItem;
+                        this.$rawData = dataItemOrObservable;
+                        this.$data = dataItem;
                     }
 
                     if (dataItemAlias) {
@@ -2775,10 +2779,10 @@
                         this[CONTEXT_DATA_DEPENDENCY] = dataDependency;
                     }
 
-                    return this['$data'];
+                    return this.$data;
                 };
 
-            if (options && options['exportDependencies']) {
+            if (options && options.exportDependencies) {
                 // The "exportDependencies" option means that the calling code will track any dependencies and re-create
                 // the binding context when they change.
                 _updateContext();
@@ -2807,12 +2811,12 @@
         createChildContext(dataItemOrAccessor, dataItemAlias, extendCallback, options) {
             if (!options && dataItemAlias && typeof dataItemAlias === 'object') {
                 options = dataItemAlias;
-                dataItemAlias = options['as'];
-                extendCallback = options['extend'];
+                dataItemAlias = options.as;
+                extendCallback = options.extend;
             }
 
-            if (dataItemAlias && options && options['noChildContext']) {
-                let isFunc = typeof dataItemOrAccessor === 'function' && !isObservable(dataItemOrAccessor);
+            if (dataItemAlias && options && options.noChildContext) {
+                let isFunc = typeof dataItemOrAccessor === 'function' && !dataItemOrAccessor[IS_OBSERVABLE];
                 return new KoBindingContext(INHERIT_PARENT_VM_DATA, this, null, (newContext) => {
                         if (extendCallback) {
                             extendCallback(newContext);
@@ -2823,10 +2827,10 @@
 
             return new KoBindingContext(dataItemOrAccessor, this, dataItemAlias, (newContext, parentContext) => {
                 // Extend the context hierarchy by setting the appropriate pointers
-                newContext['$parentContext'] = parentContext;
-                newContext['$parent'] = parentContext['$data'];
-                newContext['$parents'] = (parentContext['$parents'] || []).slice();
-                newContext['$parents'].unshift(newContext['$parent']);
+                newContext.$parentContext = parentContext;
+                newContext.$parent = parentContext.$data;
+                newContext.$parents = (parentContext.$parents || []).slice();
+                newContext.$parents.unshift(newContext.$parent);
                 if (extendCallback) {
                     extendCallback(newContext);
                 }
@@ -2847,7 +2851,7 @@
     KoBindingContext.prototype[IS_BINDING_CONTEXT_INSTANCE] = true;
 
     const _asyncContextDispose = (node) => {
-        let bindingInfo = _getBindingInfoForNode(node),
+        let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
             asyncContext = bindingInfo && bindingInfo.asyncContext;
         if (asyncContext) {
             bindingInfo.asyncContext = null;
@@ -3014,7 +3018,7 @@
         // (2) It might have bindings (e.g., it has a data-bind attribute, or it's a marker for a containerless template)
         let shouldApplyBindings = isElement || bindingProviderInstance.nodeHasBindings(nodeVerified);
         if (shouldApplyBindings) {
-            bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext)['bindingContextForDescendants'];
+            bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext).bindingContextForDescendants;
         }
         if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
             _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
@@ -3179,10 +3183,10 @@
                     // Run init, ignoring any dependencies
                     if (typeof handlerInitFn === 'function') {
                         ignoreDependencyDetection(() => {
-                            let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend['$data'], contextToExtend);
+                            let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend);
 
                             // If this binding handler claims to control descendant bindings, make a note of this
-                            if (initResult && initResult['controlsDescendantBindings']) {
+                            if (initResult && initResult.controlsDescendantBindings) {
                                 if (bindingHandlerThatControlsDescendantBindings !== undefined) {
                                     throw new Error("Multiple bindings (" + bindingHandlerThatControlsDescendantBindings + " and " + bindingKey + ") are trying to control descendant bindings of the same element. You cannot use these bindings together on the same element.");
                                 }
@@ -3194,7 +3198,7 @@
                     // Run update in its own computed wrapper
                     if (typeof handlerUpdateFn === 'function') {
                         dependentObservable(
-                            () => handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend['$data'], contextToExtend),
+                            () => handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend),
                             null,
                             {disposeWhenNodeIsRemoved: node}
                         );
