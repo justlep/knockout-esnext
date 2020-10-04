@@ -1,4 +1,4 @@
-import {IS_OBSERVABLE, isObservable, isWritableObservable} from '../subscribables/observableUtils';
+import {IS_OBSERVABLE, isWritableObservable} from '../subscribables/observableUtils';
 import {getBindingHandler} from './bindingHandlers';
 
 const JS_RESERVED_WORDS = {'true': true, 'false': true, 'null': true, 'undefined': true};
