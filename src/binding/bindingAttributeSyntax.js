@@ -1,6 +1,6 @@
 import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 import {DOM_DATASTORE_PROP, nextDomDataKey} from '../utils.domData';
-import {IS_OBSERVABLE, unwrapObservable} from '../subscribables/observableUtils';
+import {IS_OBSERVABLE} from '../subscribables/observableUtils';
 import {getCurrentComputed} from '../subscribables/dependencyDetection';
 import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposal';
 import {dependentObservable, pureComputed} from '../subscribables/dependentObservable';
@@ -166,7 +166,6 @@ export class KoBindingContext {
         }
 
         return new KoBindingContext(dataItemOrAccessor, this, dataItemAlias, (newContext, parentContext) => {
-            let parents = parentContext.$parents;
             // Extend the context hierarchy by setting the appropriate pointers
             newContext.$parentContext = parentContext;
             newContext.$parent = parentContext.$data;
