@@ -9,6 +9,17 @@ const DEFAULT_INCLUDED_FILENAMES_REGEX = /\.(?:js|mjs)$/i;
 const LOGGED_PLUGIN_NAME = 'Rollup inline-macros plugin';
 const FLAG_MULTILINE_EXPRESSION = 'multiline';
 
+/**
+ * @typedef {Object} RollupInlineMacrosPluginOptions
+ * @property {boolean} verbose - if true, detailed processing info* will be written to the console 
+ *                               (* = the details otherwise written to the optional logfile only)
+ * @property {?string} [logFile] - path to a log file (will be overwritten during each run)
+ * @property {?string} [versionName] - a version name used to be used in the log file (if enabled)
+ * @property {RegExp} [include] - included filenames pattern (falsy value will default to {@link DEFAULT_INCLUDED_FILENAMES_REGEX})
+ * @property {RegExp} [exclude] - excluded filenames pattern
+ * @property {boolean} [ignoreErrors] - set true to make the plugin NOT throw/break the build if errors were detected during processing
+ */
+
 const getParamPlaceholderForIndex = (index) => `%~%>${index}<%~%`; // regex-safe + unlikely to exist anywhere inside macro code
 const getParamPlaceholderReplacementRegexForIndex = (index) => new RegExp(getParamPlaceholderForIndex(index), 'g');
 
@@ -33,10 +44,12 @@ const getParamPlaceholderReplacementRegexForIndex = (index) => new RegExp(getPar
  *   - the invocation must match the number of formal parameters (optional parameters MUST be passed explicitly as undefined)
  *   - invocation parameters that are no identifiers (e.g. object literals or strings) MUST NOT contain commas 
  * 
+ * @param {RollupInlineMacrosPluginOptions} opts
+ * 
  * Author: Lennart Pegel - https://github.com/justlep
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)  
  */
-export default function createRollupInlineMacrosPlugin(opts = {verbose: false, logFile: null, versionName: null}) {
+export default function createRollupInlineMacrosPlugin(opts = {}) {
     // Using Rollup's recommended include/exclude filter mechanism -> https://rollupjs.org/guide/en/#example-transformer
     const canProcess = createFilter(opts.include || DEFAULT_INCLUDED_FILENAMES_REGEX, opts.exclude);
     const logFilePath = opts.logFile && join(__dirname, opts.logFile);
@@ -73,6 +86,9 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
                 }
                 writeFileSync(logFilePath, logEntriesForFile.join('\n\n'), {flag: 'a'});
                 console.log(`Logs for ${LOGGED_PLUGIN_NAME} written to:\n${logFilePath}\n`);
+            }
+            if (totalErrors && !opts.ignoreErrors) {
+                throw new Error(`${LOGGED_PLUGIN_NAME} throws due to inlining error(s) and 'ignoreErrors' disabled.`);
             }
         },
         transform(code, id) {
@@ -169,7 +185,7 @@ export default function createRollupInlineMacrosPlugin(opts = {verbose: false, l
                             let invParams = invParamsString.split(',').map(s => s.trim());
                             // LOG(lineIndex, `Checking invocation of '${name}'`);
                             if (invParams.length !== params.length) {
-                                LOG(lineIndex, `[ERROR] Mismatch formal parameters (${params.length}) <> invocation (${invParams.length}): \n -> macro: ${name}\n -> usage: ${line}\n`);
+                                LOG(lineIndex, `[ERROR] Mismatch # formal parameters (${params.length}) <> invocation (${invParams.length}): \n -> macro: ${name}\n -> usage: ${line}\n`);
                                 totalErrors++;
                                 return matchedInvocation;
                             }
