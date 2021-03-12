@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod11-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod12-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod11-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod12-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -4459,12 +4459,9 @@
         fixUpContinuousNodeArray(continuousNodeArray, parentNode);
     };
 
-    const _getFirstNodeFromPossibleArray = (nodeOrNodeArray) => nodeOrNodeArray.nodeType ? nodeOrNodeArray :
-                                                                nodeOrNodeArray.length ? nodeOrNodeArray[0] : null;
-
     const _executeTemplate = (targetNodeOrNodeArray, renderMode, template, bindingContext, options) => {
         options = options || {};
-        let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
+        let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
             templateDocument = (firstTargetNode || template || {}).ownerDocument,
             templateEngineToUse = (options.templateEngine || _templateEngine);
         
@@ -4501,19 +4498,6 @@
         return renderedNodesArray;
     };
 
-    const _resolveTemplateName = (template, data, context) => {
-        // The template can be specified as:
-        if (isObservable(template)) {
-            // 1. An observable, with string value
-            return template();
-        } else if (typeof template === 'function') {
-            // 2. A function of (data, context) returning a string
-            return template(data, context);
-        } 
-        // 3. A string
-        return template;
-    };
-
     const renderTemplate = (template, dataOrBindingContext, options, targetNodeOrNodeArray, renderMode) => {
         options = options || {};
         if (!options.templateEngine && !_templateEngine) {
@@ -4522,7 +4506,7 @@
         renderMode = renderMode || 'replaceChildren';
 
         if (targetNodeOrNodeArray) {
-            let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
+            let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
             let whenToDispose = function () {
                 return (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode);
@@ -4536,12 +4520,12 @@
                         ? dataOrBindingContext
                         : new KoBindingContext(dataOrBindingContext, null, null, null, {'exportDependencies': true});
 
-                    let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
+                    let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
                         renderedNodesArray = _executeTemplate(targetNodeOrNodeArray, renderMode, templateName, bindingContext, options);
 
                     if (renderMode === 'replaceNode') {
                         targetNodeOrNodeArray = renderedNodesArray;
-                        firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
+                        firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
                     }
                 },
                 null,
@@ -4574,7 +4558,7 @@
                 }
             });
 
-            let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
+            let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
             return _executeTemplate(targetNode, 'ignoreTargetNode', templateName, arrayItemContext, options$1);
         };
 

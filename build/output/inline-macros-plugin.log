@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod11-esnext
+for Knockout JavaScript library v3.5.1-mod12-esnext
 
 
 ------- src/virtualElements.js --------
@@ -150,6 +150,40 @@ OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
 
 
+------- src/templating/templating.js --------
+
+[templating.js:105]
+Found macro: "_getFirstNodeFromPossibleArray" 
+
+[templating.js:152]
+Found macro: "_resolveTemplateName"  (MULTI-LINE-EXPRESSION)
+
+[templating.js:109]
+Inlined: "_getFirstNodeFromPossibleArray"
+OLD:  let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
+NEW:  let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
+
+[templating.js:163]
+Inlined: "_getFirstNodeFromPossibleArray"
+OLD:  let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
+NEW:  let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
+
+[templating.js:177]
+Inlined: "_resolveTemplateName"
+OLD:  let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
+NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
+
+[templating.js:182]
+Inlined: "_getFirstNodeFromPossibleArray"
+OLD:  firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
+NEW:  firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
+
+[templating.js:215]
+Inlined: "_resolveTemplateName"
+OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
+NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
+
+
 ------- src/binding/bindingAttributeSyntax.js --------
 
 [bindingAttributeSyntax.js:42]
@@ -264,5 +298,5 @@ NEW:  (computedObservable._versionNumber++);
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 13 | Inlined usages: 39
+Found macros: 15 | Inlined usages: 44
 =================================================

@@ -98,8 +98,11 @@ const _activateBindingsOnContinuousNodeArray = (continuousNodeArray, bindingCont
     fixUpContinuousNodeArray(continuousNodeArray, parentNode);
 };
 
-const _getFirstNodeFromPossibleArray = (nodeOrNodeArray) => nodeOrNodeArray.nodeType ? nodeOrNodeArray :
-                                                            nodeOrNodeArray.length ? nodeOrNodeArray[0] : null;
+/**
+ * @param {Node|Node[]} nodeOrNodes
+ * @return {Node|null}
+ */
+const _getFirstNodeFromPossibleArray = (nodeOrNodes) => nodeOrNodes.nodeType ? nodeOrNodes : nodeOrNodes.length ? nodeOrNodes[0] : null; //@inline
 
 const _executeTemplate = (targetNodeOrNodeArray, renderMode, template, bindingContext, options) => {
     options = options || {};
@@ -140,18 +143,14 @@ const _executeTemplate = (targetNodeOrNodeArray, renderMode, template, bindingCo
     return renderedNodesArray;
 };
 
-const _resolveTemplateName = (template, data, context) => {
-    // The template can be specified as:
-    if (isObservable(template)) {
-        // 1. An observable, with string value
-        return template();
-    } else if (typeof template === 'function') {
-        // 2. A function of (data, context) returning a string
-        return template(data, context);
-    } 
-    // 3. A string
-    return template;
-};
+/**
+ * @param {observable<string>|function|string} template
+ * @param {*} data
+ * @param {Object} context
+ * @return {string}
+ */
+const _resolveTemplateName = (template, data, context) => //@inline
+                                isObservable(template) ? template() : (typeof template === 'function') ? template(data, context) : template; 
 
 export const renderTemplate = (template, dataOrBindingContext, options, targetNodeOrNodeArray, renderMode) => {
     options = options || {};
