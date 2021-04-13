@@ -255,9 +255,6 @@ export const domNodeIsContainedBy = (node, containedByNode) => {
     if (node === containedByNode) {
         return true;
     }
-    if (node.nodeType === 11) {
-        return false; // Fixes issue #1162 - can't use node.contains for document fragments on IE8
-    }
     if (containedByNode.contains) {
         return containedByNode.contains(node.nodeType !== 1 ? node.parentNode : node);
     }
