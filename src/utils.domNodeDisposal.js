@@ -5,8 +5,10 @@ import {nextDomDataKey,
 import {ignoreDependencyDetection} from './subscribables/dependencyDetection';
 
 const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
-const CLEANABLE_NODE_TYPES = {1: true, 8: true, 9: true};                   // Element, Comment, Document
-const CLEANABLE_NODE_TYPES_WITH_DESCENDENTS = {1: true, 8: false, 9: true}; // Element, Comment(not), Document
+
+// Node types: Element(1), Comment(8), Document(9)
+const _isNodeTypeCleanable = nodeType => nodeType === 1 || nodeType === 8 || nodeType === 9; //@inline
+const _isNodeTypeCleanableWithDescendents = nodeType => nodeType === 1 || nodeType === 9; //@inline
 
 
 /** @type {function} */
@@ -26,7 +28,7 @@ const _cleanSingleNode = (node) => {
     
     // Clear any immediate-child comment nodes, as these wouldn't have been found by
     // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
-    if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
+    if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
         let cleanableNodesList = node.childNodes;
         if (cleanableNodesList.length) {
             _cleanNodesInList(cleanableNodesList, true /*onlyComments*/);
@@ -61,15 +63,21 @@ const _cleanNodesInList = (nodeList, onlyComments) => {
 export const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
 /** @type {function(Node, Function): void} */
-export const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY); 
+export const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
+/**
+ * Cleanable node types: Element 1, Comment 8, Document 9
+ * @param {Node|HTMLElement} node
+ * @return {Node}
+ */
 export const cleanNode = (node) => {
-    if (CLEANABLE_NODE_TYPES[node.nodeType]) {
+    let nodeType = node.nodeType;
+    if (_isNodeTypeCleanable(nodeType)) {
         ignoreDependencyDetection(() => {
             // First clean this node, where applicable
             _cleanSingleNode(node);
             // ... then its descendants, where applicable
-            if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
+            if (_isNodeTypeCleanableWithDescendents(nodeType)) {
                 let cleanableNodesList = node.getElementsByTagName('*');
                 if (cleanableNodesList.length) {
                     _cleanNodesInList(cleanableNodesList);
