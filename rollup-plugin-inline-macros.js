@@ -129,7 +129,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                     skipLines = 0;
 
                 if (hasFunctionBody) {
-                    LOG(lineIndex, '(!) Non-single-expression function bodies are not yet supported');
+                    LOG(lineIndex, '(ERROR) Non-single-expression function bodies are not yet supported');
                     totalErrors++;
                     continue;
                 }
