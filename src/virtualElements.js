@@ -19,8 +19,6 @@ export const allowedVirtualElementBindings = allowedBindings;
 const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline
 const _isEndComment = (node) => (node.nodeType === 8) && END_COMMENT_REGEX.test(node.nodeValue); //@inline
 
-export const hasBindingValue = _isStartComment;
-
 const _getVirtualChildren = (startComment, allowUnbalanced) => {
         let currentNode = startComment.nextSibling,
             depth = 1,

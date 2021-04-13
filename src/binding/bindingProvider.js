@@ -1,4 +1,4 @@
-import {hasBindingValue, START_COMMENT_REGEX} from '../virtualElements';
+import {START_COMMENT_REGEX} from '../virtualElements';
 import {preProcessBindings} from './expressionRewriting';
 import {addBindingsForCustomElement, getComponentNameForNode, _setNativeBindingProviderInstance} from '../components/customElements';
 
@@ -15,23 +15,30 @@ const virtualNodeBindingValue = (node) => START_COMMENT_REGEX.test(node.nodeValu
  */
 const _getBindingsString = node => node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null; //@inline
 
+export let bindingProviderMaySupportTextNodes = false;
 
 export class KoBindingProvider {
 
     // getter/setter only added to allow external scripts (jasmine) to replace the provider via 'ko.bindingProvider.instance'
     // Internally, the direct reference to 'bindingProviderInstance' is used 
     static get instance() { return bindingProviderInstance; }
-    static set instance(newInstance) { bindingProviderInstance = newInstance; }
+    static set instance(newInstance) { 
+        bindingProviderInstance = newInstance;
+        bindingProviderMaySupportTextNodes = true;
+    }
     
     constructor() {
         this._cache = new Map();
     }
 
+    /**
+     * (!) If node types other than 1 or 8 are supported here in the future,
+     *     make sure to change {@link bindingProviderMaySupportTextNodes} accordingly.
+     */
     nodeHasBindings(node) {
         let nodeType = node.nodeType;
-        // 1 == element, 8 == comment
         return (nodeType === 1) ? (node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) !== null || getComponentNameForNode(node)) :
-               (nodeType === 8) ? hasBindingValue(node) : false;
+               (nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
     }
 
     getBindings(node, bindingContext) {

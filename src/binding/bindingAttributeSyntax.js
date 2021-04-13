@@ -7,12 +7,7 @@ import {dependentObservable, pureComputed} from '../subscribables/dependentObser
 import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
 import {getBindingHandler} from './bindingHandlers';
 import {Subscribable} from '../subscribables/subscribable';
-import {bindingProviderInstance} from './bindingProvider';
-
-// Hide or don't minify context properties, see https://github.com/knockout/knockout/issues/2294
-
-// pull frequently used methods closer (could become imports some day)
-// allows for faster access + efficient minification
+import {bindingProviderInstance, bindingProviderMaySupportTextNodes} from './bindingProvider';
 
 const CONTEXT_SUBSCRIBABLE = Symbol('subscribable');
 const CONTEXT_ANCESTOR_BINDING_INFO = Symbol('ancestorBindingInfo');
@@ -181,7 +176,7 @@ export class KoBindingContext {
     // Similarly to "child" contexts, provide a function here to make sure that the correct values are set
     // when an observable view model is updated.
     extend(properties, options) {
-        return new KoBindingContext(INHERIT_PARENT_VM_DATA, this, null, (newContext, parentContext) => {
+        return new KoBindingContext(INHERIT_PARENT_VM_DATA, this, null, (newContext /*, parentContext*/) => {
             Object.assign(newContext, (typeof properties === 'function') ? properties(newContext) : properties);
         }, options);
     }
@@ -350,18 +345,17 @@ const _applyBindingsToDescendantsInternal = (bindingContext, elementOrVirtualEle
 };
 
 const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified) => {
-    let bindingContextForDescendants = bindingContext,
-        isElement = (nodeVerified.nodeType === 1);
+    let nodeType = nodeVerified.nodeType;
 
     // Perf optimisation: Apply bindings only if...
-    // (1) We need to store the binding info for the node (all element nodes)
-    // (2) It might have bindings (e.g., it has a data-bind attribute, or it's a marker for a containerless template)
-    let shouldApplyBindings = isElement || bindingProviderInstance.nodeHasBindings(nodeVerified);
-    if (shouldApplyBindings) {
-        bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext).bindingContextForDescendants;
+    // (1) we need to store the binding info for the node (all element nodes)
+    // (2) it might have bindings (e.g., it has a data-bind attribute, or it's a start-comment for a containerless template)
+    // (3) it's a text node and a custom binding provider was registered which may support text nodes (unlike the default BP) 
+    if (nodeType === 1 || ((nodeType === 8 || bindingProviderMaySupportTextNodes) && bindingProviderInstance.nodeHasBindings(nodeVerified))) {
+        bindingContext = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext).bindingContextForDescendants;
     }
-    if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
-        _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
+    if (bindingContext && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
+        _applyBindingsToDescendantsInternal(bindingContext, nodeVerified);
     }
 };
 
