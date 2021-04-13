@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod12-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod13-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod12-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod13-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -136,17 +136,40 @@
         currentFrame = options;
     };
 
-    const endDependencyDetection = () => currentFrame = outerFrames.pop();
+    const endDependencyDetection = () => currentFrame = outerFrames.pop(); //@inline
 
+    /**
+     * For ko-internal usages without callbackTarget and callbackArgs use {@link ignoreDependencyDetectionNoArgs}.
+     * @param {function} callback
+     * @param {?Object} [callbackTarget]
+     * @param {any[]} [callbackArgs]
+     * @return {*} the callback's return value
+     */
     const ignoreDependencyDetection = (callback, callbackTarget, callbackArgs) => {
         try {
-            beginDependencyDetection();
+            (currentFrame = void outerFrames.push(currentFrame));
+            
             // there's a high percentage of calls without callbackTarget and/or callbackArgs, 
-            // so let's speed up things by not using `apply` or args in those cases
+            // so let's speed up things by not using `apply` or args in those cases.
             return callbackTarget ? callback.apply(callbackTarget, callbackArgs || []) :
-                callbackArgs ? callback(...callbackArgs) : callback();
+                   callbackArgs ? callback(...callbackArgs) : callback();
         } finally {
-            endDependencyDetection();
+            (currentFrame = outerFrames.pop());
+        }
+    };
+
+    /**
+     * Slim version of {@link ignoreDependencyDetection} intended for pure, no-args callbacks. 
+     * @param {function} callback
+     * @return {*}
+     * @internal
+     */
+    const ignoreDependencyDetectionNoArgs = (callback) => {
+        try {
+            (currentFrame = void outerFrames.push(currentFrame));
+            return callback();
+        } finally {
+            (currentFrame = outerFrames.pop());
         }
     };
 
@@ -165,8 +188,6 @@
     const getCurrentComputed = () => currentFrame ? currentFrame.computed : undefined;
 
     const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
-    const CLEANABLE_NODE_TYPES = {1: true, 8: true, 9: true};                   // Element, Comment, Document
-    const CLEANABLE_NODE_TYPES_WITH_DESCENDENTS = {1: true, 8: false, 9: true}; // Element, Comment(not), Document
 
 
     /** @type {function} */
@@ -186,7 +207,7 @@
         
         // Clear any immediate-child comment nodes, as these wouldn't have been found by
         // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
-        if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
+        if ((node.nodeType === 1 || node.nodeType === 9)) {
             let cleanableNodesList = node.childNodes;
             if (cleanableNodesList.length) {
                 _cleanNodesInList(cleanableNodesList, true /*onlyComments*/);
@@ -221,15 +242,21 @@
     const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
     /** @type {function(Node, Function): void} */
-    const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY); 
+    const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
+    /**
+     * Cleanable node types: Element 1, Comment 8, Document 9
+     * @param {Node|HTMLElement} node
+     * @return {Node}
+     */
     const cleanNode = (node) => {
-        if (CLEANABLE_NODE_TYPES[node.nodeType]) {
-            ignoreDependencyDetection(() => {
+        let nodeType = node.nodeType;
+        if ((nodeType === 1 || nodeType === 8 || nodeType === 9)) {
+            ignoreDependencyDetectionNoArgs(() => {
                 // First clean this node, where applicable
                 _cleanSingleNode(node);
                 // ... then its descendants, where applicable
-                if (CLEANABLE_NODE_TYPES_WITH_DESCENDENTS[node.nodeType]) {
+                if ((nodeType === 1 || nodeType === 9)) {
                     let cleanableNodesList = node.getElementsByTagName('*');
                     if (cleanableNodesList.length) {
                         _cleanNodesInList(cleanableNodesList);
@@ -267,10 +294,6 @@
 
     const allowedBindings = {};
     const allowedVirtualElementBindings = allowedBindings;
-
-    const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline
-
-    const hasBindingValue = _isStartComment;
 
     const _getVirtualChildren = (startComment, allowUnbalanced) => {
             let currentNode = startComment.nextSibling,
@@ -655,9 +678,6 @@
     const domNodeIsContainedBy = (node, containedByNode) => {
         if (node === containedByNode) {
             return true;
-        }
-        if (node.nodeType === 11) {
-            return false; // Fixes issue #1162 - can't use node.contains for document fragments on IE8
         }
         if (containedByNode.contains) {
             return containedByNode.contains(node.nodeType !== 1 ? node.parentNode : node);
@@ -2113,7 +2133,7 @@
             // You can bypass this by putting synchronous:true on your component config.
             if (cachedDefinition.isSynchronousComponent) {
                 // See comment in loaderRegistryBehaviors.js for reasoning
-                ignoreDependencyDetection(() => callback(cachedDefinition.definition));
+                ignoreDependencyDetectionNoArgs(() => callback(cachedDefinition.definition));
             } else {
                 scheduleTask(() => callback(cachedDefinition.definition));
             }
@@ -2608,23 +2628,30 @@
 
     const DEFAULT_BINDING_ATTRIBUTE_NAME = "data-bind";
 
+    let bindingProviderMaySupportTextNodes = false;
 
     class KoBindingProvider {
 
         // getter/setter only added to allow external scripts (jasmine) to replace the provider via 'ko.bindingProvider.instance'
         // Internally, the direct reference to 'bindingProviderInstance' is used 
         static get instance() { return bindingProviderInstance; }
-        static set instance(newInstance) { bindingProviderInstance = newInstance; }
+        static set instance(newInstance) { 
+            bindingProviderInstance = newInstance;
+            bindingProviderMaySupportTextNodes = true;
+        }
         
         constructor() {
             this._cache = new Map();
         }
 
+        /**
+         * (!) If node types other than 1 or 8 are supported here in the future,
+         *     make sure to change {@link bindingProviderMaySupportTextNodes} accordingly.
+         */
         nodeHasBindings(node) {
             let nodeType = node.nodeType;
-            // 1 == element, 8 == comment
             return (nodeType === 1) ? (node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) !== null || getComponentNameForNode(node)) :
-                   (nodeType === 8) ? hasBindingValue(node) : false;
+                   (nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
         }
 
         getBindings(node, bindingContext) {
@@ -2672,11 +2699,6 @@
     let bindingProviderInstance = new KoBindingProvider();
 
     _setNativeBindingProviderInstance(new KoBindingProvider());
-
-    // Hide or don't minify context properties, see https://github.com/knockout/knockout/issues/2294
-
-    // pull frequently used methods closer (could become imports some day)
-    // allows for faster access + efficient minification
 
     const CONTEXT_SUBSCRIBABLE = Symbol('subscribable');
     const CONTEXT_ANCESTOR_BINDING_INFO = Symbol('ancestorBindingInfo');
@@ -2841,7 +2863,7 @@
         // Similarly to "child" contexts, provide a function here to make sure that the correct values are set
         // when an observable view model is updated.
         extend(properties, options) {
-            return new KoBindingContext(INHERIT_PARENT_VM_DATA, this, null, (newContext, parentContext) => {
+            return new KoBindingContext(INHERIT_PARENT_VM_DATA, this, null, (newContext /*, parentContext*/) => {
                 Object.assign(newContext, (typeof properties === 'function') ? properties(newContext) : properties);
             }, options);
         }
@@ -2970,7 +2992,7 @@
     // so that it always gets the latest value and all dependencies are captured. This is used
     // by ko.applyBindingsToNode and _getBindingsAndMakeAccessors.
     const _makeAccessorsFromFunction = (callback) => {
-        let source = ignoreDependencyDetection(callback);
+        let source = ignoreDependencyDetectionNoArgs(callback);
         if (!source) {
             return null;
         }
@@ -3010,18 +3032,17 @@
     };
 
     const _applyBindingsToNodeAndDescendantsInternal = (bindingContext, nodeVerified) => {
-        let bindingContextForDescendants = bindingContext,
-            isElement = (nodeVerified.nodeType === 1);
+        let nodeType = nodeVerified.nodeType;
 
         // Perf optimisation: Apply bindings only if...
-        // (1) We need to store the binding info for the node (all element nodes)
-        // (2) It might have bindings (e.g., it has a data-bind attribute, or it's a marker for a containerless template)
-        let shouldApplyBindings = isElement || bindingProviderInstance.nodeHasBindings(nodeVerified);
-        if (shouldApplyBindings) {
-            bindingContextForDescendants = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext).bindingContextForDescendants;
+        // (1) we need to store the binding info for the node (all element nodes)
+        // (2) it might have bindings (e.g., it has a data-bind attribute, or it's a start-comment for a containerless template)
+        // (3) it's a text node and a custom binding provider was registered which may support text nodes (unlike the default BP) 
+        if (nodeType === 1 || ((nodeType === 8 || bindingProviderMaySupportTextNodes) && bindingProviderInstance.nodeHasBindings(nodeVerified))) {
+            bindingContext = _applyBindingsToNodeInternal(nodeVerified, null, bindingContext).bindingContextForDescendants;
         }
-        if (bindingContextForDescendants && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
-            _applyBindingsToDescendantsInternal(bindingContextForDescendants, nodeVerified);
+        if (bindingContext && !BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES[nodeVerified.tagName]) {
+            _applyBindingsToDescendantsInternal(bindingContext, nodeVerified);
         }
     };
 
@@ -3182,7 +3203,7 @@
                 try {
                     // Run init, ignoring any dependencies
                     if (typeof handlerInitFn === 'function') {
-                        ignoreDependencyDetection(() => {
+                        ignoreDependencyDetectionNoArgs(() => {
                             let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend);
 
                             // If this binding handler claims to control descendant bindings, make a note of this
@@ -4828,7 +4849,7 @@
                     return;
                 }
 
-                let modelValue = ignoreDependencyDetection(valueAccessor);
+                let modelValue = ignoreDependencyDetectionNoArgs(valueAccessor);
                 if (valueIsArray) {
                     let writableValue = rawValueIsNonArrayObservable ? modelValue.peek() : modelValue,
                         saveOldValue = oldElemValue;
@@ -4897,12 +4918,6 @@
                 rawValueIsNonArrayObservable = !(valueIsArray && rawValue.push && rawValue.splice),
                 useElementValue = isRadio || valueIsArray,
                 oldElemValue = valueIsArray ? checkedValue() : undefined;
-
-            // IE 6 won't allow radio buttons to be selected unless they have a name
-            // TODO remove this if this is really IE6-related only
-            if (isRadio && !element.name) {
-                bindingHandlers.uniqueName.init(element, () => true);
-            }
 
             // Set up two computeds to update the binding:
 
@@ -5794,7 +5809,7 @@
                     if (newValue === null || newValue === undefined || newValue === '') {
                         element.value = '';
                     } else {
-                        ignoreDependencyDetection(_valueUpdateHandler);  // reset the model to match the element
+                        ignoreDependencyDetectionNoArgs(_valueUpdateHandler);  // reset the model to match the element
                     }
                 };
             } else {
@@ -5815,7 +5830,7 @@
                         if (!allowUnset && newValue !== readSelectOrOptionValue(element)) {
                             // If you try to set a model value that can't be represented in an already-populated dropdown, reject that change,
                             // because you're not allowed to have a model value that disagrees with a visible UI selection.
-                            ignoreDependencyDetection(_valueUpdateHandler);
+                            ignoreDependencyDetectionNoArgs(_valueUpdateHandler);
                         }
                         return;
                     }

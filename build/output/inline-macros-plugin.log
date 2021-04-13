@@ -1,6 +1,30 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod12-esnext
+for Knockout JavaScript library v3.5.1-mod13-esnext
+
+
+------- src/utils.domNodeDisposal.js --------
+
+[utils.domNodeDisposal.js:10]
+Found macro: "_isNodeTypeCleanable" 
+
+[utils.domNodeDisposal.js:11]
+Found macro: "_isNodeTypeCleanableWithDescendents" 
+
+[utils.domNodeDisposal.js:31]
+Inlined: "_isNodeTypeCleanableWithDescendents"
+OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
+NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
+
+[utils.domNodeDisposal.js:75]
+Inlined: "_isNodeTypeCleanable"
+OLD:  if (_isNodeTypeCleanable(nodeType)) {
+NEW:  if ((nodeType === 1 || nodeType === 8 || nodeType === 9)) {
+
+[utils.domNodeDisposal.js:80]
+Inlined: "_isNodeTypeCleanableWithDescendents"
+OLD:  if (_isNodeTypeCleanableWithDescendents(nodeType)) {
+NEW:  if ((nodeType === 1 || nodeType === 9)) {
 
 
 ------- src/virtualElements.js --------
@@ -11,62 +35,62 @@ Found macro: "_isStartComment"
 [virtualElements.js:20]
 Found macro: "_isEndComment" 
 
-[virtualElements.js:31]
+[virtualElements.js:29]
 Inlined: "_isEndComment"
 OLD:  if (_isEndComment(currentNode)) {
 NEW:  if (((currentNode.nodeType === 8) && END_COMMENT_REGEX.test(currentNode.nodeValue))) {
 
-[virtualElements.js:38]
+[virtualElements.js:36]
 Inlined: "_isStartComment"
 OLD:  if (_isStartComment(currentNode)) {
 NEW:  if (((currentNode.nodeType === 8) && START_COMMENT_REGEX.test(currentNode.nodeValue))) {
 
-[virtualElements.js:58]
+[virtualElements.js:56]
 Inlined: "_isStartComment"
 OLD:  export const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes;
 NEW:  export const childNodes = (node) => ((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes;
 
-[virtualElements.js:61]
+[virtualElements.js:59]
 Inlined: "_isStartComment"
 OLD:  if (!_isStartComment(node)) {
 NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
-[virtualElements.js:72]
+[virtualElements.js:70]
 Inlined: "_isStartComment"
 OLD:  if (!_isStartComment(node)) {
 NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
-[virtualElements.js:86]
+[virtualElements.js:84]
 Inlined: "_isStartComment"
 OLD:  if (_isStartComment(containerNode)) {
 NEW:  if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
 
-[virtualElements.js:109]
+[virtualElements.js:107]
 Inlined: "_isStartComment"
 OLD:  if (_isStartComment(containerNode)) {
 NEW:  if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
+
+[virtualElements.js:119]
+Inlined: "_isStartComment"
+OLD:  if (!_isStartComment(node)) {
+NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
 [virtualElements.js:121]
-Inlined: "_isStartComment"
-OLD:  if (!_isStartComment(node)) {
-NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
-
-[virtualElements.js:123]
 Inlined: "_isEndComment"
 OLD:  if (_nodeFirstChild && _isEndComment(_nodeFirstChild)) {
 NEW:  if (_nodeFirstChild && ((_nodeFirstChild.nodeType === 8) && END_COMMENT_REGEX.test(_nodeFirstChild.nodeValue))) {
 
-[virtualElements.js:129]
+[virtualElements.js:127]
 Inlined: "_isEndComment"
 OLD:  if (!_nodeNextSibling|| _isEndComment(_nodeNextSibling)) {
 NEW:  if (!_nodeNextSibling|| ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
-[virtualElements.js:136]
+[virtualElements.js:134]
 Inlined: "_isStartComment"
 OLD:  if (_isStartComment(node)) {
 NEW:  if (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
-[virtualElements.js:140]
+[virtualElements.js:138]
 Inlined: "_isEndComment"
 OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
@@ -96,10 +120,36 @@ NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, node
 
 ------- src/subscribables/dependencyDetection.js --------
 
-[dependencyDetection.js:32]
+[dependencyDetection.js:12]
+Found macro: "_beginDependencyDetectionWithEmptyFrame" 
+
+[dependencyDetection.js:14]
+Found macro: "endDependencyDetection" 
+
+[dependencyDetection.js:58]
 Found macro: "_getId" 
 
-[dependencyDetection.js:39]
+[dependencyDetection.js:25]
+Inlined: "_beginDependencyDetectionWithEmptyFrame"
+OLD:  _beginDependencyDetectionWithEmptyFrame();
+NEW:  (currentFrame = void outerFrames.push(currentFrame));
+
+[dependencyDetection.js:32]
+Inlined: "endDependencyDetection"
+OLD:  endDependencyDetection();
+NEW:  (currentFrame = outerFrames.pop());
+
+[dependencyDetection.js:44]
+Inlined: "_beginDependencyDetectionWithEmptyFrame"
+OLD:  _beginDependencyDetectionWithEmptyFrame();
+NEW:  (currentFrame = void outerFrames.push(currentFrame));
+
+[dependencyDetection.js:47]
+Inlined: "endDependencyDetection"
+OLD:  endDependencyDetection();
+NEW:  (currentFrame = outerFrames.pop());
+
+[dependencyDetection.js:65]
 Inlined: "_getId"
 OLD:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
 NEW:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
@@ -129,22 +179,22 @@ Found macro: "virtualNodeBindingValue"
 [bindingProvider.js:16]
 Found macro: "_getBindingsString" 
 
-[bindingProvider.js:38]
+[bindingProvider.js:45]
 Inlined: "_getBindingsString"
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
 
-[bindingProvider.js:38]
+[bindingProvider.js:45]
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
 
-[bindingProvider.js:44]
+[bindingProvider.js:51]
 Inlined: "_getBindingsString"
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
 
-[bindingProvider.js:44]
+[bindingProvider.js:51]
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
@@ -186,89 +236,89 @@ NEW:  let templateName = ( isObservable(template) ? template() : (typeof templat
 
 ------- src/binding/bindingAttributeSyntax.js --------
 
-[bindingAttributeSyntax.js:42]
+[bindingAttributeSyntax.js:37]
 Found macro: "_getBindingInfoForNode" 
 
-[bindingAttributeSyntax.js:43]
+[bindingAttributeSyntax.js:38]
 Found macro: "_ensureNodeHasDomData" 
 
-[bindingAttributeSyntax.js:44]
+[bindingAttributeSyntax.js:39]
 Found macro: "_getOrAddBindingInfoInDomData" 
 
-[bindingAttributeSyntax.js:560]
+[bindingAttributeSyntax.js:554]
 Found macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
 
-[bindingAttributeSyntax.js:194]
+[bindingAttributeSyntax.js:189]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = _getBindingInfoForNode(node),
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
 
-[bindingAttributeSyntax.js:258]
+[bindingAttributeSyntax.js:253]
 Inlined: "_ensureNodeHasDomData"
 OLD:  _ensureNodeHasDomData(node);
 NEW:  (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
 
-[bindingAttributeSyntax.js:259]
+[bindingAttributeSyntax.js:254]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:260]
+[bindingAttributeSyntax.js:255]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
 
-[bindingAttributeSyntax.js:270]
+[bindingAttributeSyntax.js:265]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = _getBindingInfoForNode(node);
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:292]
+[bindingAttributeSyntax.js:287]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:293]
+[bindingAttributeSyntax.js:288]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:407]
+[bindingAttributeSyntax.js:401]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:408]
+[bindingAttributeSyntax.js:402]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:565]
+[bindingAttributeSyntax.js:559]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
 
-[bindingAttributeSyntax.js:569]
+[bindingAttributeSyntax.js:563]
 Inlined: "_getBindingContext"
 OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
 NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
 
-[bindingAttributeSyntax.js:587]
+[bindingAttributeSyntax.js:581]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
 NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
 
-[bindingAttributeSyntax.js:600]
+[bindingAttributeSyntax.js:594]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
 NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
 
-[bindingAttributeSyntax.js:606]
+[bindingAttributeSyntax.js:600]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
 NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:613]
+[bindingAttributeSyntax.js:607]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
 NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
@@ -298,5 +348,5 @@ NEW:  (computedObservable._versionNumber++);
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 15 | Inlined usages: 44
+Found macros: 19 | Inlined usages: 51
 =================================================
