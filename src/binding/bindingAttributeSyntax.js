@@ -1,7 +1,7 @@
 import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 import {DOM_DATASTORE_PROP, nextDomDataKey} from '../utils.domData';
 import {IS_OBSERVABLE} from '../subscribables/observableUtils';
-import {getCurrentComputed} from '../subscribables/dependencyDetection';
+import {getCurrentComputed, ignoreDependencyDetectionNoArgs} from '../subscribables/dependencyDetection';
 import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposal';
 import {dependentObservable, pureComputed} from '../subscribables/dependentObservable';
 import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
@@ -305,7 +305,7 @@ export const bindingEvent = {
 // so that it always gets the latest value and all dependencies are captured. This is used
 // by ko.applyBindingsToNode and _getBindingsAndMakeAccessors.
 const _makeAccessorsFromFunction = (callback) => {
-    let source = ignoreDependencyDetection(callback);
+    let source = ignoreDependencyDetectionNoArgs(callback);
     if (!source) {
         return null;
     }
@@ -516,7 +516,7 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
             try {
                 // Run init, ignoring any dependencies
                 if (typeof handlerInitFn === 'function') {
-                    ignoreDependencyDetection(() => {
+                    ignoreDependencyDetectionNoArgs(() => {
                         let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend);
 
                         // If this binding handler claims to control descendant bindings, make a note of this

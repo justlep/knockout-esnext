@@ -9,19 +9,45 @@ export const beginDependencyDetection = options => {
     currentFrame = options;
 };
 
-export const endDependencyDetection = () => currentFrame = outerFrames.pop();
+const _beginDependencyDetectionWithEmptyFrame = () => currentFrame = void outerFrames.push(currentFrame); //@inline
 
+export const endDependencyDetection = () => currentFrame = outerFrames.pop(); //@inline
+
+/**
+ * For ko-internal usages without callbackTarget and callbackArgs use {@link ignoreDependencyDetectionNoArgs}.
+ * @param {function} callback
+ * @param {?Object} [callbackTarget]
+ * @param {any[]} [callbackArgs]
+ * @return {*} the callback's return value
+ */
 export const ignoreDependencyDetection = (callback, callbackTarget, callbackArgs) => {
     try {
-        beginDependencyDetection();
+        _beginDependencyDetectionWithEmptyFrame();
+        
         // there's a high percentage of calls without callbackTarget and/or callbackArgs, 
-        // so let's speed up things by not using `apply` or args in those cases
+        // so let's speed up things by not using `apply` or args in those cases.
         return callbackTarget ? callback.apply(callbackTarget, callbackArgs || []) :
-            callbackArgs ? callback(...callbackArgs) : callback();
+               callbackArgs ? callback(...callbackArgs) : callback();
     } finally {
         endDependencyDetection();
     }
 };
+
+/**
+ * Slim version of {@link ignoreDependencyDetection} intended for pure, no-args callbacks. 
+ * @param {function} callback
+ * @return {*}
+ * @internal
+ */
+export const ignoreDependencyDetectionNoArgs = (callback) => {
+    try {
+        _beginDependencyDetectionWithEmptyFrame();
+        return callback();
+    } finally {
+        endDependencyDetection();
+    }
+};
+
 
 // Return a unique ID that can be assigned to an observable for dependency tracking.
 // Theoretically, you could eventually overflow the number storage size, resulting

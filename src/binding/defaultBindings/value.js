@@ -2,7 +2,7 @@ import {readSelectOrOptionValue, writeSelectOrOptionValue} from '../selectExtens
 import {registerEventHandler, setTimeoutWithCatchError, arrayGetDistinctValues, arrayRemoveItem} from '../../utils';
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
 import {EVENT_CHILDREN_COMPLETE, applyBindingAccessorsToNode, bindingEvent} from '../bindingAttributeSyntax';
-import {ignoreDependencyDetection} from '../../subscribables/dependencyDetection';
+import {ignoreDependencyDetectionNoArgs} from '../../subscribables/dependencyDetection';
 import {bindingHandlers} from '../bindingHandlers';
 import {computed} from '../../subscribables/dependentObservable';
 import {unwrapObservable} from '../../subscribables/observableUtils';
@@ -73,7 +73,7 @@ bindingHandlers.value = {
                 if (newValue === null || newValue === undefined || newValue === '') {
                     element.value = '';
                 } else {
-                    ignoreDependencyDetection(_valueUpdateHandler);  // reset the model to match the element
+                    ignoreDependencyDetectionNoArgs(_valueUpdateHandler);  // reset the model to match the element
                 }
             };
         } else {
@@ -94,7 +94,7 @@ bindingHandlers.value = {
                     if (!allowUnset && newValue !== readSelectOrOptionValue(element)) {
                         // If you try to set a model value that can't be represented in an already-populated dropdown, reject that change,
                         // because you're not allowed to have a model value that disagrees with a visible UI selection.
-                        ignoreDependencyDetection(_valueUpdateHandler);
+                        ignoreDependencyDetectionNoArgs(_valueUpdateHandler);
                     }
                     return;
                 }

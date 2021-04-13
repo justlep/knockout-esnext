@@ -2,7 +2,7 @@ import {nextDomDataKey,
         getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey,
         getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey,
         getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey} from './utils.domData';
-import {ignoreDependencyDetection} from './subscribables/dependencyDetection';
+import {ignoreDependencyDetectionNoArgs} from './subscribables/dependencyDetection';
 
 const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
 
@@ -73,7 +73,7 @@ export const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionFo
 export const cleanNode = (node) => {
     let nodeType = node.nodeType;
     if (_isNodeTypeCleanable(nodeType)) {
-        ignoreDependencyDetection(() => {
+        ignoreDependencyDetectionNoArgs(() => {
             // First clean this node, where applicable
             _cleanSingleNode(node);
             // ... then its descendants, where applicable

@@ -1,4 +1,8 @@
-import {isInitialDependency, getDependenciesCount, ignoreDependencyDetection} from '../../subscribables/dependencyDetection';
+import {
+    isInitialDependency,
+    getDependenciesCount,
+    ignoreDependencyDetectionNoArgs
+} from '../../subscribables/dependencyDetection';
 import {writeValueToProperty, twoWayBindings} from '../expressionRewriting';
 import {registerEventHandler, addOrRemoveItem} from '../../utils';
 import {bindingHandlers} from '../bindingHandlers';
@@ -36,7 +40,7 @@ bindingHandlers.checked = {
                 return;
             }
 
-            let modelValue = ignoreDependencyDetection(valueAccessor);
+            let modelValue = ignoreDependencyDetectionNoArgs(valueAccessor);
             if (valueIsArray) {
                 let writableValue = rawValueIsNonArrayObservable ? modelValue.peek() : modelValue,
                     saveOldValue = oldElemValue;

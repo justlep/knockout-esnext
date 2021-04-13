@@ -1,5 +1,5 @@
 import {scheduleTask} from '../tasks';
-import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
+import {ignoreDependencyDetectionNoArgs} from '../subscribables/dependencyDetection';
 import {Subscribable} from '../subscribables/subscribable';
 
 const _loadingSubscribablesCache = new Map(); // Tracks component loads that are currently in flight
@@ -17,7 +17,7 @@ export const getComponent = (componentName, callback) => {
         // You can bypass this by putting synchronous:true on your component config.
         if (cachedDefinition.isSynchronousComponent) {
             // See comment in loaderRegistryBehaviors.js for reasoning
-            ignoreDependencyDetection(() => callback(cachedDefinition.definition));
+            ignoreDependencyDetectionNoArgs(() => callback(cachedDefinition.definition));
         } else {
             scheduleTask(() => callback(cachedDefinition.definition));
         }
