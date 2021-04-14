@@ -8,6 +8,7 @@ import {IS_COMPUTED, IS_OBSERVABLE, IS_PURE_COMPUTED} from './observableUtils';
 import {defineThrottleExtender} from './extenders';
 
 const COMPUTED_STATE = Symbol('_state');
+const THROTTLE_TIMER = Symbol();
 
 // TODO this is a duplicate of the same function in subscribable.js; remove duplication when RollupInline-Plugin supports global macros!
 const _updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline
@@ -61,7 +62,7 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
             registerDependencyInternal(_computedObservable);
         }
         if (state.isDirty || (state.isSleeping && _computedObservable.haveDependenciesChanged())) {
-            _computedObservable.evaluateImmediate();
+            _computedObservable.evaluate();
         }
         return state.latestValue;
     }
@@ -120,7 +121,7 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
 
     // Evaluate, unless sleeping or deferEvaluation is true
     if (!state.isSleeping && !options.deferEvaluation) {
-        _computedObservable.evaluateImmediate();
+        _computedObservable.evaluate();
     }
 
     // Attach a DOM node disposal callback so that the computed will be proactively disposed as soon as the node is
@@ -235,7 +236,7 @@ const COMPUTED_PROTOTYPE = {
     respondToChange() {
         // Ignore "change" events if we've already scheduled a delayed notification
         if (!this._notificationIsPending) {
-            this.evaluatePossiblyAsync();
+            this.evaluate(true, true /* checkPossiblyAsync */); 
             return;
         }
         let computedState = this[COMPUTED_STATE];
@@ -255,28 +256,26 @@ const COMPUTED_PROTOTYPE = {
                 }
             };
         }
-        return target.subscribe(this.evaluatePossiblyAsync, this);
+        return target.subscribe(val => this.evaluate(val, true /* checkPossiblyAsync */), this);
     },
-    evaluatePossiblyAsync() {
-        let computedObservable = this,
-            throttleEvaluationTimeout = computedObservable.throttleEvaluation;
-        
-        if (throttleEvaluationTimeout && throttleEvaluationTimeout >= 0) {
-            let computedState = this[COMPUTED_STATE]; 
-            clearTimeout(computedState.evaluationTimeoutInstance);
-            computedState.evaluationTimeoutInstance = setTimeout(() => computedObservable.evaluateImmediate(true /*notifyChange*/), throttleEvaluationTimeout);
-        } else if (computedObservable._evalDelayed) {
-            computedObservable._evalDelayed(true /*isChange*/);
-        } else {
-            computedObservable.evaluateImmediate(true /*notifyChange*/);
+    evaluate(notifyChange, checkPossiblyAsync) {
+        if (checkPossiblyAsync) {
+            if (this.throttleEvaluation) {
+                clearTimeout(this[THROTTLE_TIMER]);
+                this[THROTTLE_TIMER] = setTimeout(() => this.evaluate(true), this.throttleEvaluation);
+                return;
+            } 
+            if (this._evalDelayed) {
+                this._evalDelayed(true /*isChange*/);
+                return;
+            }
+            notifyChange = true;
         }
-    },
-    evaluateImmediate(notifyChange) {
-        let computedObservable = this,
-            state = computedObservable[COMPUTED_STATE],
+
+        let state = this[COMPUTED_STATE],
             disposeWhen = state.disposeWhen,
             changed = false;
-
+        
         if (state.isBeingEvaluated) {
             // If the evaluation of a ko.computed causes side effects, it's possible that it will trigger its own re-evaluation.
             // This is not desirable (it's hard for a developer to realise a chain of dependencies might cause this, and they almost
@@ -293,7 +292,7 @@ const COMPUTED_PROTOTYPE = {
         if (state.disposeWhenNodeIsRemoved && !domNodeIsAttachedToDocument(state.disposeWhenNodeIsRemoved) || disposeWhen && disposeWhen()) {
             // See comment above about suppressDisposalUntilDisposeWhenReturnsFalse
             if (!state.suppressDisposalUntilDisposeWhenReturnsFalse) {
-                computedObservable.dispose();
+                this.dispose();
                 return;
             }
         } else {
@@ -406,7 +405,7 @@ const COMPUTED_PROTOTYPE = {
         // Pass in true to evaluate if needed.
         let state = this[COMPUTED_STATE];
         if ((state.isDirty && (evaluate || !state.dependenciesCount)) || (state.isSleeping && this.haveDependenciesChanged())) {
-            this.evaluateImmediate();
+            this.evaluate();
         }
         return state.latestValue;
     },
@@ -417,7 +416,7 @@ const COMPUTED_PROTOTYPE = {
             let computedState = this[COMPUTED_STATE];
             if (!computedState.isSleeping) {
                 if (computedState.isStale) {
-                    this.evaluateImmediate();
+                    this.evaluate();
                 } else {
                     computedState.isDirty = false;
                 }
@@ -479,7 +478,7 @@ function _pureBeforeSubscriptionAdd(event) {
         if (state.isStale || computedObservable.haveDependenciesChanged()) {
             state.dependencyTracking = null;
             state.dependenciesCount = 0;
-            if (computedObservable.evaluateImmediate()) {
+            if (computedObservable.evaluate()) {
                 _updateSubscribableVersion(computedObservable);
             }
         } else {
@@ -504,7 +503,7 @@ function _pureBeforeSubscriptionAdd(event) {
             
             // Waking dependencies may have triggered effects
             if (computedObservable.haveDependenciesChanged()) {
-                if (computedObservable.evaluateImmediate()) {
+                if (computedObservable.evaluate()) {
                     _updateSubscribableVersion(computedObservable);
                 }
             }
@@ -544,7 +543,7 @@ function _pureGetVersion() {
     // changed and conditionally re-evaluate the computed observable.
     let state = this[COMPUTED_STATE];
     if (state.isSleeping && (state.isStale || this.haveDependenciesChanged())) {
-        this.evaluateImmediate();
+        this.evaluate();
     }
     return SUBSCRIBABLE_PROTOTYPE.getVersion.call(this);
 }
