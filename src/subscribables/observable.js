@@ -1,5 +1,5 @@
 import {options} from '../options';
-import {registerDependency} from './dependencyDetection';
+import {registerDependencyInternal} from './dependencyDetection';
 import {setPrototypeOfOrExtend, trySetPrototypeOf, canSetPrototype, valuesArePrimitiveAndEqual} from '../utils';
 import {SUBSCRIBABLE_PROTOTYPE} from './subscribable';
 import {IS_OBSERVABLE} from './observableUtils';
@@ -16,7 +16,7 @@ export const observable = function (initialValue) {
         // Lets assume, read happens more often than write
         if (!arguments.length) {
             // Read
-            registerDependency(_self); // The caller only needs to be notified of changes if they did a "read" operation
+            registerDependencyInternal(_self); // The caller only needs to be notified of changes if they did a "read" operation
             return _lastValue;
         }
         // Write

@@ -20,7 +20,7 @@ import {memoize, unmemoize, parseMemoText, unmemoizeDomNodeAndDescendants} from 
 import {applyMemoizedBindingsToNextSibling} from './templating/templateRewriting';
 import {getDomData, setDomData, clearDomData} from './utils.domData';
 import {extenders} from './subscribables/extenders';
-import {ignoreDependencyDetection, getDependencies, getDependenciesCount, isInitialDependency, registerDependency} from './subscribables/dependencyDetection';
+import {ignoreDependencyDetection, getDependencies, getDependenciesCount, isInitialDependency, registerDependencyExternal} from './subscribables/dependencyDetection';
 import {toJS, toJSON} from './subscribables/mappingHelpers';
 import {NativeTemplateEngine} from './templating/native/nativeTemplateEngine';
 import {setTemplateEngine} from './templating/templating';
@@ -102,7 +102,7 @@ const ko = {
         getDependenciesCount,
         getDependencies,
         isInitial: isInitialDependency,
-        registerDependency
+        registerDependency: registerDependencyExternal
     },
     ignoreDependencies: ignoreDependencyDetection,
     observable,

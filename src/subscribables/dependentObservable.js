@@ -1,5 +1,5 @@
 import {options as koOptions} from '../options';
-import {registerDependency, beginDependencyDetection, endDependencyDetection} from './dependencyDetection';
+import {registerDependencyInternal, beginDependencyDetection, endDependencyDetection} from './dependencyDetection';
 import {deferredExtender} from './deferredExtender';
 import {SUBSCRIBABLE_PROTOTYPE} from './subscribable';
 import {removeDisposeCallback, addDisposeCallback} from '../utils.domNodeDisposal';
@@ -58,7 +58,7 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
         } 
         // Reading the value
         if (!state.isDisposed) {
-            registerDependency(_computedObservable);
+            registerDependencyInternal(_computedObservable);
         }
         if (state.isDirty || (state.isSleeping && _computedObservable.haveDependenciesChanged())) {
             _computedObservable.evaluateImmediate();

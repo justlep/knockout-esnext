@@ -57,12 +57,19 @@ export const ignoreDependencyDetectionNoArgs = (callback) => {
 // Reference http://blog.vjeux.com/2010/javascript/javascript-max_int-number-limits.html
 const _getId = () => ++lastId; //@inline
 
-export const registerDependency = (subscribable) => {
+const _runCallback = (subscribable) => currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())); //@inline
+
+/**
+ * For ko-internal usage, there is no reason to waste cycles with 'isSubscribable'-checks.  
+ */
+export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
+
+export const registerDependencyExternal = (subscribable) => {
     if (currentFrame) {
         if (!isSubscribable(subscribable)) {
             throw new Error('Only subscribable things can act as dependencies');
         }
-        currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
+        _runCallback(subscribable);
     }
 };
 
