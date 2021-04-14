@@ -162,49 +162,42 @@ export const renderTemplate = (template, dataOrBindingContext, options, targetNo
     if (targetNodeOrNodeArray) {
         let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 
-        let whenToDispose = function () {
-            return (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode);
-        }; // Passive disposal (on next evaluation)
-        let activelyDisposeWhenNodeIsRemoved = (firstTargetNode && renderMode === 'replaceNode') ? firstTargetNode.parentNode : firstTargetNode;
-
-        return dependentObservable( // So the DOM is automatically updated when any dependency changes
-            function () {
+        // So the DOM is automatically updated when any dependency changes
+        return dependentObservable(() => {
                 // Ensure we've got a proper binding context to work with
                 let bindingContext = (dataOrBindingContext && (dataOrBindingContext instanceof KoBindingContext))
                     ? dataOrBindingContext
                     : new KoBindingContext(dataOrBindingContext, null, null, null, {'exportDependencies': true});
-
+    
                 let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
                     renderedNodesArray = _executeTemplate(targetNodeOrNodeArray, renderMode, templateName, bindingContext, options);
-
+    
                 if (renderMode === 'replaceNode') {
                     targetNodeOrNodeArray = renderedNodesArray;
                     firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
                 }
-            },
-            null,
-            {disposeWhen: whenToDispose, disposeWhenNodeIsRemoved: activelyDisposeWhenNodeIsRemoved}
-        );
+            }, null, {
+                disposeWhen: () => (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode), // Passive disposal (on next evaluation) 
+                disposeWhenNodeIsRemoved: (firstTargetNode && renderMode === 'replaceNode') ? firstTargetNode.parentNode : firstTargetNode
+            });
     } 
     // We don't yet have a DOM node to evaluate, so use a memo and render the template later when there is a DOM node
-    return memoize(function (domNode) {
-        renderTemplate(template, dataOrBindingContext, options, domNode, 'replaceNode');
-    });
+    return memoize(domNode => renderTemplate(template, dataOrBindingContext, options, domNode, 'replaceNode'));
 };
 
 export const renderTemplateForEach = (template, arrayOrObservableArray, options, targetNode, parentBindingContext) => {
     // Since setDomNodeChildrenFromArrayMapping always calls executeTemplateForArrayItem and then
     // activateBindingsCallback for added items, we can store the binding context in the former to use in the latter.
     let arrayItemContext, 
-        asName = options['as'];
+        asName = options.as;
 
     // This will be called by setDomNodeChildrenFromArrayMapping to get the nodes to add to targetNode
     let executeTemplateForArrayItem = (arrayValue, index) => {
         // Support selecting template as a function of the data being rendered
         arrayItemContext = parentBindingContext.createChildContext(arrayValue, {
-            'as': asName,
-            'noChildContext': options['noChildContext'],
-            'extend': (context) => {
+            as: asName,
+            noChildContext: options.noChildContext,
+            extend(context) {
                 context['$index'] = index;
                 if (asName) {
                     context[asName + 'Index'] = index;
