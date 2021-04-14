@@ -3,6 +3,9 @@ import {extenders} from './extenders';
 
 const ARRAY_CHANGE_EVENT_NAME = 'arrayChange';
 
+// TODO this is 1 of 4 identical copies of this macro; put into a single macro once RollupInlineMacrosPlugin supports global macros
+const _hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline
+
 export const trackArrayChanges = extenders.trackArrayChanges = (target, options) => {
     // Use the provided options--each call to trackArrayChanges overwrites the previously set options
     target.compareArrayOptions = {};
@@ -38,7 +41,7 @@ export const trackArrayChanges = extenders.trackArrayChanges = (target, options)
         if (underlyingAfterSubscriptionRemoveFunction) {
             underlyingAfterSubscriptionRemoveFunction.call(target, event);
         }
-        if (event === ARRAY_CHANGE_EVENT_NAME && !target.hasSubscriptionsForEvent(ARRAY_CHANGE_EVENT_NAME)) {
+        if (event === ARRAY_CHANGE_EVENT_NAME && !_hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
             if (changeSubscription) {
                 changeSubscription.dispose();
             }
@@ -78,7 +81,7 @@ export const trackArrayChanges = extenders.trackArrayChanges = (target, options)
             let currentContents = [].concat(target.peek() || []), changes;
 
                 // Compute the diff and issue notifications, but only if someone is listening
-            if (target.hasSubscriptionsForEvent(ARRAY_CHANGE_EVENT_NAME)) {
+            if (_hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
                 changes = _getChanges(previousContents, currentContents);
             }
 

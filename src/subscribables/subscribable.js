@@ -46,8 +46,11 @@ function _limitNotifySubscribers(value, event) {
     }
 }
 
-// TODO this is a duplicate of the same function in dependentObservable.js; remove duplication when RollupInline-Plugin supports global macros!
+// TODO this is a duplicate of the same function in dependentObservable.js; remove duplication when RollupInlineMacrosPlugin supports global macros!
 const _updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline
+
+// TODO this is 1 of 4 identical copies of this macro; put into a single macro once RollupInlineMacrosPlugin supports global macros
+const _hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline
 
 export const SUBSCRIBABLE_PROTOTYPE = {
     [IS_SUBSCRIBABLE]: true,
@@ -85,18 +88,17 @@ export const SUBSCRIBABLE_PROTOTYPE = {
         return subscription;
     },
 
-    notifySubscribers(valueToNotify, event) {
-        event = event || DEFAULT_EVENT;
+    notifySubscribers(valueToNotify, event = DEFAULT_EVENT) {
         if (event === DEFAULT_EVENT) {
             _updateSubscribableVersion(this);
         }
-        if (!this.hasSubscriptionsForEvent(event)) {
+        if (!_hasSubscriptionsForEvent(this, event)) {
             return;
         }
-        let subs = event === DEFAULT_EVENT && this._changeSubscriptions || this._subscriptions[event].slice();
+        let subs = (event === DEFAULT_EVENT) && this._changeSubscriptions || this._subscriptions[event].slice();
         try {
             beginDependencyDetection(); // Begin suppressing dependency detection (by setting the top frame to undefined)
-            for (let i = 0, subscription; subscription = subs[i]; ++i) {
+            for (let i = 0, subscription; subscription = subs[i]; ++i) { // TODO check if subs changes during loop
                 // In case a subscription was disposed during the arrayForEach cycle, check
                 // for isDisposed on each subscription before invoking its callback
                 if (!subscription._isDisposed) {
@@ -115,11 +117,6 @@ export const SUBSCRIBABLE_PROTOTYPE = {
     hasChanged(versionToCheck) {
         // Do NOT shortcut to this._versionNumber!
         return this.getVersion() !== versionToCheck;
-    },
-
-    /** @deprecated - use inlined {@link _updateSubscribableVersion} */
-    updateVersion() {
-        ++this._versionNumber;
     },
 
     limit(limitFunction) {
@@ -176,11 +173,6 @@ export const SUBSCRIBABLE_PROTOTYPE = {
                 notifyNextChange = true;
             }
         };
-    },
-
-    hasSubscriptionsForEvent(event) {
-        let subscriptions = this._subscriptions[event]; 
-        return subscriptions && subscriptions.length;
     },
 
     getSubscriptionsCount(event) {

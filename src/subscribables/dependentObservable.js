@@ -515,9 +515,12 @@ function _pureBeforeSubscriptionAdd(event) {
     }
 }
 
+// TODO this is 1 of 4 identical copies of this macro; put into a single macro once RollupInlineMacrosPlugin supports global macros
+const _hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline
+
 function _pureAfterSubscriptionRemove(event) {
     let state = this[COMPUTED_STATE];
-    if (!state.isDisposed && event === 'change' && !this.hasSubscriptionsForEvent('change')) {
+    if (!state.isDisposed && event === 'change' && !_hasSubscriptionsForEvent(this, 'change')) {
         let __dependencyTracking = state.dependencyTracking;
         if (__dependencyTracking) {
             for (let id of Object.keys(__dependencyTracking)) {
