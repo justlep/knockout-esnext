@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod13-esnext
+for Knockout JavaScript library v3.5.1-mod14-esnext
 
 
 ------- src/utils.domNodeDisposal.js --------
@@ -96,17 +96,6 @@ OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
-------- src/subscribables/subscribable.js --------
-
-[subscribable.js:50]
-Found macro: "_updateSubscribableVersion" 
-
-[subscribable.js:91]
-Inlined: "_updateSubscribableVersion"
-OLD:  _updateSubscribableVersion(this);
-NEW:  (this._versionNumber++);
-
-
 ------- src/memoization.js --------
 
 [memoization.js:8]
@@ -116,6 +105,25 @@ Found macro: "parseMemoText"
 Inlined: "parseMemoText"
 OLD:  memoId = parseMemoText(nodeValue);
 NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
+
+
+------- src/subscribables/subscribable.js --------
+
+[subscribable.js:50]
+Found macro: "_updateSubscribableVersion" 
+
+[subscribable.js:53]
+Found macro: "_hasSubscriptionsForEvent" 
+
+[subscribable.js:93]
+Inlined: "_updateSubscribableVersion"
+OLD:  _updateSubscribableVersion(this);
+NEW:  (this._versionNumber++);
+
+[subscribable.js:95]
+Inlined: "_hasSubscriptionsForEvent"
+OLD:  if (!_hasSubscriptionsForEvent(this, event)) {
+NEW:  if (!((this._subscriptions[event] || 0).length)) {
 
 
 ------- src/subscribables/dependencyDetection.js --------
@@ -128,6 +136,9 @@ Found macro: "endDependencyDetection"
 
 [dependencyDetection.js:58]
 Found macro: "_getId" 
+
+[dependencyDetection.js:60]
+Found macro: "_runCallback" 
 
 [dependencyDetection.js:25]
 Inlined: "_beginDependencyDetectionWithEmptyFrame"
@@ -150,9 +161,24 @@ OLD:  endDependencyDetection();
 NEW:  (currentFrame = outerFrames.pop());
 
 [dependencyDetection.js:65]
-Inlined: "_getId"
-OLD:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId()));
-NEW:  currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
+Inlined: "_runCallback"
+OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
+NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())));
+
+[dependencyDetection.js:65]
+Inlined: "_getId"  [iteration #2]
+OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
+NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
+
+[dependencyDetection.js:72]
+Inlined: "_runCallback"
+OLD:  _runCallback(subscribable);
+NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())));
+
+[dependencyDetection.js:72]
+Inlined: "_getId"  [iteration #2]
+OLD:  _runCallback(subscribable);
+NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
 
 
 ------- src/templating/templateSources.js --------
@@ -218,17 +244,17 @@ Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 NEW:  let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-[templating.js:177]
+[templating.js:172]
 Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
 
-[templating.js:182]
+[templating.js:177]
 Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 NEW:  firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-[templating.js:215]
+[templating.js:208]
 Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
@@ -245,80 +271,88 @@ Found macro: "_ensureNodeHasDomData"
 [bindingAttributeSyntax.js:39]
 Found macro: "_getOrAddBindingInfoInDomData" 
 
-[bindingAttributeSyntax.js:554]
+[bindingAttributeSyntax.js:42]
+Found macro: "_hasSubscriptionsForEvent" 
+
+[bindingAttributeSyntax.js:556]
 Found macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
 
-[bindingAttributeSyntax.js:189]
+[bindingAttributeSyntax.js:191]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = _getBindingInfoForNode(node),
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
 
-[bindingAttributeSyntax.js:253]
+[bindingAttributeSyntax.js:255]
 Inlined: "_ensureNodeHasDomData"
 OLD:  _ensureNodeHasDomData(node);
 NEW:  (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
 
-[bindingAttributeSyntax.js:254]
+[bindingAttributeSyntax.js:256]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:255]
+[bindingAttributeSyntax.js:257]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
 
-[bindingAttributeSyntax.js:265]
+[bindingAttributeSyntax.js:267]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = _getBindingInfoForNode(node);
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:287]
+[bindingAttributeSyntax.js:280]
+Inlined: "_hasSubscriptionsForEvent"
+OLD:  } else if (_asyncContext === undefined && _eventSubscribable && _hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
+NEW:  } else if (_asyncContext === undefined && _eventSubscribable && ((_eventSubscribable._subscriptions[EVENT_DESCENDENTS_COMPLETE] || 0).length)) {
+
+[bindingAttributeSyntax.js:289]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:288]
+[bindingAttributeSyntax.js:290]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:401]
+[bindingAttributeSyntax.js:403]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:402]
+[bindingAttributeSyntax.js:404]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:559]
+[bindingAttributeSyntax.js:561]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
 
-[bindingAttributeSyntax.js:563]
+[bindingAttributeSyntax.js:565]
 Inlined: "_getBindingContext"
 OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
 NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
 
-[bindingAttributeSyntax.js:581]
+[bindingAttributeSyntax.js:583]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
 NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
 
-[bindingAttributeSyntax.js:594]
+[bindingAttributeSyntax.js:596]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
 NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
 
-[bindingAttributeSyntax.js:600]
+[bindingAttributeSyntax.js:602]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
 NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:607]
+[bindingAttributeSyntax.js:609]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
 NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
@@ -326,27 +360,51 @@ NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && 
 
 ------- src/subscribables/dependentObservable.js --------
 
-[dependentObservable.js:13]
+[dependentObservable.js:14]
 Found macro: "_updateSubscribableVersion" 
 
-[dependentObservable.js:356]
+[dependentObservable.js:519]
+Found macro: "_hasSubscriptionsForEvent" 
+
+[dependentObservable.js:355]
 Inlined: "_updateSubscribableVersion"
 OLD:  _updateSubscribableVersion(computedObservable);
 NEW:  (computedObservable._versionNumber++);
 
-[dependentObservable.js:483]
+[dependentObservable.js:482]
 Inlined: "_updateSubscribableVersion"
 OLD:  _updateSubscribableVersion(computedObservable);
 NEW:  (computedObservable._versionNumber++);
 
-[dependentObservable.js:508]
+[dependentObservable.js:507]
 Inlined: "_updateSubscribableVersion"
 OLD:  _updateSubscribableVersion(computedObservable);
 NEW:  (computedObservable._versionNumber++);
+
+[dependentObservable.js:523]
+Inlined: "_hasSubscriptionsForEvent"
+OLD:  if (!state.isDisposed && event === 'change' && !_hasSubscriptionsForEvent(this, 'change')) {
+NEW:  if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
+
+
+------- src/subscribables/observableArray.changeTracking.js --------
+
+[observableArray.changeTracking.js:7]
+Found macro: "_hasSubscriptionsForEvent" 
+
+[observableArray.changeTracking.js:44]
+Inlined: "_hasSubscriptionsForEvent"
+OLD:  if (event === ARRAY_CHANGE_EVENT_NAME && !_hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
+NEW:  if (event === ARRAY_CHANGE_EVENT_NAME && !((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
+
+[observableArray.changeTracking.js:84]
+Inlined: "_hasSubscriptionsForEvent"
+OLD:  if (_hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
+NEW:  if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
 
 
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 19 | Inlined usages: 51
+Found macros: 24 | Inlined usages: 59
 =================================================

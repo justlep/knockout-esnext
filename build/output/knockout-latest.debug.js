@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod13-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod14-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod13-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod14-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -173,12 +173,17 @@
         }
     };
 
-    const registerDependency = (subscribable) => {
+    /**
+     * For ko-internal usage, there is no reason to waste cycles with 'isSubscribable'-checks.  
+     */
+    const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
+
+    const registerDependencyExternal = (subscribable) => {
         if (currentFrame) {
             if (!isSubscribable(subscribable)) {
                 throw new Error('Only subscribable things can act as dependencies');
             }
-            currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId)));
+            (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
         }
     };
 
@@ -1191,18 +1196,17 @@
             return subscription;
         },
 
-        notifySubscribers(valueToNotify, event) {
-            event = event || DEFAULT_EVENT;
+        notifySubscribers(valueToNotify, event = DEFAULT_EVENT) {
             if (event === DEFAULT_EVENT) {
                 (this._versionNumber++);
             }
-            if (!this.hasSubscriptionsForEvent(event)) {
+            if (!((this._subscriptions[event] || 0).length)) {
                 return;
             }
-            let subs = event === DEFAULT_EVENT && this._changeSubscriptions || this._subscriptions[event].slice();
+            let subs = (event === DEFAULT_EVENT) && this._changeSubscriptions || this._subscriptions[event].slice();
             try {
                 beginDependencyDetection(); // Begin suppressing dependency detection (by setting the top frame to undefined)
-                for (let i = 0, subscription; subscription = subs[i]; ++i) {
+                for (let i = 0, subscription; subscription = subs[i]; ++i) { // TODO check if subs changes during loop
                     // In case a subscription was disposed during the arrayForEach cycle, check
                     // for isDisposed on each subscription before invoking its callback
                     if (!subscription._isDisposed) {
@@ -1221,11 +1225,6 @@
         hasChanged(versionToCheck) {
             // Do NOT shortcut to this._versionNumber!
             return this.getVersion() !== versionToCheck;
-        },
-
-        /** @deprecated - use inlined {@link _updateSubscribableVersion} */
-        updateVersion() {
-            ++this._versionNumber;
         },
 
         limit(limitFunction) {
@@ -1284,11 +1283,6 @@
             };
         },
 
-        hasSubscriptionsForEvent(event) {
-            let subscriptions = this._subscriptions[event]; 
-            return subscriptions && subscriptions.length;
-        },
-
         getSubscriptionsCount(event) {
             let event2subscriptions = this._subscriptions;
             if (event) {
@@ -1335,6 +1329,7 @@
     trySetPrototypeOf(SUBSCRIBABLE_PROTOTYPE, Function.prototype);
 
     const COMPUTED_STATE = Symbol('_state');
+    const THROTTLE_TIMER = Symbol();
 
     function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, options$1) {
         if (typeof evaluatorFunctionOrOptions === "object") {
@@ -1382,10 +1377,10 @@
             } 
             // Reading the value
             if (!state.isDisposed) {
-                registerDependency(_computedObservable);
+                registerDependencyInternal(_computedObservable);
             }
             if (state.isDirty || (state.isSleeping && _computedObservable.haveDependenciesChanged())) {
-                _computedObservable.evaluateImmediate();
+                _computedObservable.evaluate();
             }
             return state.latestValue;
         }
@@ -1444,7 +1439,7 @@
 
         // Evaluate, unless sleeping or deferEvaluation is true
         if (!state.isSleeping && !options$1.deferEvaluation) {
-            _computedObservable.evaluateImmediate();
+            _computedObservable.evaluate();
         }
 
         // Attach a DOM node disposal callback so that the computed will be proactively disposed as soon as the node is
@@ -1559,7 +1554,7 @@
         respondToChange() {
             // Ignore "change" events if we've already scheduled a delayed notification
             if (!this._notificationIsPending) {
-                this.evaluatePossiblyAsync();
+                this.evaluate(true, true /* checkPossiblyAsync */); 
                 return;
             }
             let computedState = this[COMPUTED_STATE];
@@ -1579,28 +1574,26 @@
                     }
                 };
             }
-            return target.subscribe(this.evaluatePossiblyAsync, this);
+            return target.subscribe(val => this.evaluate(val, true /* checkPossiblyAsync */), this);
         },
-        evaluatePossiblyAsync() {
-            let computedObservable = this,
-                throttleEvaluationTimeout = computedObservable.throttleEvaluation;
-            
-            if (throttleEvaluationTimeout && throttleEvaluationTimeout >= 0) {
-                let computedState = this[COMPUTED_STATE]; 
-                clearTimeout(computedState.evaluationTimeoutInstance);
-                computedState.evaluationTimeoutInstance = setTimeout(() => computedObservable.evaluateImmediate(true /*notifyChange*/), throttleEvaluationTimeout);
-            } else if (computedObservable._evalDelayed) {
-                computedObservable._evalDelayed(true /*isChange*/);
-            } else {
-                computedObservable.evaluateImmediate(true /*notifyChange*/);
+        evaluate(notifyChange, checkPossiblyAsync) {
+            if (checkPossiblyAsync) {
+                if (this.throttleEvaluation) {
+                    clearTimeout(this[THROTTLE_TIMER]);
+                    this[THROTTLE_TIMER] = setTimeout(() => this.evaluate(true), this.throttleEvaluation);
+                    return;
+                } 
+                if (this._evalDelayed) {
+                    this._evalDelayed(true /*isChange*/);
+                    return;
+                }
+                notifyChange = true;
             }
-        },
-        evaluateImmediate(notifyChange) {
-            let computedObservable = this,
-                state = computedObservable[COMPUTED_STATE],
+
+            let state = this[COMPUTED_STATE],
                 disposeWhen = state.disposeWhen,
                 changed = false;
-
+            
             if (state.isBeingEvaluated) {
                 // If the evaluation of a ko.computed causes side effects, it's possible that it will trigger its own re-evaluation.
                 // This is not desirable (it's hard for a developer to realise a chain of dependencies might cause this, and they almost
@@ -1617,7 +1610,7 @@
             if (state.disposeWhenNodeIsRemoved && !domNodeIsAttachedToDocument(state.disposeWhenNodeIsRemoved) || disposeWhen && disposeWhen()) {
                 // See comment above about suppressDisposalUntilDisposeWhenReturnsFalse
                 if (!state.suppressDisposalUntilDisposeWhenReturnsFalse) {
-                    computedObservable.dispose();
+                    this.dispose();
                     return;
                 }
             } else {
@@ -1730,7 +1723,7 @@
             // Pass in true to evaluate if needed.
             let state = this[COMPUTED_STATE];
             if ((state.isDirty && (evaluate || !state.dependenciesCount)) || (state.isSleeping && this.haveDependenciesChanged())) {
-                this.evaluateImmediate();
+                this.evaluate();
             }
             return state.latestValue;
         },
@@ -1741,7 +1734,7 @@
                 let computedState = this[COMPUTED_STATE];
                 if (!computedState.isSleeping) {
                     if (computedState.isStale) {
-                        this.evaluateImmediate();
+                        this.evaluate();
                     } else {
                         computedState.isDirty = false;
                     }
@@ -1803,7 +1796,7 @@
             if (state.isStale || computedObservable.haveDependenciesChanged()) {
                 state.dependencyTracking = null;
                 state.dependenciesCount = 0;
-                if (computedObservable.evaluateImmediate()) {
+                if (computedObservable.evaluate()) {
                     (computedObservable._versionNumber++);
                 }
             } else {
@@ -1828,7 +1821,7 @@
                 
                 // Waking dependencies may have triggered effects
                 if (computedObservable.haveDependenciesChanged()) {
-                    if (computedObservable.evaluateImmediate()) {
+                    if (computedObservable.evaluate()) {
                         (computedObservable._versionNumber++);
                     }
                 }
@@ -1842,7 +1835,7 @@
 
     function _pureAfterSubscriptionRemove(event) {
         let state = this[COMPUTED_STATE];
-        if (!state.isDisposed && event === 'change' && !this.hasSubscriptionsForEvent('change')) {
+        if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
             let __dependencyTracking = state.dependencyTracking;
             if (__dependencyTracking) {
                 for (let id of Object.keys(__dependencyTracking)) {
@@ -1868,7 +1861,7 @@
         // changed and conditionally re-evaluate the computed observable.
         let state = this[COMPUTED_STATE];
         if (state.isSleeping && (state.isStale || this.haveDependenciesChanged())) {
-            this.evaluateImmediate();
+            this.evaluate();
         }
         return SUBSCRIBABLE_PROTOTYPE.getVersion.call(this);
     }
@@ -2725,7 +2718,6 @@
     let _koReferenceForBindingContexts;
     const _setKoReferenceForBindingContexts = (ko) => _koReferenceForBindingContexts = ko;
 
-
     /**
      * The ko.bindingContext/KoBindingContext constructor is only called directly to create the root context. 
      * For child contexts, use bindingContextInstance.createChildContext or bindingContextInstance.extend.
@@ -2962,7 +2954,7 @@
                 let _asyncContext = bindingInfo.asyncContext; 
                 if (_asyncContext) {
                     _asyncContext.completeChildren();
-                } else if (_asyncContext === undefined && bindingInfo.eventSubscribable && bindingInfo.eventSubscribable.hasSubscriptionsForEvent(EVENT_DESCENDENTS_COMPLETE)) {
+                } else if (_asyncContext === undefined && _eventSubscribable && ((_eventSubscribable._subscriptions[EVENT_DESCENDENTS_COMPLETE] || 0).length)) {
                     // It's currently an error to register a descendantsComplete handler for a node that was never registered as completing asynchronously.
                     // That's because without the asyncContext, we don't have a way to know that all descendants have completed.
                     throw new Error("descendantsComplete event not supported for bindings on this node");
@@ -3303,7 +3295,7 @@
             // Lets assume, read happens more often than write
             if (!arguments.length) {
                 // Read
-                registerDependency(_self); // The caller only needs to be notified of changes if they did a "read" operation
+                registerDependencyInternal(_self); // The caller only needs to be notified of changes if they did a "read" operation
                 return _lastValue;
             }
             // Write
@@ -3503,7 +3495,7 @@
             if (underlyingAfterSubscriptionRemoveFunction) {
                 underlyingAfterSubscriptionRemoveFunction.call(target, event);
             }
-            if (event === ARRAY_CHANGE_EVENT_NAME && !target.hasSubscriptionsForEvent(ARRAY_CHANGE_EVENT_NAME)) {
+            if (event === ARRAY_CHANGE_EVENT_NAME && !((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
                 if (changeSubscription) {
                     changeSubscription.dispose();
                 }
@@ -3543,7 +3535,7 @@
                 let currentContents = [].concat(target.peek() || []), changes;
 
                     // Compute the diff and issue notifications, but only if someone is listening
-                if (target.hasSubscriptionsForEvent(ARRAY_CHANGE_EVENT_NAME)) {
+                if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
                     changes = _getChanges(previousContents, currentContents);
                 }
 
@@ -4529,49 +4521,42 @@
         if (targetNodeOrNodeArray) {
             let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-            let whenToDispose = function () {
-                return (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode);
-            }; // Passive disposal (on next evaluation)
-            let activelyDisposeWhenNodeIsRemoved = (firstTargetNode && renderMode === 'replaceNode') ? firstTargetNode.parentNode : firstTargetNode;
-
-            return dependentObservable( // So the DOM is automatically updated when any dependency changes
-                function () {
+            // So the DOM is automatically updated when any dependency changes
+            return dependentObservable(() => {
                     // Ensure we've got a proper binding context to work with
                     let bindingContext = (dataOrBindingContext && (dataOrBindingContext instanceof KoBindingContext))
                         ? dataOrBindingContext
                         : new KoBindingContext(dataOrBindingContext, null, null, null, {'exportDependencies': true});
-
+        
                     let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
                         renderedNodesArray = _executeTemplate(targetNodeOrNodeArray, renderMode, templateName, bindingContext, options);
-
+        
                     if (renderMode === 'replaceNode') {
                         targetNodeOrNodeArray = renderedNodesArray;
                         firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
                     }
-                },
-                null,
-                {disposeWhen: whenToDispose, disposeWhenNodeIsRemoved: activelyDisposeWhenNodeIsRemoved}
-            );
+                }, null, {
+                    disposeWhen: () => (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode), // Passive disposal (on next evaluation) 
+                    disposeWhenNodeIsRemoved: (firstTargetNode && renderMode === 'replaceNode') ? firstTargetNode.parentNode : firstTargetNode
+                });
         } 
         // We don't yet have a DOM node to evaluate, so use a memo and render the template later when there is a DOM node
-        return memoize(function (domNode) {
-            renderTemplate(template, dataOrBindingContext, options, domNode, 'replaceNode');
-        });
+        return memoize(domNode => renderTemplate(template, dataOrBindingContext, options, domNode, 'replaceNode'));
     };
 
     const renderTemplateForEach = (template, arrayOrObservableArray, options$1, targetNode, parentBindingContext) => {
         // Since setDomNodeChildrenFromArrayMapping always calls executeTemplateForArrayItem and then
         // activateBindingsCallback for added items, we can store the binding context in the former to use in the latter.
         let arrayItemContext, 
-            asName = options$1['as'];
+            asName = options$1.as;
 
         // This will be called by setDomNodeChildrenFromArrayMapping to get the nodes to add to targetNode
         let executeTemplateForArrayItem = (arrayValue, index) => {
             // Support selecting template as a function of the data being rendered
             arrayItemContext = parentBindingContext.createChildContext(arrayValue, {
-                'as': asName,
-                'noChildContext': options$1['noChildContext'],
-                'extend': (context) => {
+                as: asName,
+                noChildContext: options$1.noChildContext,
+                extend(context) {
                     context['$index'] = index;
                     if (asName) {
                         context[asName + 'Index'] = index;
@@ -6048,7 +6033,7 @@
             getDependenciesCount,
             getDependencies,
             isInitial: isInitialDependency,
-            registerDependency
+            registerDependency: registerDependencyExternal
         },
         ignoreDependencies: ignoreDependencyDetection,
         observable,
