@@ -41,39 +41,39 @@ export default {
     treeshake: true,
     output: [
         {   // the minified version
-            banner: getBanner(),
-            file: isTargetDist ? 'dist/knockout.js' : 'build/output/knockout-latest.js',
-            intro: getIntro(),
             format: 'umd',
             name: 'ko',
-            sourcemap: false,
-            strict: false,
-            plugins: [terser()]
-        },
-        {   // the minified ES Module version
+            file: isTargetDist ? 'dist/knockout.js' : 'build/output/knockout-latest.js',
             banner: getBanner(),
-            file: isTargetDist ? 'dist/knockout.esm.js' : 'build/output/knockout-latest.esm.js',
             intro: getIntro(),
-            format: 'esm',
             sourcemap: false,
             strict: false,
             plugins: [terser()]
         },
         {   // the non-minified debug version incl. sourcemap (DEBUG=true) 
-            banner: getBanner(isTargetDist ? '' : '-debug'),
-            file: isTargetDist ? 'dist/knockout.debug.js' : 'build/output/knockout-latest.debug.js',
-            intro: getIntro(true),
             format: 'umd',
             name: 'ko',
+            file: isTargetDist ? 'dist/knockout.debug.js' : 'build/output/knockout-latest.debug.js',
+            banner: getBanner(isTargetDist ? '' : '-debug'),
+            intro: getIntro(true),
             sourcemap: true,
             strict: false
+        },
+        {   // the minified ES Module version
+            format: 'esm',
+            file: isTargetDist ? 'dist/knockout.esm.js' : 'build/output/knockout-latest.esm.js',
+            banner: getBanner(),
+            intro: getIntro(),
+            sourcemap: false,
+            strict: false,
+            plugins: [terser()]
         }
     ],
     plugins: [
         createRollupInlineMacrosPlugin({
             include: /\.js$/,
             versionName: getFullReleaseName(),
-            logFile: !isEnvTravis && (isTargetDist ? 'dist/inline-macros-plugin.log' : 'build/output/inline-macros-plugin.log'),
+            logFile: !isEnvTravis && `${isTargetDist ? 'dist' : '/build/output'}/inline-macros-plugin.log`,
             verbose: isEnvTravis
         }),
         {
