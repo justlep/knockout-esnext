@@ -6,7 +6,7 @@ import {addDisposeCallback, removeDisposeCallback} from '../utils.domNodeDisposa
 import {dependentObservable, pureComputed} from '../subscribables/dependentObservable';
 import {ignoreDependencyDetection} from '../subscribables/dependencyDetection';
 import {getBindingHandler} from './bindingHandlers';
-import {Subscribable} from '../subscribables/subscribable';
+import {hasSubscriptionsForEvent, Subscribable} from '../subscribables/subscribable';
 import {bindingProviderInstance, bindingProviderMaySupportTextNodes} from './bindingProvider';
 
 const CONTEXT_SUBSCRIBABLE = Symbol('subscribable');
@@ -37,9 +37,6 @@ export const _setKoReferenceForBindingContexts = (ko) => _koReferenceForBindingC
 const _getBindingInfoForNode = (node) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]; //@inline
 const _ensureNodeHasDomData = (node) => node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}); //@inline
 const _getOrAddBindingInfoInDomData = (domData) => domData[BINDING_INFO_DOM_DATA_KEY] || (domData[BINDING_INFO_DOM_DATA_KEY] = {}); //@inline
-
-// TODO this is 1 of 4 identical copies of this macro; put into a single macro once RollupInlineMacrosPlugin supports global macros
-const _hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline
 
 /**
  * The ko.bindingContext/KoBindingContext constructor is only called directly to create the root context. 
@@ -277,7 +274,7 @@ export const bindingEvent = {
             let _asyncContext = bindingInfo.asyncContext; 
             if (_asyncContext) {
                 _asyncContext.completeChildren();
-            } else if (_asyncContext === undefined && _eventSubscribable && _hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
+            } else if (_asyncContext === undefined && _eventSubscribable && hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
                 // It's currently an error to register a descendantsComplete handler for a node that was never registered as completing asynchronously.
                 // That's because without the asyncContext, we don't have a way to know that all descendants have completed.
                 throw new Error("descendantsComplete event not supported for bindings on this node");

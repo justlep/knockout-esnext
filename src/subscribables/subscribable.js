@@ -46,11 +46,9 @@ function _limitNotifySubscribers(value, event) {
     }
 }
 
-// TODO this is a duplicate of the same function in dependentObservable.js; remove duplication when RollupInlineMacrosPlugin supports global macros!
-const _updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline
+export const updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline-global
 
-// TODO this is 1 of 4 identical copies of this macro; put into a single macro once RollupInlineMacrosPlugin supports global macros
-const _hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline
+export const hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline-global
 
 export const SUBSCRIBABLE_PROTOTYPE = {
     [IS_SUBSCRIBABLE]: true,
@@ -90,9 +88,9 @@ export const SUBSCRIBABLE_PROTOTYPE = {
 
     notifySubscribers(valueToNotify, event = DEFAULT_EVENT) {
         if (event === DEFAULT_EVENT) {
-            _updateSubscribableVersion(this);
+            updateSubscribableVersion(this);
         }
-        if (!_hasSubscriptionsForEvent(this, event)) {
+        if (!hasSubscriptionsForEvent(this, event)) {
             return;
         }
         let subs = (event === DEFAULT_EVENT) && this._changeSubscriptions || this._subscriptions[event].slice();

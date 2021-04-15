@@ -1,7 +1,7 @@
 import {options as koOptions} from '../options';
 import {registerDependencyInternal, beginDependencyDetection, endDependencyDetection} from './dependencyDetection';
 import {deferredExtender} from './deferredExtender';
-import {SUBSCRIBABLE_PROTOTYPE} from './subscribable';
+import {hasSubscriptionsForEvent, SUBSCRIBABLE_PROTOTYPE, updateSubscribableVersion} from './subscribable';
 import {removeDisposeCallback, addDisposeCallback} from '../utils.domNodeDisposal';
 import {setPrototypeOfOrExtend, trySetPrototypeOf, domNodeIsAttachedToDocument, valuesArePrimitiveAndEqual, canSetPrototype} from '../utils';
 import {IS_COMPUTED, IS_OBSERVABLE, IS_PURE_COMPUTED} from './observableUtils';
@@ -9,9 +9,6 @@ import {defineThrottleExtender} from './extenders';
 
 const COMPUTED_STATE = Symbol('_state');
 const THROTTLE_TIMER = Symbol();
-
-// TODO this is a duplicate of the same function in subscribable.js; remove duplication when RollupInline-Plugin supports global macros!
-const _updateSubscribableVersion = (subscribableOrComputed) => subscribableOrComputed._versionNumber++; //@inline
 
 export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, options) {
     if (typeof evaluatorFunctionOrOptions === "object") {
@@ -352,7 +349,7 @@ const COMPUTED_PROTOTYPE = {
             if (!state.isSleeping) {
                 computedObservable.notifySubscribers(state.latestValue, "beforeChange");
             } else {
-                _updateSubscribableVersion(computedObservable);
+                updateSubscribableVersion(computedObservable);
             }
 
             state.latestValue = newValue;
@@ -479,7 +476,7 @@ function _pureBeforeSubscriptionAdd(event) {
             state.dependencyTracking = null;
             state.dependenciesCount = 0;
             if (computedObservable.evaluate()) {
-                _updateSubscribableVersion(computedObservable);
+                updateSubscribableVersion(computedObservable);
             }
         } else {
             // First put the dependencies in order
@@ -504,7 +501,7 @@ function _pureBeforeSubscriptionAdd(event) {
             // Waking dependencies may have triggered effects
             if (computedObservable.haveDependenciesChanged()) {
                 if (computedObservable.evaluate()) {
-                    _updateSubscribableVersion(computedObservable);
+                    updateSubscribableVersion(computedObservable);
                 }
             }
         }
@@ -515,12 +512,9 @@ function _pureBeforeSubscriptionAdd(event) {
     }
 }
 
-// TODO this is 1 of 4 identical copies of this macro; put into a single macro once RollupInlineMacrosPlugin supports global macros
-const _hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline
-
 function _pureAfterSubscriptionRemove(event) {
     let state = this[COMPUTED_STATE];
-    if (!state.isDisposed && event === 'change' && !_hasSubscriptionsForEvent(this, 'change')) {
+    if (!state.isDisposed && event === 'change' && !hasSubscriptionsForEvent(this, 'change')) {
         let __dependencyTracking = state.dependencyTracking;
         if (__dependencyTracking) {
             for (let id of Object.keys(__dependencyTracking)) {

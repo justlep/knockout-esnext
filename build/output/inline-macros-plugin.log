@@ -1,15 +1,304 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod14-esnext
+for Knockout JavaScript library v3.5.1-mod15-esnext
+
+
+------- src/binding/bindingAttributeSyntax.js --------
+
+[bindingAttributeSyntax.js:37]
+Found local macro: "_getBindingInfoForNode" 
+
+[bindingAttributeSyntax.js:38]
+Found local macro: "_ensureNodeHasDomData" 
+
+[bindingAttributeSyntax.js:39]
+Found local macro: "_getOrAddBindingInfoInDomData" 
+
+[bindingAttributeSyntax.js:553]
+Found local macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
+
+[bindingAttributeSyntax.js:188]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo = _getBindingInfoForNode(node),
+NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
+
+[bindingAttributeSyntax.js:252]
+Inlined: "_ensureNodeHasDomData"
+OLD:  _ensureNodeHasDomData(node);
+NEW:  (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
+
+[bindingAttributeSyntax.js:253]
+Inlined: "_ensureNodeHasDomData"
+OLD:  let nodeDomData = _ensureNodeHasDomData(node),
+NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+
+[bindingAttributeSyntax.js:254]
+Inlined: "_getOrAddBindingInfoInDomData"
+OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
+NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
+
+[bindingAttributeSyntax.js:264]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo = _getBindingInfoForNode(node);
+NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
+
+[bindingAttributeSyntax.js:277]
+Inlined: "hasSubscriptionsForEvent"
+OLD:  } else if (_asyncContext === undefined && _eventSubscribable && hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
+NEW:  } else if (_asyncContext === undefined && _eventSubscribable && ((_eventSubscribable._subscriptions[EVENT_DESCENDENTS_COMPLETE] || 0).length)) {
+
+[bindingAttributeSyntax.js:286]
+Inlined: "_ensureNodeHasDomData"
+OLD:  let nodeDomData = _ensureNodeHasDomData(node),
+NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+
+[bindingAttributeSyntax.js:287]
+Inlined: "_getOrAddBindingInfoInDomData"
+OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
+NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
+
+[bindingAttributeSyntax.js:400]
+Inlined: "_ensureNodeHasDomData"
+OLD:  let nodeDomData = _ensureNodeHasDomData(node),
+NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
+
+[bindingAttributeSyntax.js:401]
+Inlined: "_getOrAddBindingInfoInDomData"
+OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
+NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
+
+[bindingAttributeSyntax.js:558]
+Inlined: "_getBindingContext"
+OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
+NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
+
+[bindingAttributeSyntax.js:562]
+Inlined: "_getBindingContext"
+OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
+NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
+
+[bindingAttributeSyntax.js:580]
+Inlined: "_getBindingContext"
+OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
+NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
+
+[bindingAttributeSyntax.js:593]
+Inlined: "_getBindingContext"
+OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
+NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
+
+[bindingAttributeSyntax.js:599]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
+NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
+
+[bindingAttributeSyntax.js:606]
+Inlined: "_getBindingInfoForNode"
+OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
+NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
+
+
+------- src/binding/bindingProvider.js --------
+
+[bindingProvider.js:7]
+Found local macro: "virtualNodeBindingValue" 
+
+[bindingProvider.js:16]
+Found local macro: "_getBindingsString" 
+
+[bindingProvider.js:45]
+Inlined: "_getBindingsString"
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
+
+[bindingProvider.js:45]
+Inlined: "virtualNodeBindingValue"  [iteration #2]
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
+
+[bindingProvider.js:51]
+Inlined: "_getBindingsString"
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
+
+[bindingProvider.js:51]
+Inlined: "virtualNodeBindingValue"  [iteration #2]
+OLD:  let bindingsString = _getBindingsString(node),
+NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
+
+
+------- src/memoization.js --------
+
+[memoization.js:8]
+Found local macro: "parseMemoText" 
+
+[memoization.js:50]
+Inlined: "parseMemoText"
+OLD:  memoId = parseMemoText(nodeValue);
+NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
+
+
+------- src/subscribables/dependencyDetection.js --------
+
+[dependencyDetection.js:12]
+Found local macro: "_beginDependencyDetectionWithEmptyFrame" 
+
+[dependencyDetection.js:14]
+Found local macro: "endDependencyDetection" 
+
+[dependencyDetection.js:58]
+Found local macro: "_getId" 
+
+[dependencyDetection.js:60]
+Found local macro: "_runCallback" 
+
+[dependencyDetection.js:25]
+Inlined: "_beginDependencyDetectionWithEmptyFrame"
+OLD:  _beginDependencyDetectionWithEmptyFrame();
+NEW:  (currentFrame = void outerFrames.push(currentFrame));
+
+[dependencyDetection.js:32]
+Inlined: "endDependencyDetection"
+OLD:  endDependencyDetection();
+NEW:  (currentFrame = outerFrames.pop());
+
+[dependencyDetection.js:44]
+Inlined: "_beginDependencyDetectionWithEmptyFrame"
+OLD:  _beginDependencyDetectionWithEmptyFrame();
+NEW:  (currentFrame = void outerFrames.push(currentFrame));
+
+[dependencyDetection.js:47]
+Inlined: "endDependencyDetection"
+OLD:  endDependencyDetection();
+NEW:  (currentFrame = outerFrames.pop());
+
+[dependencyDetection.js:65]
+Inlined: "_runCallback"
+OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
+NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())));
+
+[dependencyDetection.js:65]
+Inlined: "_getId"  [iteration #2]
+OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
+NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
+
+[dependencyDetection.js:72]
+Inlined: "_runCallback"
+OLD:  _runCallback(subscribable);
+NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())));
+
+[dependencyDetection.js:72]
+Inlined: "_getId"  [iteration #2]
+OLD:  _runCallback(subscribable);
+NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
+
+[dependentObservable.js:352]
+Inlined: "updateSubscribableVersion"
+OLD:  updateSubscribableVersion(computedObservable);
+NEW:  (computedObservable._versionNumber++);
+
+[dependentObservable.js:479]
+Inlined: "updateSubscribableVersion"
+OLD:  updateSubscribableVersion(computedObservable);
+NEW:  (computedObservable._versionNumber++);
+
+[dependentObservable.js:504]
+Inlined: "updateSubscribableVersion"
+OLD:  updateSubscribableVersion(computedObservable);
+NEW:  (computedObservable._versionNumber++);
+
+[dependentObservable.js:517]
+Inlined: "hasSubscriptionsForEvent"
+OLD:  if (!state.isDisposed && event === 'change' && !hasSubscriptionsForEvent(this, 'change')) {
+NEW:  if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
+
+[observableArray.changeTracking.js:42]
+Inlined: "hasSubscriptionsForEvent"
+OLD:  if (event === ARRAY_CHANGE_EVENT_NAME && !hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
+NEW:  if (event === ARRAY_CHANGE_EVENT_NAME && !((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
+
+[observableArray.changeTracking.js:82]
+Inlined: "hasSubscriptionsForEvent"
+OLD:  if (hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
+NEW:  if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
+
+
+------- src/subscribables/subscribable.js --------
+
+[subscribable.js:49]
+Found global macro: "updateSubscribableVersion" 
+
+[subscribable.js:51]
+Found global macro: "hasSubscriptionsForEvent" 
+
+[subscribable.js:91]
+Inlined: "updateSubscribableVersion"
+OLD:  updateSubscribableVersion(this);
+NEW:  (this._versionNumber++);
+
+[subscribable.js:93]
+Inlined: "hasSubscriptionsForEvent"
+OLD:  if (!hasSubscriptionsForEvent(this, event)) {
+NEW:  if (!((this._subscriptions[event] || 0).length)) {
+
+
+------- src/templating/templateSources.js --------
+
+[templateSources.js:42]
+Found local macro: "_getTemplateDomData" 
+
+[templateSources.js:82]
+Inlined: "_getTemplateDomData"
+OLD:  let templateData = _getTemplateDomData(element),
+NEW:  let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
+
+[templateSources.js:123]
+Inlined: "_getTemplateDomData"
+OLD:  let templateData = _getTemplateDomData(this.domElement);
+NEW:  let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
+
+
+------- src/templating/templating.js --------
+
+[templating.js:105]
+Found local macro: "_getFirstNodeFromPossibleArray" 
+
+[templating.js:152]
+Found local macro: "_resolveTemplateName"  (MULTI-LINE-EXPRESSION)
+
+[templating.js:109]
+Inlined: "_getFirstNodeFromPossibleArray"
+OLD:  let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
+NEW:  let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
+
+[templating.js:163]
+Inlined: "_getFirstNodeFromPossibleArray"
+OLD:  let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
+NEW:  let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
+
+[templating.js:172]
+Inlined: "_resolveTemplateName"
+OLD:  let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
+NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
+
+[templating.js:177]
+Inlined: "_getFirstNodeFromPossibleArray"
+OLD:  firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
+NEW:  firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
+
+[templating.js:208]
+Inlined: "_resolveTemplateName"
+OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
+NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
 
 
 ------- src/utils.domNodeDisposal.js --------
 
 [utils.domNodeDisposal.js:10]
-Found macro: "_isNodeTypeCleanable" 
+Found local macro: "_isNodeTypeCleanable" 
 
 [utils.domNodeDisposal.js:11]
-Found macro: "_isNodeTypeCleanableWithDescendents" 
+Found local macro: "_isNodeTypeCleanableWithDescendents" 
 
 [utils.domNodeDisposal.js:31]
 Inlined: "_isNodeTypeCleanableWithDescendents"
@@ -30,10 +319,10 @@ NEW:  if ((nodeType === 1 || nodeType === 9)) {
 ------- src/virtualElements.js --------
 
 [virtualElements.js:19]
-Found macro: "_isStartComment" 
+Found local macro: "_isStartComment" 
 
 [virtualElements.js:20]
-Found macro: "_isEndComment" 
+Found local macro: "_isEndComment" 
 
 [virtualElements.js:29]
 Inlined: "_isEndComment"
@@ -96,315 +385,32 @@ OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
-------- src/memoization.js --------
-
-[memoization.js:8]
-Found macro: "parseMemoText" 
-
-[memoization.js:50]
-Inlined: "parseMemoText"
-OLD:  memoId = parseMemoText(nodeValue);
-NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
-
-
-------- src/subscribables/subscribable.js --------
-
-[subscribable.js:50]
-Found macro: "_updateSubscribableVersion" 
-
-[subscribable.js:53]
-Found macro: "_hasSubscriptionsForEvent" 
-
-[subscribable.js:93]
-Inlined: "_updateSubscribableVersion"
-OLD:  _updateSubscribableVersion(this);
-NEW:  (this._versionNumber++);
-
-[subscribable.js:95]
-Inlined: "_hasSubscriptionsForEvent"
-OLD:  if (!_hasSubscriptionsForEvent(this, event)) {
-NEW:  if (!((this._subscriptions[event] || 0).length)) {
-
-
-------- src/subscribables/dependencyDetection.js --------
-
-[dependencyDetection.js:12]
-Found macro: "_beginDependencyDetectionWithEmptyFrame" 
-
-[dependencyDetection.js:14]
-Found macro: "endDependencyDetection" 
-
-[dependencyDetection.js:58]
-Found macro: "_getId" 
-
-[dependencyDetection.js:60]
-Found macro: "_runCallback" 
-
-[dependencyDetection.js:25]
-Inlined: "_beginDependencyDetectionWithEmptyFrame"
-OLD:  _beginDependencyDetectionWithEmptyFrame();
-NEW:  (currentFrame = void outerFrames.push(currentFrame));
-
-[dependencyDetection.js:32]
-Inlined: "endDependencyDetection"
-OLD:  endDependencyDetection();
-NEW:  (currentFrame = outerFrames.pop());
-
-[dependencyDetection.js:44]
-Inlined: "_beginDependencyDetectionWithEmptyFrame"
-OLD:  _beginDependencyDetectionWithEmptyFrame();
-NEW:  (currentFrame = void outerFrames.push(currentFrame));
-
-[dependencyDetection.js:47]
-Inlined: "endDependencyDetection"
-OLD:  endDependencyDetection();
-NEW:  (currentFrame = outerFrames.pop());
-
-[dependencyDetection.js:65]
-Inlined: "_runCallback"
-OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
-NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())));
-
-[dependencyDetection.js:65]
-Inlined: "_getId"  [iteration #2]
-OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
-NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
-
-[dependencyDetection.js:72]
-Inlined: "_runCallback"
-OLD:  _runCallback(subscribable);
-NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = _getId())));
-
-[dependencyDetection.js:72]
-Inlined: "_getId"  [iteration #2]
-OLD:  _runCallback(subscribable);
-NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
-
-
-------- src/templating/templateSources.js --------
-
-[templateSources.js:42]
-Found macro: "_getTemplateDomData" 
-
-[templateSources.js:82]
-Inlined: "_getTemplateDomData"
-OLD:  let templateData = _getTemplateDomData(element),
-NEW:  let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
-
-[templateSources.js:123]
-Inlined: "_getTemplateDomData"
-OLD:  let templateData = _getTemplateDomData(this.domElement);
-NEW:  let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
-
-
-------- src/binding/bindingProvider.js --------
-
-[bindingProvider.js:7]
-Found macro: "virtualNodeBindingValue" 
-
-[bindingProvider.js:16]
-Found macro: "_getBindingsString" 
-
-[bindingProvider.js:45]
-Inlined: "_getBindingsString"
-OLD:  let bindingsString = _getBindingsString(node),
-NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
-
-[bindingProvider.js:45]
-Inlined: "virtualNodeBindingValue"  [iteration #2]
-OLD:  let bindingsString = _getBindingsString(node),
-NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
-
-[bindingProvider.js:51]
-Inlined: "_getBindingsString"
-OLD:  let bindingsString = _getBindingsString(node),
-NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
-
-[bindingProvider.js:51]
-Inlined: "virtualNodeBindingValue"  [iteration #2]
-OLD:  let bindingsString = _getBindingsString(node),
-NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
-
-
-------- src/templating/templating.js --------
-
-[templating.js:105]
-Found macro: "_getFirstNodeFromPossibleArray" 
-
-[templating.js:152]
-Found macro: "_resolveTemplateName"  (MULTI-LINE-EXPRESSION)
-
-[templating.js:109]
-Inlined: "_getFirstNodeFromPossibleArray"
-OLD:  let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
-NEW:  let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
-
-[templating.js:163]
-Inlined: "_getFirstNodeFromPossibleArray"
-OLD:  let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
-NEW:  let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
-
-[templating.js:172]
-Inlined: "_resolveTemplateName"
-OLD:  let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
-NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
-
-[templating.js:177]
-Inlined: "_getFirstNodeFromPossibleArray"
-OLD:  firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
-NEW:  firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
-
-[templating.js:208]
-Inlined: "_resolveTemplateName"
-OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
-NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
-
-
-------- src/binding/bindingAttributeSyntax.js --------
-
-[bindingAttributeSyntax.js:37]
-Found macro: "_getBindingInfoForNode" 
-
-[bindingAttributeSyntax.js:38]
-Found macro: "_ensureNodeHasDomData" 
-
-[bindingAttributeSyntax.js:39]
-Found macro: "_getOrAddBindingInfoInDomData" 
-
-[bindingAttributeSyntax.js:42]
-Found macro: "_hasSubscriptionsForEvent" 
-
-[bindingAttributeSyntax.js:556]
-Found macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
-
-[bindingAttributeSyntax.js:191]
-Inlined: "_getBindingInfoForNode"
-OLD:  let bindingInfo = _getBindingInfoForNode(node),
-NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
-
-[bindingAttributeSyntax.js:255]
-Inlined: "_ensureNodeHasDomData"
-OLD:  _ensureNodeHasDomData(node);
-NEW:  (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
-
-[bindingAttributeSyntax.js:256]
-Inlined: "_ensureNodeHasDomData"
-OLD:  let nodeDomData = _ensureNodeHasDomData(node),
-NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
-
-[bindingAttributeSyntax.js:257]
-Inlined: "_getOrAddBindingInfoInDomData"
-OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
-NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
-
-[bindingAttributeSyntax.js:267]
-Inlined: "_getBindingInfoForNode"
-OLD:  let bindingInfo = _getBindingInfoForNode(node);
-NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
-
-[bindingAttributeSyntax.js:280]
-Inlined: "_hasSubscriptionsForEvent"
-OLD:  } else if (_asyncContext === undefined && _eventSubscribable && _hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
-NEW:  } else if (_asyncContext === undefined && _eventSubscribable && ((_eventSubscribable._subscriptions[EVENT_DESCENDENTS_COMPLETE] || 0).length)) {
-
-[bindingAttributeSyntax.js:289]
-Inlined: "_ensureNodeHasDomData"
-OLD:  let nodeDomData = _ensureNodeHasDomData(node),
-NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
-
-[bindingAttributeSyntax.js:290]
-Inlined: "_getOrAddBindingInfoInDomData"
-OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
-NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
-
-[bindingAttributeSyntax.js:403]
-Inlined: "_ensureNodeHasDomData"
-OLD:  let nodeDomData = _ensureNodeHasDomData(node),
-NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
-
-[bindingAttributeSyntax.js:404]
-Inlined: "_getOrAddBindingInfoInDomData"
-OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
-NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
-
-[bindingAttributeSyntax.js:561]
-Inlined: "_getBindingContext"
-OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
-NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
-
-[bindingAttributeSyntax.js:565]
-Inlined: "_getBindingContext"
-OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
-NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
-
-[bindingAttributeSyntax.js:583]
-Inlined: "_getBindingContext"
-OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
-NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
-
-[bindingAttributeSyntax.js:596]
-Inlined: "_getBindingContext"
-OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
-NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
-
-[bindingAttributeSyntax.js:602]
-Inlined: "_getBindingInfoForNode"
-OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
-NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
-
-[bindingAttributeSyntax.js:609]
-Inlined: "_getBindingInfoForNode"
-OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
-NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
-
-
-------- src/subscribables/dependentObservable.js --------
-
-[dependentObservable.js:14]
-Found macro: "_updateSubscribableVersion" 
-
-[dependentObservable.js:519]
-Found macro: "_hasSubscriptionsForEvent" 
-
-[dependentObservable.js:355]
-Inlined: "_updateSubscribableVersion"
-OLD:  _updateSubscribableVersion(computedObservable);
-NEW:  (computedObservable._versionNumber++);
-
-[dependentObservable.js:482]
-Inlined: "_updateSubscribableVersion"
-OLD:  _updateSubscribableVersion(computedObservable);
-NEW:  (computedObservable._versionNumber++);
-
-[dependentObservable.js:507]
-Inlined: "_updateSubscribableVersion"
-OLD:  _updateSubscribableVersion(computedObservable);
-NEW:  (computedObservable._versionNumber++);
-
-[dependentObservable.js:523]
-Inlined: "_hasSubscriptionsForEvent"
-OLD:  if (!state.isDisposed && event === 'change' && !_hasSubscriptionsForEvent(this, 'change')) {
-NEW:  if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
-
-
-------- src/subscribables/observableArray.changeTracking.js --------
-
-[observableArray.changeTracking.js:7]
-Found macro: "_hasSubscriptionsForEvent" 
-
-[observableArray.changeTracking.js:44]
-Inlined: "_hasSubscriptionsForEvent"
-OLD:  if (event === ARRAY_CHANGE_EVENT_NAME && !_hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
-NEW:  if (event === ARRAY_CHANGE_EVENT_NAME && !((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
-
-[observableArray.changeTracking.js:84]
-Inlined: "_hasSubscriptionsForEvent"
-OLD:  if (_hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
-NEW:  if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
-
+Global macros inlining summary:
+ 4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:49]
+ 5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:51]
+
+Local macros inlining summary:
+ 4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]
+ 4x  _ensureNodeHasDomData  - [src/binding/bindingAttributeSyntax.js:38]
+ 3x  _getOrAddBindingInfoInDomData  - [src/binding/bindingAttributeSyntax.js:39]
+ 4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:553]
+ 2x  virtualNodeBindingValue  - [src/binding/bindingProvider.js:7]
+ 2x  _getBindingsString  - [src/binding/bindingProvider.js:16]
+ 1x  parseMemoText  - [src/memoization.js:8]
+ 2x  _beginDependencyDetectionWithEmptyFrame  - [src/subscribables/dependencyDetection.js:12]
+ 2x  endDependencyDetection  - [src/subscribables/dependencyDetection.js:14]
+ 2x  _getId  - [src/subscribables/dependencyDetection.js:58]
+ 2x  _runCallback  - [src/subscribables/dependencyDetection.js:60]
+ 2x  _getTemplateDomData  - [src/templating/templateSources.js:42]
+ 3x  _getFirstNodeFromPossibleArray  - [src/templating/templating.js:105]
+ 2x  _resolveTemplateName  - [src/templating/templating.js:152]
+ 1x  _isNodeTypeCleanable  - [src/utils.domNodeDisposal.js:10]
+ 2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:11]
+ 8x  _isStartComment  - [src/virtualElements.js:19]
+ 4x  _isEndComment  - [src/virtualElements.js:20]
 
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 24 | Inlined usages: 59
+Found macros: 20 (2 global) | Inlined usages: 59
 =================================================

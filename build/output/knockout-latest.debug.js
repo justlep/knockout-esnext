@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod14-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod15-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod14-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod15-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
