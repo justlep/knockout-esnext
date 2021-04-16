@@ -68,7 +68,7 @@ export const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionFo
 /**
  * Cleanable node types: Element 1, Comment 8, Document 9
  * @param {Node|HTMLElement} node
- * @return {Node}
+ * @return {Node|HTMLElement}
  */
 export const cleanNode = (node) => {
     let nodeType = node.nodeType;
@@ -88,4 +88,4 @@ export const cleanNode = (node) => {
     return node;
 };
 
-export const removeNode = (node) => cleanNode(node).remove();
+export const removeNode = (node) => cleanNode(node).remove(); //@inline-global:cleanNode

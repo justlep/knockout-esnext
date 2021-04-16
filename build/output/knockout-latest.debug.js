@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod15-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod16-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod15-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod16-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -29,11 +29,7 @@
     let _keyCount = 0;
     const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
-
-    const getDomData = (node, key) => {
-        let dataForNode = node[DOM_DATASTORE_PROP];
-        return dataForNode && dataForNode[key];
-    };
+    const getDomData = (node, key) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][key]; //@inline-global:DOM_DATASTORE_PROP
 
     const setDomData = (node, key, value) => {
         // Make sure we don't actually create a new domData key if we are actually deleting a value
@@ -252,7 +248,7 @@
     /**
      * Cleanable node types: Element 1, Comment 8, Document 9
      * @param {Node|HTMLElement} node
-     * @return {Node}
+     * @return {Node|HTMLElement}
      */
     const cleanNode = (node) => {
         let nodeType = node.nodeType;
@@ -272,12 +268,12 @@
         return node;
     };
 
-    const removeNode = (node) => cleanNode(node).remove();
+    const removeNode = (node) => cleanNode(node).remove(); //@inline-global:cleanNode
 
     const emptyDomNode = (domNode) => {
         let child;
         while (child = domNode.firstChild) {
-            removeNode(child);
+            (cleanNode(child).remove());
         }
     };
 
@@ -343,7 +339,7 @@
         }
         let virtualChildren = childNodes(node);
         for (let i = 0, j = virtualChildren.length; i < j; i++) {
-            removeNode(virtualChildren[i]);
+            (cleanNode(virtualChildren[i]).remove());
         }
     };
 
@@ -623,7 +619,7 @@
                 parent.insertBefore(newNodesArray[i], insertionPoint);
             }
             for (let i = 0, j = nodesToReplaceArray.length; i < j; i++) {
-                removeNode(nodesToReplaceArray[i]);
+                (cleanNode(nodesToReplaceArray[i]).remove());
             }
         }
     };
@@ -4016,7 +4012,7 @@
         }
 
         options = options || {};
-        let lastMappingResult = getDomData(domNode, LAST_MAPPING_RESULT_DOM_DATA_KEY);
+        let lastMappingResult = (domNode[DOM_DATASTORE_PROP] && domNode[DOM_DATASTORE_PROP][LAST_MAPPING_RESULT_DOM_DATA_KEY]);
         let isFirstExecution = !lastMappingResult;
 
         // Build the new mapping result
@@ -4140,6 +4136,8 @@
         options.beforeMove && _callCallback(options.beforeMove, itemsForMoveCallbacks);
 
         // Next remove nodes for deleted items (or just clean if there's a beforeRemove callback)
+        // TODO modify so that (cleanNode().remove()) becomes an explicit invocation which can be inlined (removeNode = global macro)
+        //       check if the modification makes sense performance-wise though
         nodesToDelete.forEach(options.beforeRemove ? cleanNode : removeNode);
 
         let lastNode, 
@@ -4278,7 +4276,7 @@
 
         data(key /*, valueToWrite */) {
             if (arguments.length === 1) {
-                return getDomData(this.domElement, DOM_DATA_KEY_PREFIX + key);
+                return (this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][DOM_DATA_KEY_PREFIX + key]);
             } 
             setDomData(this.domElement, DOM_DATA_KEY_PREFIX + key, arguments[1]);
         }
@@ -4286,7 +4284,7 @@
         nodes(/* valueToWrite */) {
             let element = this.domElement;
             if (!arguments.length) {
-                let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
+                let templateData = ((element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {}),
                     nodes = templateData.containerData || (
                             this.templateType === TEMPLATE_TEMPLATE ? element.content :
                             this.templateType === TEMPLATE_ELEMENT ? element : undefined);
@@ -4327,7 +4325,7 @@
          */
         text(/* valueToWrite */) {
             if (!arguments.length) {
-                let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
+                let templateData = ((this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {});
                 if (templateData.textData === undefined && templateData.containerData) {
                     templateData.textData = templateData.containerData.innerHTML;
                 }
@@ -4616,7 +4614,7 @@
     const TEMPLATE_COMPUTED_DOM_DATA_KEY = nextDomDataKey();
 
     const _disposeOldComputedAndStoreNewOne = (element, newComputed) => {
-        let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
+        let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
         if (oldComputed && (typeof oldComputed.dispose === 'function')) {
             oldComputed.dispose();
         }
@@ -4645,7 +4643,7 @@
                 // If the nodes are already attached to a KO-generated container, we reuse that container without moving the
                 // elements to a new one (we check only the first node, as the nodes are always moved together)
                 let container = nodes[0] && nodes[0].parentNode;
-                if (!container || !getDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY)) {
+                if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTORE_PROP][CLEAN_CONTAINER_DOM_DATA_KEY])) {
                     container = moveCleanedNodesToContainerElement(nodes);
                     setDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY, true);
                 }
@@ -5255,7 +5253,7 @@
         switch (element.tagName.toLowerCase()) {
             case 'option':
                 return (element[HAS_DOM_DATA_EXPANDO_PROPERTY]) ?
-                    getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
+                    (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
             case 'select': {
                 let selectedIndex = element.selectedIndex;
                 return selectedIndex >= 0 ? readSelectOrOptionValue(element.options[selectedIndex]) : undefined;

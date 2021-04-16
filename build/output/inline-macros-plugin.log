@@ -1,18 +1,18 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod15-esnext
+for Knockout JavaScript library v3.5.1-mod16-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
 
 [bindingAttributeSyntax.js:37]
-Found local macro: "_getBindingInfoForNode" 
+Found local macro: "_getBindingInfoForNode"
 
 [bindingAttributeSyntax.js:38]
-Found local macro: "_ensureNodeHasDomData" 
+Found local macro: "_ensureNodeHasDomData"
 
 [bindingAttributeSyntax.js:39]
-Found local macro: "_getOrAddBindingInfoInDomData" 
+Found local macro: "_getOrAddBindingInfoInDomData"
 
 [bindingAttributeSyntax.js:553]
 Found local macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
@@ -43,7 +43,7 @@ OLD:  let bindingInfo = _getBindingInfoForNode(node);
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
 [bindingAttributeSyntax.js:277]
-Inlined: "hasSubscriptionsForEvent"
+Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  } else if (_asyncContext === undefined && _eventSubscribable && hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
 NEW:  } else if (_asyncContext === undefined && _eventSubscribable && ((_eventSubscribable._subscriptions[EVENT_DESCENDENTS_COMPLETE] || 0).length)) {
 
@@ -101,10 +101,10 @@ NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && 
 ------- src/binding/bindingProvider.js --------
 
 [bindingProvider.js:7]
-Found local macro: "virtualNodeBindingValue" 
+Found local macro: "virtualNodeBindingValue"
 
 [bindingProvider.js:16]
-Found local macro: "_getBindingsString" 
+Found local macro: "_getBindingsString"
 
 [bindingProvider.js:45]
 Inlined: "_getBindingsString"
@@ -125,12 +125,37 @@ NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BIND
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
+
+[arrayToDomNodeChildren.js:63]
+Inlined: "getDomData" (global macro)
+OLD:  let lastMappingResult = getDomData(domNode, LAST_MAPPING_RESULT_DOM_DATA_KEY);
+NEW:  let lastMappingResult = (domNode[DOM_DATASTORE_PROP] && domNode[DOM_DATASTORE_PROP][LAST_MAPPING_RESULT_DOM_DATA_KEY]);
+
+Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/binding/editDetection/arrayToDomNodeChildren.js:1]
+OLD:  import {nextDomDataKey, getDomData, setDomData} from '../../utils.domData';
+NEW:  import {nextDomDataKey, getDomData, DOM_DATASTORE_PROP, setDomData} from '../../utils.domData';
+
+[arrayToDomNodeChildren.js:187]
+Inlined: "removeNode" (global macro)
+OLD:  // TODO modify so that removeNode() becomes an explicit invocation which can be inlined (removeNode = global macro)
+NEW:  // TODO modify so that (cleanNode().remove()) becomes an explicit invocation which can be inlined (removeNode = global macro)
+
+Skipped adding macro-dependency cleanNode (already imported)
+
+[selectExtensions.js:12]
+Inlined: "getDomData" (global macro)
+OLD:  getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
+NEW:  (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
+
+Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/binding/selectExtensions.js:1]
+OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
+NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
 
 ------- src/memoization.js --------
 
 [memoization.js:8]
-Found local macro: "parseMemoText" 
+Found local macro: "parseMemoText"
 
 [memoization.js:50]
 Inlined: "parseMemoText"
@@ -141,16 +166,16 @@ NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, node
 ------- src/subscribables/dependencyDetection.js --------
 
 [dependencyDetection.js:12]
-Found local macro: "_beginDependencyDetectionWithEmptyFrame" 
+Found local macro: "_beginDependencyDetectionWithEmptyFrame"
 
 [dependencyDetection.js:14]
-Found local macro: "endDependencyDetection" 
+Found local macro: "endDependencyDetection"
 
 [dependencyDetection.js:58]
-Found local macro: "_getId" 
+Found local macro: "_getId"
 
 [dependencyDetection.js:60]
-Found local macro: "_runCallback" 
+Found local macro: "_runCallback"
 
 [dependencyDetection.js:25]
 Inlined: "_beginDependencyDetectionWithEmptyFrame"
@@ -193,32 +218,32 @@ OLD:  _runCallback(subscribable);
 NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
 
 [dependentObservable.js:352]
-Inlined: "updateSubscribableVersion"
+Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(computedObservable);
 NEW:  (computedObservable._versionNumber++);
 
 [dependentObservable.js:479]
-Inlined: "updateSubscribableVersion"
+Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(computedObservable);
 NEW:  (computedObservable._versionNumber++);
 
 [dependentObservable.js:504]
-Inlined: "updateSubscribableVersion"
+Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(computedObservable);
 NEW:  (computedObservable._versionNumber++);
 
 [dependentObservable.js:517]
-Inlined: "hasSubscriptionsForEvent"
+Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!state.isDisposed && event === 'change' && !hasSubscriptionsForEvent(this, 'change')) {
 NEW:  if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
 
 [observableArray.changeTracking.js:42]
-Inlined: "hasSubscriptionsForEvent"
+Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (event === ARRAY_CHANGE_EVENT_NAME && !hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
 NEW:  if (event === ARRAY_CHANGE_EVENT_NAME && !((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
 
 [observableArray.changeTracking.js:82]
-Inlined: "hasSubscriptionsForEvent"
+Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
 NEW:  if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
 
@@ -226,18 +251,18 @@ NEW:  if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
 ------- src/subscribables/subscribable.js --------
 
 [subscribable.js:49]
-Found global macro: "updateSubscribableVersion" 
+Found global macro: "updateSubscribableVersion"
 
 [subscribable.js:51]
-Found global macro: "hasSubscriptionsForEvent" 
+Found global macro: "hasSubscriptionsForEvent"
 
 [subscribable.js:91]
-Inlined: "updateSubscribableVersion"
+Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(this);
 NEW:  (this._versionNumber++);
 
 [subscribable.js:93]
-Inlined: "hasSubscriptionsForEvent"
+Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!hasSubscriptionsForEvent(this, event)) {
 NEW:  if (!((this._subscriptions[event] || 0).length)) {
 
@@ -245,23 +270,46 @@ NEW:  if (!((this._subscriptions[event] || 0).length)) {
 ------- src/templating/templateSources.js --------
 
 [templateSources.js:42]
-Found local macro: "_getTemplateDomData" 
+Found local macro: "_getTemplateDomData"
+
+[templateSources.js:74]
+Inlined: "getDomData" (global macro)
+OLD:  return getDomData(this.domElement, DOM_DATA_KEY_PREFIX + key);
+NEW:  return (this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][DOM_DATA_KEY_PREFIX + key]);
+
+Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/templating/templateSources.js:1]
+OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
+NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
 [templateSources.js:82]
 Inlined: "_getTemplateDomData"
 OLD:  let templateData = _getTemplateDomData(element),
 NEW:  let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
 
+[templateSources.js:82]
+Inlined: "getDomData" (global macro)
+OLD:  let templateData = _getTemplateDomData(element),
+NEW:  let templateData = ((element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {}),
+
+Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templateSources.js
+
 [templateSources.js:123]
 Inlined: "_getTemplateDomData"
 OLD:  let templateData = _getTemplateDomData(this.domElement);
 NEW:  let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
 
+[templateSources.js:123]
+Inlined: "getDomData" (global macro)
+OLD:  let templateData = _getTemplateDomData(this.domElement);
+NEW:  let templateData = ((this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {});
+
+Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templateSources.js
+
 
 ------- src/templating/templating.js --------
 
 [templating.js:105]
-Found local macro: "_getFirstNodeFromPossibleArray" 
+Found local macro: "_getFirstNodeFromPossibleArray"
 
 [templating.js:152]
 Found local macro: "_resolveTemplateName"  (MULTI-LINE-EXPRESSION)
@@ -291,14 +339,41 @@ Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
 
+[templating.js:260]
+Inlined: "getDomData" (global macro)
+OLD:  let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
+NEW:  let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
+
+Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/templating/templating.js:10]
+OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
+NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
+
+[templating.js:289]
+Inlined: "getDomData" (global macro)
+OLD:  if (!container || !getDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY)) {
+NEW:  if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTORE_PROP][CLEAN_CONTAINER_DOM_DATA_KEY])) {
+
+Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templating.js
+
+
+------- src/utils.domData.js --------
+
+[utils.domData.js:8]
+Found global macro: "getDomData"
+Dependencies (to auto-import): DOM_DATASTORE_PROP
+
 
 ------- src/utils.domNodeDisposal.js --------
 
 [utils.domNodeDisposal.js:10]
-Found local macro: "_isNodeTypeCleanable" 
+Found local macro: "_isNodeTypeCleanable"
 
 [utils.domNodeDisposal.js:11]
-Found local macro: "_isNodeTypeCleanableWithDescendents" 
+Found local macro: "_isNodeTypeCleanableWithDescendents"
+
+[utils.domNodeDisposal.js:91]
+Found global macro: "removeNode"
+Dependencies (to auto-import): cleanNode
 
 [utils.domNodeDisposal.js:31]
 Inlined: "_isNodeTypeCleanableWithDescendents"
@@ -315,14 +390,30 @@ Inlined: "_isNodeTypeCleanableWithDescendents"
 OLD:  if (_isNodeTypeCleanableWithDescendents(nodeType)) {
 NEW:  if ((nodeType === 1 || nodeType === 9)) {
 
+[utils.domNodes.js:6]
+Inlined: "removeNode" (global macro)
+OLD:  removeNode(child);
+NEW:  (cleanNode(child).remove());
+
+Added macro-dependency "cleanNode" to imports at [src/utils.domNodes.js:1]
+OLD:  import {removeNode} from './utils.domNodeDisposal';
+NEW:  import {removeNode, cleanNode} from './utils.domNodeDisposal';
+
+[utils.js:197]
+Inlined: "removeNode" (global macro)
+OLD:  removeNode(nodesToReplaceArray[i]);
+NEW:  (cleanNode(nodesToReplaceArray[i]).remove());
+
+Skipped adding macro-dependency cleanNode (already imported)
+
 
 ------- src/virtualElements.js --------
 
 [virtualElements.js:19]
-Found local macro: "_isStartComment" 
+Found local macro: "_isStartComment"
 
 [virtualElements.js:20]
-Found local macro: "_isEndComment" 
+Found local macro: "_isEndComment"
 
 [virtualElements.js:29]
 Inlined: "_isEndComment"
@@ -343,6 +434,15 @@ NEW:  export const childNodes = (node) => ((node.nodeType === 8) && START_COMMEN
 Inlined: "_isStartComment"
 OLD:  if (!_isStartComment(node)) {
 NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
+
+[virtualElements.js:65]
+Inlined: "removeNode" (global macro)
+OLD:  removeNode(virtualChildren[i]);
+NEW:  (cleanNode(virtualChildren[i]).remove());
+
+Added macro-dependency "cleanNode" to imports at [src/virtualElements.js:9]
+OLD:  import {removeNode} from './utils.domNodeDisposal';
+NEW:  import {removeNode, cleanNode} from './utils.domNodeDisposal';
 
 [virtualElements.js:70]
 Inlined: "_isStartComment"
@@ -386,8 +486,10 @@ NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_
 
 
 Global macros inlining summary:
+ 4x  removeNode  - [src/utils.domNodeDisposal.js:91]
  4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:49]
  5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:51]
+ 7x  getDomData  - [src/utils.domData.js:8]
 
 Local macros inlining summary:
  4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]
@@ -412,5 +514,5 @@ Local macros inlining summary:
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 20 (2 global) | Inlined usages: 59
+Found macros: 22 (4 global) | Inlined usages: 70
 =================================================

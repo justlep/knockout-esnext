@@ -184,6 +184,8 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     options.beforeMove && _callCallback(options.beforeMove, itemsForMoveCallbacks);
 
     // Next remove nodes for deleted items (or just clean if there's a beforeRemove callback)
+    // TODO modify so that removeNode() becomes an explicit invocation which can be inlined (removeNode = global macro)
+    //       check if the modification makes sense performance-wise though
     nodesToDelete.forEach(options.beforeRemove ? cleanNode : removeNode);
 
     let lastNode, 

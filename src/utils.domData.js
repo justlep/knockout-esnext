@@ -5,11 +5,7 @@ const KEY_PREFIX = 'ko_' + Date.now().toString(36) + '_';
 let _keyCount = 0;
 export const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
-
-export const getDomData = (node, key) => {
-    let dataForNode = node[DOM_DATASTORE_PROP];
-    return dataForNode && dataForNode[key];
-};
+export const getDomData = (node, key) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][key]; //@inline-global:DOM_DATASTORE_PROP
 
 export const setDomData = (node, key, value) => {
     // Make sure we don't actually create a new domData key if we are actually deleting a value
