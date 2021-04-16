@@ -408,7 +408,7 @@ class ImportsHelper {
         this._lastImportLine = -1;
         this._firstImportLine = lines.length;
         this._helperName = `ImportsHelper[${this._filename}]`;
-        this._logEntries = logEntries;
+        this._addToLog = logEntries ? s => logEntries.push(s) : () => null;
         for (let i = lines.length - 1, line; i >= 0; i--) {
             line = lines[i];
             if (this._lastImportLine < 0 && IMPORT_FROM_REGEX.test(line)) {
@@ -421,10 +421,6 @@ class ImportsHelper {
         DEBUG && this._addToLog(`New ${this._helperName} (has imports in line ${this._firstImportLine}-${this._lastImportLine})`);
     }
 
-    _addToLog(s) {
-        this._logEntries.push(s);
-    }
-    
     /**
      * @param {string} name
      * @return {RegExp}
