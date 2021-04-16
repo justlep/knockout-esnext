@@ -485,6 +485,7 @@ OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
+
 Global macros inlining summary:
  4x  removeNode  - [src/utils.domNodeDisposal.js:91]
  4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:49]
@@ -510,7 +511,6 @@ Local macros inlining summary:
  2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:11]
  8x  _isStartComment  - [src/virtualElements.js:19]
  4x  _isEndComment  - [src/virtualElements.js:20]
-
 
 =================================================
 Rollup inline-macros plugin finished successfully

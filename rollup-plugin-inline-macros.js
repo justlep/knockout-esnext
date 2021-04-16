@@ -155,7 +155,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                 summaryLine2 = `Found macros: ${totalMacros} (${globalMacrosByName.size} global) | Inlined usages: ${totalReplacements}`,
                 unusedWarning = hasUnusedMacros ? 'NOTICE: found macros which never got inlined\n' : '',
                 hr = '='.repeat(Math.max(summaryLine1.length, summaryLine2.length)),
-                summary = `${hr}\n${summaryLine1}\n${summaryLine2}\n${unusedWarning}${hr}`;
+                summary = `\n${usageSummary}\n${hr}\n${summaryLine1}\n${summaryLine2}\n${unusedWarning}${hr}`;
             
             console.log(summary);
 
@@ -165,7 +165,6 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                             .map(fileId => logEntriesByFileId.get(fileId))
                             .filter(arr => arr.length)
                             .map(arr => arr.join('\n\n'));
-                logEntriesToWrite.push(usageSummary);
                 logEntriesToWrite.push(summary);
                 if (err) {
                     logEntriesToWrite.push(err.toString());
