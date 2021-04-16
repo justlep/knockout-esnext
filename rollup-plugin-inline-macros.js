@@ -4,14 +4,17 @@ import {format} from 'util';
 import {writeFileSync, readFileSync} from 'fs';
 
 const MARKER_COMMENT = '//@inline';
-const MACRO_DEFINITION_REGEX = /^\s*(?:export )?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^;]*);?\s*?\/\/@inline(-global)?/;
+const MACRO_DEFINITION_REGEX = /^\s*(?:export )?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^;]*);?\s*?\/\/@inline(?:(-global)(:[\S]*)?)?/;
+const VALID_DEPENDENCY_NAME_REGEX = /^[a-z_$][a-z0-9_$]*$/i;
 const DEFAULT_INCLUDED_FILENAMES_REGEX = /\.(?:js|mjs)$/i;
 const LOGGED_PLUGIN_NAME = 'Rollup inline-macros plugin';
 const FLAG_GLOBAL = '-global';
 
+const DEBUG = false;
+
 const getParamPlaceholderForIndex = (index) => `%~%>${index}<%~%`; // regex-safe + unlikely to exist anywhere inside macro code
 const getParamPlaceholderReplacementRegexForIndex = (index) => new RegExp(getParamPlaceholderForIndex(index), 'g');
-
+const isValidDependencyName = s => s && VALID_DEPENDENCY_NAME_REGEX.test(s);
 
 /**
  * A rollup plugin that scans each file for const arrow functions marked with a trailing '//@inline' comment.
@@ -62,7 +65,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
         
     /** @type {Map<string, string[]>|null} */
     const logEntriesByFileId = logFilePath ? new Map() : null;
-
+    
     /**
      * @param {string} id - the file id in Rollup speak (i.e. the file path)
      * @param {string} code
@@ -74,7 +77,25 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             relativeFilePath = (sep === '\\') ? relative(__dirname, id).replace(/\\/g, '/') : relative(__dirname, id),
             filePathToLogOnce = logFilePathOnce ? `\n------- ${relativeFilePath} --------\n\n` : '',
             logEntriesForFile = logEntriesByFileId ? logEntriesByFileId.get(id) : null,
-            localMacros = localMacrosByFileId.get(id);
+            localMacros = localMacrosByFileId.get(id),
+            lines = code.split('\n'),
+            LOG = (lineIndex, msg, ...args) => {
+                let line = filePathToLogOnce + format(`[${filename}:${lineIndex + 1}]\n${msg}`, ...args);
+                if (logEntriesForFile) {
+                    logEntriesForFile.push(line);
+                }
+                if (opts.verbose) {
+                    console.log('\n' + line);
+                }
+                filePathToLogOnce = '';
+            },
+            LOG_FORCE = (lineIndex, msg, ...args) => {
+                let _wasVerbose = opts.verbose;
+                opts.verbose = true;
+                LOG(lineIndex, msg, ...args);
+                opts.verbose = _wasVerbose;
+            },
+            _importsHelper;
 
         if (logEntriesForFile === undefined) {
             logEntriesByFileId.set(id, logEntriesForFile = []);
@@ -87,18 +108,11 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             relativeFilePath,
             getLineReference: lineIndex => `${relativeFilePath}:${lineIndex + 1}`,
             localMacros,
-            lines: code.split('\n'),
-            LOG: (lineIndex, msg, ...args) => {
-                let line = filePathToLogOnce + format(`[${filename}:${lineIndex + 1}]\n${msg}`, ...args);
-                if (logEntriesForFile) {
-                    logEntriesForFile.push(line);
-                }
-                if (opts.verbose) {
-                    console.log('\n:' + line);
-                }
-                filePathToLogOnce = '';
-            }
-        }
+            lines,
+            LOG,
+            LOG_FORCE,
+            getImportsHelper: () => _importsHelper || (_importsHelper = new ImportsHelper(relativeFilePath, lines, logEntriesForFile))
+        };
     };
     
     return {
@@ -174,7 +188,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                 return null;
             }
             const code = readFileSync(id).toString('utf-8');
-            const {localMacros, lines, LOG, getLineReference} = getFileUtils(id, code, true);
+            const {localMacros, lines, LOG, LOG_FORCE, getLineReference, relativeFilePath, filename} = getFileUtils(id, code, true);
 
             // (1) find arrow functions marked as macro
             
@@ -184,13 +198,15 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                 if (!(match = ~line.indexOf(MARKER_COMMENT) && line.match(MACRO_DEFINITION_REGEX))) {
                     continue;
                 }
-                let [, name, paramsString, body, flag] = match,
+                let [, name, paramsString, body, flag, dependenciesSuffix] = match,
                     trimmedBody = body.trim(),
                     isMultilineExpression = !trimmedBody, 
                     isGlobal = flag === FLAG_GLOBAL,
                     hasFunctionBody = trimmedBody === '{',
                     skipLines = 0,
-                    error;
+                    error,
+                    /** @type {?string[]} */
+                    dependencies = null;
                 
                 if (hasFunctionBody) {
                     error = `Non-single-expression function bodies are not yet supported ("${name}")`;
@@ -199,8 +215,16 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                                      : `Ambiguous name for local macro "${name}" (name already used by global macro)`;
                 }
 
+                if (dependenciesSuffix) {
+                    dependencies = dependenciesSuffix.substr(1).split(',').map(s => s.trim());
+                    if (!dependencies.every(isValidDependencyName)) {
+                        error = `Invalid dependency list for macro "${name}: "${dependenciesSuffix}"`;
+                        console.warn(dependencies);
+                    }
+                }
+                
                 if (error) {
-                    LOG(lineIndex, '(!) ERROR: ' + error);
+                    LOG_FORCE(lineIndex, '(!) ERROR: ' + error);
                     totalErrors++;
                     continue;
                 }
@@ -239,7 +263,11 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                     bodyWithPlaceholders, 
                     invocationRegex,
                     replacementsCount: 0,
-                    lineReference
+                    lineReference,
+                    relativeFilePath,
+                    filename,
+                    dependencies,
+                    isGlobal
                 };
 
                 if (isGlobal) {
@@ -248,7 +276,9 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                     localMacros.push(macro); 
                 }
 
-                LOG(lineIndex, `Found ${isGlobal ? 'global' : 'local'} macro: "${macro.name}" ${isMultilineExpression ? ' (MULTI-LINE-EXPRESSION)' : ''}`);
+                LOG(lineIndex, `Found ${isGlobal ? 'global' : 'local'} macro: "${macro.name}"` + 
+                                (isMultilineExpression ? '  (MULTI-LINE-EXPRESSION)' : '') +
+                                (dependencies ? `\nDependencies (to auto-import): ${dependencies.join(', ')}` : ''));
                 totalMacros++;
                 lineIndex += skipLines; // non-zero if we had multiline-expressions
             }
@@ -265,7 +295,8 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                 return;
             }
 
-            const {localMacros, getLineReference, LOG, lines} = getFileUtils(id, code, false);
+            const fileUtils = getFileUtils(id, code, false);
+            const {localMacros, getLineReference, LOG, lines, relativeFilePath} = fileUtils;
 
             /** @type {RollupInlineMacrosPlugin_InlineMacro[]} */
             const availableMacros = [...localMacros, ...globalMacrosByName.values()];
@@ -318,11 +349,25 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                                 originalLines = lines.slice(); // lazy-copy original lines before any changes
                             }
                             let iterationLogString = lineIteration > 1 ? `  [iteration #${lineIteration}]` : '';
-                            LOG(lineIndex, `Inlined: "${name}"${iterationLogString}\nOLD:  ${originalLines[lineIndex].trim()}\nNEW:  ${changedLine.trim()}`);
+                            LOG(lineIndex, `Inlined: "${name}"${iterationLogString}${macro.isGlobal ? ' (global macro)' : ''}\n`+
+                                           `OLD:  ${originalLines[lineIndex].trim()}\n`+
+                                           `NEW:  ${changedLine.trim()}`);
                             line = changedLine;
                             lines[lineIndex] = changedLine;
                             macro.replacementsCount++;
                             totalReplacements++;
+                            
+                            if (macro.relativeFilePath !== relativeFilePath && macro.dependencies) {
+                                // If a (global) macro is used/invoked in a different file than where it was defined,
+                                // it may require importing some additional dependencies from its origin files,
+                                // listed behind the macro-marker, e.g.  //@inline-global:_localDoThis,_localDoThat
+                                
+                                // console.warn(`! usage of global macro "${macro.name}" outside its definition file \n` +
+                                //              `  -> defined in: ${relativeFilePath}\n  -> used in:   ${macro.relativeFilePath}`);
+                                for (let dependency of macro.dependencies) {
+                                    fileUtils.getImportsHelper().addImportIfNotExists(macro.name, macro.filename, dependency, lineIndex);
+                                }
+                            }
                             
                             // re-iterate, because macros may be using other macros
                             shouldScanForInvocations = true;
@@ -336,6 +381,127 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
     }
 }
 
+const IMPORT_FROM_REGEX = / from '[./a-z0-9_$]+?([.a-z0-9_$]+?)(?:\.js)?';?/i;
+
+/**
+ * Helper for adding additional imports for a macro's dependencies into the respective file where the 
+ * invocation gets inlined.
+ * (!) Assumptions & limitations:
+ *     - the macro symbol itself is imported in the target file
+ *     - neither the macro nor its dependencies are default exports
+ *     - macro-dependencies are exported by the same file as the macro 
+ *     - comments in/after line(s) of an import statement must not contain a macro or dependency name in such a way 
+ *       that could be misinterpreted as part of the import, e.g. import {foo} from 'module'; // dont use {foo} here
+ *     - multi-line imports must use trailing commas, not commas at the start of each further module line    
+ */
+class ImportsHelper {
+    /**
+     * @param {string} relativePath - the target file in which we want to temper with existing imports
+     * @param {string[]} lines - the code lines of the target file (NOT a copy!)
+     * @param {string[]} [logEntries]
+     */
+    constructor(relativePath, lines, logEntries) {
+        this._filename = basename(relativePath);
+        this._relativePath = relativePath;
+        this._lines = lines;
+        this._addedImports = {};
+        this._lastImportLine = -1;
+        this._firstImportLine = lines.length;
+        this._helperName = `ImportsHelper[${this._filename}]`;
+        this._logEntries = logEntries;
+        for (let i = lines.length - 1, line; i >= 0; i--) {
+            line = lines[i];
+            if (this._lastImportLine < 0 && IMPORT_FROM_REGEX.test(line)) {
+                this._lastImportLine = i;
+            }
+            if (this._lastImportLine >= 0 && line.startsWith('import ')) {
+                this._firstImportLine = i;
+            }
+        }
+        DEBUG && this._addToLog(`New ${this._helperName} (has imports in line ${this._firstImportLine}-${this._lastImportLine})`);
+    }
+
+    _addToLog(s) {
+        this._logEntries.push(s);
+    }
+    
+    /**
+     * @param {string} name
+     * @return {RegExp}
+     * @private
+     */
+    _createImportedNameRegex(name) {
+        return new RegExp(`([{,\\s])(${name.replace(/[$\\]/g, '\\$1')})([,}\\s])`, 'i'); 
+    } 
+    
+    /**
+     * @param {string} causingName - the name of the already-imported module we want to add another dependency-import for
+     *                               (!) the dependency is assumed to be located in the same file as the causing name
+     * @param {string} causeFilename
+     * @param {string} nameToAdd - the name to be imported alongside (and from the same file as) causingName
+     * @param {number} forLineIndex - the line index of the causing invocation 
+     */
+    addImportIfNotExists(causingName, causeFilename, nameToAdd, forLineIndex) {
+        let causeModuleName = causeFilename.replace(/^.*\/|\.js$/g, ''),
+            cacheKey = nameToAdd + '@' + causeFilename,
+            success = false;
+        
+        const SIMILAR_IMPORT = `{${nameToAdd}} from '${causeModuleName}'`;
+
+        DEBUG && this._addToLog(`Trying to auto-add macro-dependency import similar to:\n import ${SIMILAR_IMPORT}`);
+        
+        if (this._addedImports[cacheKey]) {
+            this._addToLog(`Skipped adding dependency import - some import like ${SIMILAR_IMPORT} already exists in ${this._filename}`);
+            return; 
+        }
+        if (this._firstImportLine > this._lastImportLine) {
+            throw new Error('Error: no imports in file! ImportsHelper can only alter existing imports.');
+        }
+
+        const _causingNameRegex = this._createImportedNameRegex(causingName);
+        const _nameToAddRegex = this._createImportedNameRegex(nameToAdd);
+
+        DEBUG && this._addToLog(`_causingNameRegex: ${_causingNameRegex}\n`+
+                                `_nameToAddRegex  : ${_nameToAddRegex}`);
+        
+        for (let i = this._lastImportLine, foundModuleName = null, line; i >= this._firstImportLine; i--) {
+            line = this._lines[i];
+            if (foundModuleName !== causeModuleName) {
+                foundModuleName = IMPORT_FROM_REGEX.test(line) && RegExp.$1;
+                if (foundModuleName !== causeModuleName) {
+                    continue;
+                }
+                DEBUG && this._addToLog(`Located imports from "${foundModuleName}" in line ${i}`);
+            } 
+            
+            if (_nameToAddRegex.test(line)) {
+                this._addToLog(`Skipped adding macro-dependency ${nameToAdd} (already imported)`);
+                success = true;
+            } else if (_causingNameRegex.test(line)) {
+                let oldLine = line,
+                    replacement = `${RegExp.$1}${RegExp.$2}, ${nameToAdd}${RegExp.$3}`,
+                    newLine = line.replace(_causingNameRegex, replacement);
+                this._lines[i] = newLine;
+                this._addToLog(`Added macro-dependency "${nameToAdd}" to imports at [${this._relativePath}:${i+1}]\n` +
+                                     `OLD:  ${oldLine}\nNEW:  ${newLine}`);
+                success = true;
+            }
+            
+            if (success) {
+                this._addedImports[cacheKey] = true;
+            } else if (line.startsWith('import ')) {
+                break;
+            }
+        }
+        if (!success) {
+            throw new Error(`Failed to auto-add macro-dependency "${nameToAdd}" for macro "${causingName}" into ${this._relativePath}\n`+
+                            `Should have looked similar to: import ${SIMILAR_IMPORT}`);
+        }
+    }
+}
+
+
+
 /**
  * @typedef {Object} RollupInlineMacrosPluginOptions
  * @property {boolean} verbose - if true, detailed processing info* will be written to the console
@@ -348,7 +514,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
  */
 
 /**
- * @typedef RollupInlineMacrosPlugin_InlineMacro
+ * @typedef {Object} RollupInlineMacrosPlugin_InlineMacro
  * @property {string} name - the function name
  * @property {string[]} params - names of the formal parameters in the function definition
  * @property {string} body - the function body code
@@ -357,19 +523,26 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
  * @property {RegExp} invocationRegex - the regex to match an invocation
  * @property {number} replacementsCount
  * @property {string} lineReference
+ * @property {string} relativeFilePath - relative path of the file this macro is defined in
+ * @property {string} filename - the filename this macro is defined in
+ * @property {?string[]} dependencies - if the macro is global, this is a list of dependencies which need to be added as imports 
+ *                                      when inlining an invocation within a file which is not the macro's own file
+ * @property {boolean} isGlobal                                     
  */
 
 /**
- * @typedef {string} RollupInlineMacrosPlugin_LineReference
  * A string containing a filename and line for referencing a code line, e.g. "src/path/file.js:123"
+ * @typedef {string} RollupInlineMacrosPlugin_LineReference
  */
 
 /**
  * @typedef {Object} RollupInlineMacrosPlugin_FileUtils
  * @property {string} filename
- * @property {function} LOG 
+ * @property {string} relativeFilePath
+ * @property {function(number):string} getLineReference
  * @property {RollupInlineMacrosPlugin_InlineMacro[]} localMacros
  * @property {string[]} lines
- * @property {string} relativeFilePath
- * @property {function(number): string} getLineReference
+ * @property {function} LOG
+ * @property {function} LOG_FORCE 
+ * @property {function:ImportsHelper} getImportsHelper
  */
