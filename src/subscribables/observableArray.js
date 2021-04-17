@@ -1,21 +1,23 @@
 import {observable, OBSERVABLE_PROTOTYPE, observableValueWillMutateInternal, peekObservableInternal} from './observable';
 import {setPrototypeOfOrExtend, trySetPrototypeOf} from '../utils';
-import {isObservable, IS_OBSERVABLE_ARRAY, IS_OBSERVABLE} from './observableUtils';
+import {IS_OBSERVABLE_ARRAY, IS_OBSERVABLE} from './observableUtils';
 import {trackArrayChanges} from './observableArray.changeTracking';
 
 
 export const observableArray = function (initialValues) {
-    initialValues = initialValues || [];
-
-    if (!Array.isArray(initialValues)) {
+    if (initialValues && !Array.isArray(initialValues)) {
         throw new Error('The argument passed when initializing an observable array must be an array, or null, or undefined.');
     }
-    let result = observable(initialValues);
-    setPrototypeOfOrExtend(result, OBSERVABLE_ARRAY_PROTOTYPE);
-    trackArrayChanges(result);
-    return result;
+    let _obsArrayInstance = observable(initialValues || []);
+    setPrototypeOfOrExtend(_obsArrayInstance, OBSERVABLE_ARRAY_PROTOTYPE);
+    trackArrayChanges(_obsArrayInstance);
+    return _obsArrayInstance;
 };
 
+/**
+ * @param {*} valueOrPredicate
+ * @return {(function(*): boolean)}
+ */
 const _getItemFilterPredicate = valueOrPredicate => //@inline
             (typeof valueOrPredicate === 'function' && !valueOrPredicate[IS_OBSERVABLE]) ? valueOrPredicate 
                                                                                          : (value) => value === valueOrPredicate;
