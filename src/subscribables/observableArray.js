@@ -1,6 +1,6 @@
 import {observable, OBSERVABLE_PROTOTYPE, observableValueWillMutateInternal, peekObservableInternal} from './observable';
 import {setPrototypeOfOrExtend, trySetPrototypeOf} from '../utils';
-import {isObservable, IS_OBSERVABLE_ARRAY} from './observableUtils';
+import {isObservable, IS_OBSERVABLE_ARRAY, IS_OBSERVABLE} from './observableUtils';
 import {trackArrayChanges} from './observableArray.changeTracking';
 
 
@@ -16,13 +16,17 @@ export const observableArray = function (initialValues) {
     return result;
 };
 
+const _getItemFilterPredicate = valueOrPredicate => //@inline
+            (typeof valueOrPredicate === 'function' && !valueOrPredicate[IS_OBSERVABLE]) ? valueOrPredicate 
+                                                                                         : (value) => value === valueOrPredicate;
+
 const OBSERVABLE_ARRAY_PROTOTYPE = {
     [IS_OBSERVABLE_ARRAY]: true,
     remove(valueOrPredicate) {
         let underlyingArray = peekObservableInternal(this),
             removedValues = [],
             totalRemovedValues = 0,
-            predicate = typeof valueOrPredicate === 'function' && !isObservable(valueOrPredicate) ? valueOrPredicate : (value) => value === valueOrPredicate;
+            predicate = _getItemFilterPredicate(valueOrPredicate);
         
          for (let i = 0; i < underlyingArray.length; i++) {
             let value = underlyingArray[i];
@@ -61,7 +65,8 @@ const OBSERVABLE_ARRAY_PROTOTYPE = {
 
     destroy(valueOrPredicate) {
         let underlyingArray = peekObservableInternal(this),
-            predicate = typeof valueOrPredicate === 'function' && !isObservable(valueOrPredicate) ? valueOrPredicate : (value) => value === valueOrPredicate;
+            predicate = _getItemFilterPredicate(valueOrPredicate);
+        
         observableValueWillMutateInternal(this);
         for (let i = underlyingArray.length - 1; i >= 0; i--) {
             let value = underlyingArray[i];
