@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod16-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod17-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod16-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod17-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -1160,8 +1160,7 @@
         [IS_SUBSCRIBABLE]: true,
         
         init(instance) {
-            instance._subscriptions = {change: []}; // cleaner but slower would be { [DEFAULT_EVENT]: [] } 
-            instance._versionNumber = 1;
+            ((instance._subscriptions = {change: []}) && (instance._versionNumber = 1));
         },
 
         subscribe(callback, callbackTarget, event) {
@@ -1218,9 +1217,14 @@
             return this._versionNumber;
         },
 
+        /**
+         * Only for external use. 
+         * KO-internally use {@link hasSubscribableChanged} macro directly to save another function call 
+         * @param {number} versionToCheck
+         * @return {boolean}
+         */
         hasChanged(versionToCheck) {
-            // Do NOT shortcut to this._versionNumber!
-            return this.getVersion() !== versionToCheck;
+            return (this.getVersion() !== versionToCheck);
         },
 
         limit(limitFunction) {
@@ -1313,7 +1317,7 @@
      * @constructor
      */
     const Subscribable = function () {
-        SUBSCRIBABLE_PROTOTYPE.init(this);
+        ((this._subscriptions = {change: []}) && (this._versionNumber = 1));
     };
 
     Subscribable.prototype = SUBSCRIBABLE_PROTOTYPE;
@@ -1389,7 +1393,7 @@
             // 'subscribable' won't be on the prototype chain unless we put it there directly
             Object.assign(_computedObservable, SUBSCRIBABLE_PROTOTYPE);
         }
-        SUBSCRIBABLE_PROTOTYPE.init(_computedObservable);
+        ((_computedObservable._subscriptions = {change: []}) && (_computedObservable._versionNumber = 1));
 
         // Inherit from './computed.js'
         setPrototypeOfOrExtend(_computedObservable, COMPUTED_PROTOTYPE);
@@ -1529,7 +1533,7 @@
                 for (let id of Object.keys(dependencyTracking)) {
                     let dependency = dependencyTracking[id],
                         depTarget = dependency._target;
-                    if ((hasEvalDelayed && depTarget._notificationIsPending) || depTarget.hasChanged(dependency._version)) {
+                    if ((hasEvalDelayed && depTarget._notificationIsPending) || (depTarget.getVersion() !== dependency._version)) {
                         return true;
                     }
                 }
@@ -3314,8 +3318,8 @@
             // 'subscribable' won't be on the prototype chain unless we put it there directly
             Object.assign(_observable, SUBSCRIBABLE_PROTOTYPE);
         }
-        
-        SUBSCRIBABLE_PROTOTYPE.init(_observable);
+
+        ((_observable._subscriptions = {change: []}) && (_observable._versionNumber = 1));
 
         // Inherit from './observable.js'
         setPrototypeOfOrExtend(_observable, OBSERVABLE_PROTOTYPE);

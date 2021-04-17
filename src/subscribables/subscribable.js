@@ -50,12 +50,24 @@ export const updateSubscribableVersion = (subscribableOrComputed) => subscribabl
 
 export const hasSubscriptionsForEvent = (subscribable, event) => (subscribable._subscriptions[event] || 0).length; //@inline-global
 
+/**
+ * (!) must not be shortcut so `subscribable._versionNumber !== versionToCheck`
+ * @internal
+ */
+export const hasSubscribableChanged = (subscribable, versionToCheck) => subscribable.getVersion() !== versionToCheck; //@inline-global
+
+/**
+ * @param subscribable
+ * cleaner but slower would be { [DEFAULT_EVENT]: [] } instead of {change: []}
+ * TODO remove the && once macros with function bodies are supported 
+ */
+export const initSubscribableInternal = (subscribable) => (subscribable._subscriptions = {change: []}) && (subscribable._versionNumber = 1); //@inline-global 
+
 export const SUBSCRIBABLE_PROTOTYPE = {
     [IS_SUBSCRIBABLE]: true,
     
     init(instance) {
-        instance._subscriptions = {change: []}; // cleaner but slower would be { [DEFAULT_EVENT]: [] } 
-        instance._versionNumber = 1;
+        initSubscribableInternal(instance);
     },
 
     subscribe(callback, callbackTarget, event) {
@@ -112,9 +124,14 @@ export const SUBSCRIBABLE_PROTOTYPE = {
         return this._versionNumber;
     },
 
+    /**
+     * Only for external use. 
+     * KO-internally use {@link hasSubscribableChanged} macro directly to save another function call 
+     * @param {number} versionToCheck
+     * @return {boolean}
+     */
     hasChanged(versionToCheck) {
-        // Do NOT shortcut to this._versionNumber!
-        return this.getVersion() !== versionToCheck;
+        return hasSubscribableChanged(this, versionToCheck);
     },
 
     limit(limitFunction) {
@@ -207,7 +224,7 @@ export const SUBSCRIBABLE_PROTOTYPE = {
  * @constructor
  */
 export const Subscribable = function () {
-    SUBSCRIBABLE_PROTOTYPE.init(this);
+    initSubscribableInternal(this);
 };
 
 Subscribable.prototype = SUBSCRIBABLE_PROTOTYPE;

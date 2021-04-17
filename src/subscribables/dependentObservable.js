@@ -1,7 +1,7 @@
 import {options as koOptions} from '../options';
 import {registerDependencyInternal, beginDependencyDetection, endDependencyDetection} from './dependencyDetection';
 import {deferredExtender} from './deferredExtender';
-import {hasSubscriptionsForEvent, SUBSCRIBABLE_PROTOTYPE, updateSubscribableVersion} from './subscribable';
+import {hasSubscriptionsForEvent, SUBSCRIBABLE_PROTOTYPE, updateSubscribableVersion, hasSubscribableChanged, initSubscribableInternal} from './subscribable';
 import {removeDisposeCallback, addDisposeCallback} from '../utils.domNodeDisposal';
 import {setPrototypeOfOrExtend, trySetPrototypeOf, domNodeIsAttachedToDocument, valuesArePrimitiveAndEqual, canSetPrototype} from '../utils';
 import {IS_COMPUTED, IS_OBSERVABLE, IS_PURE_COMPUTED} from './observableUtils';
@@ -72,7 +72,7 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
         // 'subscribable' won't be on the prototype chain unless we put it there directly
         Object.assign(_computedObservable, SUBSCRIBABLE_PROTOTYPE);
     }
-    SUBSCRIBABLE_PROTOTYPE.init(_computedObservable);
+    initSubscribableInternal(_computedObservable);
 
     // Inherit from './computed.js'
     setPrototypeOfOrExtend(_computedObservable, COMPUTED_PROTOTYPE);
@@ -212,7 +212,7 @@ const COMPUTED_PROTOTYPE = {
             for (let id of Object.keys(dependencyTracking)) {
                 let dependency = dependencyTracking[id],
                     depTarget = dependency._target;
-                if ((hasEvalDelayed && depTarget._notificationIsPending) || depTarget.hasChanged(dependency._version)) {
+                if ((hasEvalDelayed && depTarget._notificationIsPending) || hasSubscribableChanged(depTarget, dependency._version)) {
                     return true;
                 }
             }

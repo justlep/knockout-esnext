@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod16-esnext
+for Knockout JavaScript library v3.5.1-mod17-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -217,6 +217,16 @@ Inlined: "_getId"  [iteration #2]
 OLD:  _runCallback(subscribable);
 NEW:  (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
 
+[dependentObservable.js:75]
+Inlined: "initSubscribableInternal" (global macro)
+OLD:  initSubscribableInternal(_computedObservable);
+NEW:  ((_computedObservable._subscriptions = {change: []}) && (_computedObservable._versionNumber = 1));
+
+[dependentObservable.js:215]
+Inlined: "hasSubscribableChanged" (global macro)
+OLD:  if ((hasEvalDelayed && depTarget._notificationIsPending) || hasSubscribableChanged(depTarget, dependency._version)) {
+NEW:  if ((hasEvalDelayed && depTarget._notificationIsPending) || (depTarget.getVersion() !== dependency._version)) {
+
 [dependentObservable.js:352]
 Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(computedObservable);
@@ -237,6 +247,11 @@ Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!state.isDisposed && event === 'change' && !hasSubscriptionsForEvent(this, 'change')) {
 NEW:  if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
 
+[observable.js:43]
+Inlined: "initSubscribableInternal" (global macro)
+OLD:  initSubscribableInternal(_observable);
+NEW:  ((_observable._subscriptions = {change: []}) && (_observable._versionNumber = 1));
+
 [observableArray.changeTracking.js:42]
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (event === ARRAY_CHANGE_EVENT_NAME && !hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
@@ -256,15 +271,36 @@ Found global macro: "updateSubscribableVersion"
 [subscribable.js:51]
 Found global macro: "hasSubscriptionsForEvent"
 
-[subscribable.js:91]
+[subscribable.js:57]
+Found global macro: "hasSubscribableChanged"
+
+[subscribable.js:64]
+Found global macro: "initSubscribableInternal"
+
+[subscribable.js:70]
+Inlined: "initSubscribableInternal" (global macro)
+OLD:  initSubscribableInternal(instance);
+NEW:  ((instance._subscriptions = {change: []}) && (instance._versionNumber = 1));
+
+[subscribable.js:103]
 Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(this);
 NEW:  (this._versionNumber++);
 
-[subscribable.js:93]
+[subscribable.js:105]
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!hasSubscriptionsForEvent(this, event)) {
 NEW:  if (!((this._subscriptions[event] || 0).length)) {
+
+[subscribable.js:134]
+Inlined: "hasSubscribableChanged" (global macro)
+OLD:  return hasSubscribableChanged(this, versionToCheck);
+NEW:  return (this.getVersion() !== versionToCheck);
+
+[subscribable.js:227]
+Inlined: "initSubscribableInternal" (global macro)
+OLD:  initSubscribableInternal(this);
+NEW:  ((this._subscriptions = {change: []}) && (this._versionNumber = 1));
 
 
 ------- src/templating/templateSources.js --------
@@ -490,6 +526,8 @@ Global macros inlining summary:
  4x  removeNode  - [src/utils.domNodeDisposal.js:91]
  4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:49]
  5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:51]
+ 2x  hasSubscribableChanged  - [src/subscribables/subscribable.js:57]
+ 4x  initSubscribableInternal  - [src/subscribables/subscribable.js:64]
  7x  getDomData  - [src/utils.domData.js:8]
 
 Local macros inlining summary:
@@ -514,5 +552,5 @@ Local macros inlining summary:
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 22 (4 global) | Inlined usages: 70
+Found macros: 24 (6 global) | Inlined usages: 76
 =================================================

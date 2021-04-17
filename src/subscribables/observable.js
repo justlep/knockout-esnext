@@ -1,7 +1,7 @@
 import {options} from '../options';
 import {registerDependencyInternal} from './dependencyDetection';
 import {setPrototypeOfOrExtend, trySetPrototypeOf, canSetPrototype, valuesArePrimitiveAndEqual} from '../utils';
-import {SUBSCRIBABLE_PROTOTYPE} from './subscribable';
+import {initSubscribableInternal, SUBSCRIBABLE_PROTOTYPE} from './subscribable';
 import {IS_OBSERVABLE} from './observableUtils';
 import {deferredExtender} from './deferredExtender';
 
@@ -39,8 +39,8 @@ export const observable = function (initialValue) {
         // 'subscribable' won't be on the prototype chain unless we put it there directly
         Object.assign(_observable, SUBSCRIBABLE_PROTOTYPE);
     }
-    
-    SUBSCRIBABLE_PROTOTYPE.init(_observable);
+
+    initSubscribableInternal(_observable);
 
     // Inherit from './observable.js'
     setPrototypeOfOrExtend(_observable, OBSERVABLE_PROTOTYPE);
