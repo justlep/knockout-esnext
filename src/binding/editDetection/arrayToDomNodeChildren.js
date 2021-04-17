@@ -1,5 +1,5 @@
 import {nextDomDataKey, getDomData, setDomData} from '../../utils.domData';
-import {observable} from '../../subscribables/observable';
+import {observable, peekObservableInternal} from '../../subscribables/observable';
 import {compareArrays} from './compareArrays';
 import {arrayForEach, anyDomNodeIsAttachedToDocument, fixUpContinuousNodeArray, replaceDomNodes} from '../../utils';
 import {dependentObservable} from '../../subscribables/dependentObservable';
@@ -77,7 +77,10 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     let countWaitingForRemove = 0;
 
     const _itemAdded = (value) => {
-        mapData = {arrayEntry: value, indexObservable: observable(currentArrayIndex++)};
+        mapData = {
+            arrayEntry: value, 
+            indexObservable: observable(currentArrayIndex++)
+        };
         newMappingResult.push(mapData);
         if (!isFirstExecution) {
             itemsForAfterAddCallbacks.push(mapData);
@@ -87,7 +90,7 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     const _itemMovedOrRetained = (oldPosition) => {
         mapData = lastMappingResult[oldPosition];
         let _indexObservable = mapData.indexObservable;
-        if (currentArrayIndex !== _indexObservable.peek()) {
+        if (currentArrayIndex !== peekObservableInternal(_indexObservable)) {
             itemsForMoveCallbacks.push(mapData);
         }
         // Since updating the index might change the nodes, do so before calling fixUpContinuousNodeArray

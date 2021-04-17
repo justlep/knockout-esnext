@@ -16,6 +16,7 @@ import {memoize} from '../memoization';
 import {options as koOptions} from '../options';
 import {dependentObservable} from '../subscribables/dependentObservable';
 import {bindingProviderInstance} from '../binding/bindingProvider';
+import {peekObservableInternal} from '../subscribables/observable.js';
 
 
 let _templateEngine;
@@ -231,7 +232,7 @@ export const renderTemplateForEach = (template, arrayOrObservableArray, options,
     let shouldHideDestroyed = (options.includeDestroyed === false) || (koOptions.foreachHidesDestroyed && !options.includeDestroyed);
 
     if (!shouldHideDestroyed && !options.beforeRemove && isObservableArray(arrayOrObservableArray)) {
-        _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(arrayOrObservableArray.peek());
+        _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(peekObservableInternal(arrayOrObservableArray));
 
         let subscription = arrayOrObservableArray.subscribe(changeList => _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(arrayOrObservableArray(), changeList), null, 'arrayChange');
         subscription.disposeWhenNodeIsRemoved(targetNode);

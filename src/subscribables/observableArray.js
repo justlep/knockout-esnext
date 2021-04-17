@@ -1,4 +1,4 @@
-import {observable, OBSERVABLE_PROTOTYPE} from './observable';
+import {observable, OBSERVABLE_PROTOTYPE, observableValueWillMutateInternal, peekObservableInternal} from './observable';
 import {setPrototypeOfOrExtend, trySetPrototypeOf} from '../utils';
 import {isObservable, IS_OBSERVABLE_ARRAY} from './observableUtils';
 import {trackArrayChanges} from './observableArray.changeTracking';
@@ -19,7 +19,7 @@ export const observableArray = function (initialValues) {
 const OBSERVABLE_ARRAY_PROTOTYPE = {
     [IS_OBSERVABLE_ARRAY]: true,
     remove(valueOrPredicate) {
-        let underlyingArray = this.peek(),
+        let underlyingArray = peekObservableInternal(this),
             removedValues = [],
             totalRemovedValues = 0,
             predicate = typeof valueOrPredicate === 'function' && !isObservable(valueOrPredicate) ? valueOrPredicate : (value) => value === valueOrPredicate;
@@ -28,7 +28,7 @@ const OBSERVABLE_ARRAY_PROTOTYPE = {
             let value = underlyingArray[i];
             if (predicate(value)) {
                 if (!totalRemovedValues) {
-                    this.valueWillMutate();
+                    observableValueWillMutateInternal(this);
                 }
                 if (underlyingArray[i] !== value) {
                     throw Error('Array modified during remove; cannot remove item');
@@ -47,10 +47,10 @@ const OBSERVABLE_ARRAY_PROTOTYPE = {
     removeAll(arrayOfValues) {
         // If you passed zero args, we remove everything
         if (arrayOfValues === undefined) {
-            let underlyingArray = this.peek(),
+            let underlyingArray = peekObservableInternal(this),
                 allValues = underlyingArray.slice();
             
-            this.valueWillMutate();
+            observableValueWillMutateInternal(this);
             underlyingArray.splice(0, underlyingArray.length);
             this.valueHasMutated();
             return allValues;
@@ -60,13 +60,13 @@ const OBSERVABLE_ARRAY_PROTOTYPE = {
     },
 
     destroy(valueOrPredicate) {
-        let underlyingArray = this.peek(),
+        let underlyingArray = peekObservableInternal(this),
             predicate = typeof valueOrPredicate === 'function' && !isObservable(valueOrPredicate) ? valueOrPredicate : (value) => value === valueOrPredicate;
-        this.valueWillMutate();
+        observableValueWillMutateInternal(this);
         for (let i = underlyingArray.length - 1; i >= 0; i--) {
             let value = underlyingArray[i];
             if (predicate(value)) {
-                value['_destroy'] = true;
+                value._destroy = true;
             }
         }
         this.valueHasMutated();
@@ -88,7 +88,7 @@ const OBSERVABLE_ARRAY_PROTOTYPE = {
         let underlyingArray = this(),
             index = underlyingArray.indexOf(oldItem);
         if (index >= 0) {
-            this.valueWillMutate();
+            observableValueWillMutateInternal(this);
             underlyingArray[index] = newItem;
             this.valueHasMutated();
         }
@@ -122,8 +122,8 @@ for (let methodName of ['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'un
     OBSERVABLE_ARRAY_PROTOTYPE[methodName] = function () {
         // Use 'peek' to avoid creating a subscription in any computed that we're executing in the context of
         // (for consistency with mutating regular observables)
-        let underlyingArray = this.peek();
-        this.valueWillMutate();
+        let underlyingArray = peekObservableInternal(this);
+        observableValueWillMutateInternal(this);
         this.cacheDiffForKnownOperation(underlyingArray, methodName, arguments);
         let methodCallResult = underlyingArray[methodName].apply(underlyingArray, arguments);
         this.valueHasMutated();
