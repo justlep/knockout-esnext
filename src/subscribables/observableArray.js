@@ -130,6 +130,9 @@ for (let methodName of ['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'un
         let underlyingArray = peekObservableInternal(this);
         observableValueWillMutateInternal(this);
         this.cacheDiffForKnownOperation(underlyingArray, methodName, arguments);
+        
+        // using apply instead of direct call with arguments spread here (i.e. underlyingArray[methodName](...arguments) )
+        // as spread is ~50% slower in Firefox 87 and ~5% in Chrome.
         let methodCallResult = underlyingArray[methodName].apply(underlyingArray, arguments);
         this.valueHasMutated();
         // The native sort and reverse methods return a reference to the array, but it makes more sense to return the observable array instead.
