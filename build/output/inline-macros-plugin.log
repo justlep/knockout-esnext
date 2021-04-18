@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod17-esnext
+for Knockout JavaScript library v3.5.1-mod19-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -131,11 +131,22 @@ Inlined: "getDomData" (global macro)
 OLD:  let lastMappingResult = getDomData(domNode, LAST_MAPPING_RESULT_DOM_DATA_KEY);
 NEW:  let lastMappingResult = (domNode[DOM_DATASTORE_PROP] && domNode[DOM_DATASTORE_PROP][LAST_MAPPING_RESULT_DOM_DATA_KEY]);
 
-Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/binding/editDetection/arrayToDomNodeChildren.js:1]
+[arrayToDomNodeChildren.js:1]
+Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {nextDomDataKey, getDomData, setDomData} from '../../utils.domData';
 NEW:  import {nextDomDataKey, getDomData, DOM_DATASTORE_PROP, setDomData} from '../../utils.domData';
 
-[arrayToDomNodeChildren.js:187]
+[arrayToDomNodeChildren.js:93]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  if (currentArrayIndex !== peekObservableInternal(_indexObservable)) {
+NEW:  if (currentArrayIndex !== (_indexObservable[LATEST_VALUE_KEY])) {
+
+[arrayToDomNodeChildren.js:2]
+Added dependency-import "LATEST_VALUE_KEY" for macro "peekObservableInternal"
+OLD:  import {observable, peekObservableInternal} from '../../subscribables/observable';
+NEW:  import {observable, peekObservableInternal, LATEST_VALUE_KEY} from '../../subscribables/observable';
+
+[arrayToDomNodeChildren.js:190]
 Inlined: "removeNode" (global macro)
 OLD:  // TODO modify so that removeNode() becomes an explicit invocation which can be inlined (removeNode = global macro)
 NEW:  // TODO modify so that (cleanNode().remove()) becomes an explicit invocation which can be inlined (removeNode = global macro)
@@ -147,7 +158,8 @@ Inlined: "getDomData" (global macro)
 OLD:  getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
 NEW:  (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
 
-Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/binding/selectExtensions.js:1]
+[selectExtensions.js:1]
+Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
@@ -207,6 +219,16 @@ Inlined: "_getId"  [iteration #2]
 OLD:  export const registerDependencyInternal = (subscribable) => currentFrame && _runCallback(subscribable);
 NEW:  export const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
 
+[dependencyDetection.js:69]
+Inlined: "isSubscribable" (global macro)
+OLD:  if (!isSubscribable(subscribable)) {
+NEW:  if (!(!!(subscribable && subscribable[IS_SUBSCRIBABLE]))) {
+
+[dependencyDetection.js:1]
+Added dependency-import "IS_SUBSCRIBABLE" for macro "isSubscribable"
+OLD:  import {isSubscribable} from './observableUtils';
+NEW:  import {isSubscribable, IS_SUBSCRIBABLE} from './observableUtils';
+
 [dependencyDetection.js:72]
 Inlined: "_runCallback"
 OLD:  _runCallback(subscribable);
@@ -247,10 +269,36 @@ Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!state.isDisposed && event === 'change' && !hasSubscriptionsForEvent(this, 'change')) {
 NEW:  if (!state.isDisposed && event === 'change' && !((this._subscriptions['change'] || 0).length)) {
 
+
+------- src/subscribables/observable.js --------
+
+[observable.js:60]
+Found global macro: "peekObservableInternal"
+Dependencies (to auto-import): LATEST_VALUE_KEY
+
+[observable.js:63]
+Found global macro: "observableValueWillMutateInternal"
+Dependencies (to auto-import): LATEST_VALUE_KEY
+
+[observable.js:28]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(_self);
+NEW:  (_self.notifySubscribers(_self[LATEST_VALUE_KEY], 'beforeChange'));
+
 [observable.js:43]
 Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(_observable);
 NEW:  ((_observable._subscriptions = {change: []}) && (_observable._versionNumber = 1));
+
+[observable.js:70]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  return peekObservableInternal(this);
+NEW:  return (this[LATEST_VALUE_KEY]);
+
+[observable.js:78]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(this);
+NEW:  (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
 
 [observableArray.changeTracking.js:42]
 Inlined: "hasSubscriptionsForEvent" (global macro)
@@ -261,6 +309,95 @@ NEW:  if (event === ARRAY_CHANGE_EVENT_NAME && !((target._subscriptions[ARRAY_CH
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (hasSubscriptionsForEvent(target, ARRAY_CHANGE_EVENT_NAME)) {
 NEW:  if (((target._subscriptions[ARRAY_CHANGE_EVENT_NAME] || 0).length)) {
+
+
+------- src/subscribables/observableArray.js --------
+
+[observableArray.js:21]
+Found local macro: "_getItemFilterPredicate"  (MULTI-LINE-EXPRESSION)
+
+[observableArray.js:28]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  let underlyingArray = peekObservableInternal(this),
+NEW:  let underlyingArray = (this[LATEST_VALUE_KEY]),
+
+[observableArray.js:1]
+Added dependency-import "LATEST_VALUE_KEY" for macro "peekObservableInternal"
+OLD:  import {observable, OBSERVABLE_PROTOTYPE, observableValueWillMutateInternal, peekObservableInternal} from './observable';
+NEW:  import {observable, OBSERVABLE_PROTOTYPE, observableValueWillMutateInternal, peekObservableInternal, LATEST_VALUE_KEY} from './observable';
+
+[observableArray.js:31]
+Inlined: "_getItemFilterPredicate"
+OLD:  predicate = _getItemFilterPredicate(valueOrPredicate);
+NEW:  predicate = ( (typeof valueOrPredicate === 'function' && !valueOrPredicate[IS_OBSERVABLE]) ? valueOrPredicate : (value) => value === valueOrPredicate);
+
+[observableArray.js:37]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(this);
+NEW:  (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:56]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  let underlyingArray = peekObservableInternal(this),
+NEW:  let underlyingArray = (this[LATEST_VALUE_KEY]),
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:59]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(this);
+NEW:  (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:69]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  let underlyingArray = peekObservableInternal(this),
+NEW:  let underlyingArray = (this[LATEST_VALUE_KEY]),
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:70]
+Inlined: "_getItemFilterPredicate"
+OLD:  predicate = _getItemFilterPredicate(valueOrPredicate);
+NEW:  predicate = ( (typeof valueOrPredicate === 'function' && !valueOrPredicate[IS_OBSERVABLE]) ? valueOrPredicate : (value) => value === valueOrPredicate);
+
+[observableArray.js:72]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(this);
+NEW:  (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:98]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(this);
+NEW:  (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:132]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  let underlyingArray = peekObservableInternal(this);
+NEW:  let underlyingArray = (this[LATEST_VALUE_KEY]);
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+[observableArray.js:133]
+Inlined: "observableValueWillMutateInternal" (global macro)
+OLD:  observableValueWillMutateInternal(this);
+NEW:  (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in observableArray.js
+
+
+------- src/subscribables/observableUtils.js --------
+
+[observableUtils.js:2]
+Found global macro: "isSubscribable"
+Dependencies (to auto-import): IS_SUBSCRIBABLE
 
 
 ------- src/subscribables/subscribable.js --------
@@ -313,7 +450,8 @@ Inlined: "getDomData" (global macro)
 OLD:  return getDomData(this.domElement, DOM_DATA_KEY_PREFIX + key);
 NEW:  return (this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][DOM_DATA_KEY_PREFIX + key]);
 
-Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/templating/templateSources.js:1]
+[templateSources.js:1]
+Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
@@ -344,47 +482,58 @@ Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'u
 
 ------- src/templating/templating.js --------
 
-[templating.js:105]
+[templating.js:106]
 Found local macro: "_getFirstNodeFromPossibleArray"
 
-[templating.js:152]
+[templating.js:153]
 Found local macro: "_resolveTemplateName"  (MULTI-LINE-EXPRESSION)
 
-[templating.js:109]
+[templating.js:110]
 Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
 NEW:  let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
 
-[templating.js:163]
+[templating.js:164]
 Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 NEW:  let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-[templating.js:172]
+[templating.js:173]
 Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
 
-[templating.js:177]
+[templating.js:178]
 Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 NEW:  firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-[templating.js:208]
+[templating.js:209]
 Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
 
-[templating.js:260]
+[templating.js:235]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(peekObservableInternal(arrayOrObservableArray));
+NEW:  _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped((arrayOrObservableArray[LATEST_VALUE_KEY]));
+
+[templating.js:19]
+Added dependency-import "LATEST_VALUE_KEY" for macro "peekObservableInternal"
+OLD:  import {peekObservableInternal} from '../subscribables/observable.js';
+NEW:  import {peekObservableInternal, LATEST_VALUE_KEY} from '../subscribables/observable.js';
+
+[templating.js:261]
 Inlined: "getDomData" (global macro)
 OLD:  let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
 NEW:  let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
 
-Added macro-dependency "DOM_DATASTORE_PROP" to imports at [src/templating/templating.js:10]
+[templating.js:10]
+Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
-[templating.js:289]
+[templating.js:290]
 Inlined: "getDomData" (global macro)
 OLD:  if (!container || !getDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY)) {
 NEW:  if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTORE_PROP][CLEAN_CONTAINER_DOM_DATA_KEY])) {
@@ -431,7 +580,8 @@ Inlined: "removeNode" (global macro)
 OLD:  removeNode(child);
 NEW:  (cleanNode(child).remove());
 
-Added macro-dependency "cleanNode" to imports at [src/utils.domNodes.js:1]
+[utils.domNodes.js:1]
+Added dependency-import "cleanNode" for macro "removeNode"
 OLD:  import {removeNode} from './utils.domNodeDisposal';
 NEW:  import {removeNode, cleanNode} from './utils.domNodeDisposal';
 
@@ -476,7 +626,8 @@ Inlined: "removeNode" (global macro)
 OLD:  removeNode(virtualChildren[i]);
 NEW:  (cleanNode(virtualChildren[i]).remove());
 
-Added macro-dependency "cleanNode" to imports at [src/virtualElements.js:9]
+[virtualElements.js:9]
+Added dependency-import "cleanNode" for macro "removeNode"
 OLD:  import {removeNode} from './utils.domNodeDisposal';
 NEW:  import {removeNode, cleanNode} from './utils.domNodeDisposal';
 
@@ -524,6 +675,9 @@ NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_
 
 Global macros inlining summary:
  4x  removeNode  - [src/utils.domNodeDisposal.js:91]
+ 7x  peekObservableInternal  - [src/subscribables/observable.js:60]
+ 7x  observableValueWillMutateInternal  - [src/subscribables/observable.js:63]
+ 1x  isSubscribable  - [src/subscribables/observableUtils.js:2]
  4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:49]
  5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:51]
  2x  hasSubscribableChanged  - [src/subscribables/subscribable.js:57]
@@ -542,9 +696,10 @@ Local macros inlining summary:
  2x  endDependencyDetection  - [src/subscribables/dependencyDetection.js:14]
  2x  _getId  - [src/subscribables/dependencyDetection.js:58]
  2x  _runCallback  - [src/subscribables/dependencyDetection.js:60]
+ 2x  _getItemFilterPredicate  - [src/subscribables/observableArray.js:21]
  2x  _getTemplateDomData  - [src/templating/templateSources.js:42]
- 3x  _getFirstNodeFromPossibleArray  - [src/templating/templating.js:105]
- 2x  _resolveTemplateName  - [src/templating/templating.js:152]
+ 3x  _getFirstNodeFromPossibleArray  - [src/templating/templating.js:106]
+ 2x  _resolveTemplateName  - [src/templating/templating.js:153]
  1x  _isNodeTypeCleanable  - [src/utils.domNodeDisposal.js:10]
  2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:11]
  8x  _isStartComment  - [src/virtualElements.js:19]
@@ -552,5 +707,5 @@ Local macros inlining summary:
 
 =================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 24 (6 global) | Inlined usages: 76
+Found macros: 28 (9 global) | Inlined usages: 93
 =================================================

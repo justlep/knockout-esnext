@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod17-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod19-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod17-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod19-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -106,7 +106,7 @@
     };
 
     const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
-    const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]);
+    const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]); //@inline-global:IS_SUBSCRIBABLE
 
     const IS_OBSERVABLE = Symbol('IS_OBSERVABLE');
     const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
@@ -176,7 +176,7 @@
 
     const registerDependencyExternal = (subscribable) => {
         if (currentFrame) {
-            if (!isSubscribable(subscribable)) {
+            if (!(!!(subscribable && subscribable[IS_SUBSCRIBABLE]))) {
                 throw new Error('Only subscribable things can act as dependencies');
             }
             (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
@@ -3284,27 +3284,27 @@
         return context ? context.$data : undefined;
     };
 
+    /** @internal */
     const LATEST_VALUE_KEY = Symbol('_latestValue');
 
     const observable = function (initialValue) {
 
         let _observable = function () {
-            let _self = _observable,
-                _lastValue = _self[LATEST_VALUE_KEY];
+            let _self = _observable;
 
             // Lets assume, read happens more often than write
             if (!arguments.length) {
                 // Read
                 registerDependencyInternal(_self); // The caller only needs to be notified of changes if they did a "read" operation
-                return _lastValue;
+                return _self[LATEST_VALUE_KEY];
             }
             // Write
             // Ignore writes if the value hasn't changed
             let newValue = arguments[0],
                 equalityComparer = _self.equalityComparer;
             
-            if (!equalityComparer || !equalityComparer(_lastValue, newValue)) {
-                _self.valueWillMutate();
+            if (!equalityComparer || !equalityComparer(_self[LATEST_VALUE_KEY], newValue)) {
+                (_self.notifySubscribers(_self[LATEST_VALUE_KEY], 'beforeChange'));
                 _self[LATEST_VALUE_KEY] = newValue;
                 _self.valueHasMutated();
             }
@@ -3336,14 +3336,15 @@
         [IS_OBSERVABLE]: true,
         equalityComparer: valuesArePrimitiveAndEqual,
         peek() {
-            return this[LATEST_VALUE_KEY];
+            return (this[LATEST_VALUE_KEY]);
         },
         valueHasMutated() {
             this.notifySubscribers(this[LATEST_VALUE_KEY], 'spectate');
             this.notifySubscribers(this[LATEST_VALUE_KEY]);
         },
+        /** exposed only for external uses. KO-internally use {@link observableValueWillMutateInternal} macro */ 
         valueWillMutate() {
-            this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange');
+            (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
         }
     };
 
@@ -3625,30 +3626,28 @@
     };
 
     const observableArray = function (initialValues) {
-        initialValues = initialValues || [];
-
-        if (!Array.isArray(initialValues)) {
+        if (initialValues && !Array.isArray(initialValues)) {
             throw new Error('The argument passed when initializing an observable array must be an array, or null, or undefined.');
         }
-        let result = observable(initialValues);
-        setPrototypeOfOrExtend(result, OBSERVABLE_ARRAY_PROTOTYPE);
-        trackArrayChanges(result);
-        return result;
+        let _obsArrayInstance = observable(initialValues || []);
+        setPrototypeOfOrExtend(_obsArrayInstance, OBSERVABLE_ARRAY_PROTOTYPE);
+        trackArrayChanges(_obsArrayInstance);
+        return _obsArrayInstance;
     };
 
     const OBSERVABLE_ARRAY_PROTOTYPE = {
         [IS_OBSERVABLE_ARRAY]: true,
         remove(valueOrPredicate) {
-            let underlyingArray = this.peek(),
+            let underlyingArray = (this[LATEST_VALUE_KEY]),
                 removedValues = [],
                 totalRemovedValues = 0,
-                predicate = typeof valueOrPredicate === 'function' && !isObservable(valueOrPredicate) ? valueOrPredicate : (value) => value === valueOrPredicate;
+                predicate = ( (typeof valueOrPredicate === 'function' && !valueOrPredicate[IS_OBSERVABLE]) ? valueOrPredicate : (value) => value === valueOrPredicate);
             
              for (let i = 0; i < underlyingArray.length; i++) {
                 let value = underlyingArray[i];
                 if (predicate(value)) {
                     if (!totalRemovedValues) {
-                        this.valueWillMutate();
+                        (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
                     }
                     if (underlyingArray[i] !== value) {
                         throw Error('Array modified during remove; cannot remove item');
@@ -3667,10 +3666,10 @@
         removeAll(arrayOfValues) {
             // If you passed zero args, we remove everything
             if (arrayOfValues === undefined) {
-                let underlyingArray = this.peek(),
+                let underlyingArray = (this[LATEST_VALUE_KEY]),
                     allValues = underlyingArray.slice();
                 
-                this.valueWillMutate();
+                (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
                 underlyingArray.splice(0, underlyingArray.length);
                 this.valueHasMutated();
                 return allValues;
@@ -3680,13 +3679,14 @@
         },
 
         destroy(valueOrPredicate) {
-            let underlyingArray = this.peek(),
-                predicate = typeof valueOrPredicate === 'function' && !isObservable(valueOrPredicate) ? valueOrPredicate : (value) => value === valueOrPredicate;
-            this.valueWillMutate();
+            let underlyingArray = (this[LATEST_VALUE_KEY]),
+                predicate = ( (typeof valueOrPredicate === 'function' && !valueOrPredicate[IS_OBSERVABLE]) ? valueOrPredicate : (value) => value === valueOrPredicate);
+            
+            (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
             for (let i = underlyingArray.length - 1; i >= 0; i--) {
                 let value = underlyingArray[i];
                 if (predicate(value)) {
-                    value['_destroy'] = true;
+                    value._destroy = true;
                 }
             }
             this.valueHasMutated();
@@ -3708,7 +3708,7 @@
             let underlyingArray = this(),
                 index = underlyingArray.indexOf(oldItem);
             if (index >= 0) {
-                this.valueWillMutate();
+                (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
                 underlyingArray[index] = newItem;
                 this.valueHasMutated();
             }
@@ -3742,9 +3742,12 @@
         OBSERVABLE_ARRAY_PROTOTYPE[methodName] = function () {
             // Use 'peek' to avoid creating a subscription in any computed that we're executing in the context of
             // (for consistency with mutating regular observables)
-            let underlyingArray = this.peek();
-            this.valueWillMutate();
+            let underlyingArray = (this[LATEST_VALUE_KEY]);
+            (this.notifySubscribers(this[LATEST_VALUE_KEY], 'beforeChange'));
             this.cacheDiffForKnownOperation(underlyingArray, methodName, arguments);
+            
+            // using apply instead of direct call with arguments spread here (i.e. underlyingArray[methodName](...arguments) )
+            // as spread is ~50% slower in Firefox 87 and ~5% in Chrome.
             let methodCallResult = underlyingArray[methodName].apply(underlyingArray, arguments);
             this.valueHasMutated();
             // The native sort and reverse methods return a reference to the array, but it makes more sense to return the observable array instead.
@@ -4033,7 +4036,10 @@
         let countWaitingForRemove = 0;
 
         const _itemAdded = (value) => {
-            mapData = {arrayEntry: value, indexObservable: observable(currentArrayIndex++)};
+            mapData = {
+                arrayEntry: value, 
+                indexObservable: observable(currentArrayIndex++)
+            };
             newMappingResult.push(mapData);
             if (!isFirstExecution) {
                 itemsForAfterAddCallbacks.push(mapData);
@@ -4043,7 +4049,7 @@
         const _itemMovedOrRetained = (oldPosition) => {
             mapData = lastMappingResult[oldPosition];
             let _indexObservable = mapData.indexObservable;
-            if (currentArrayIndex !== _indexObservable.peek()) {
+            if (currentArrayIndex !== (_indexObservable[LATEST_VALUE_KEY])) {
                 itemsForMoveCallbacks.push(mapData);
             }
             // Since updating the index might change the nodes, do so before calling fixUpContinuousNodeArray
@@ -4592,7 +4598,7 @@
         let shouldHideDestroyed = (options$1.includeDestroyed === false) || (options.foreachHidesDestroyed && !options$1.includeDestroyed);
 
         if (!shouldHideDestroyed && !options$1.beforeRemove && isObservableArray(arrayOrObservableArray)) {
-            _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(arrayOrObservableArray.peek());
+            _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped((arrayOrObservableArray[LATEST_VALUE_KEY]));
 
             let subscription = arrayOrObservableArray.subscribe(changeList => _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(arrayOrObservableArray(), changeList), null, 'arrayChange');
             subscription.disposeWhenNodeIsRemoved(targetNode);
