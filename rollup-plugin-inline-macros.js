@@ -477,8 +477,8 @@ class ImportsHelper {
                     replacement = `${RegExp.$1}${RegExp.$2}, ${nameToAdd}${RegExp.$3}`,
                     newLine = line.replace(_causingNameRegex, replacement);
                 this._lines[i] = newLine;
-                this._addToLog(`Added macro-dependency "${nameToAdd}" to imports at [${this._relativePath}:${i+1}]\n` +
-                                     `OLD:  ${oldLine}\nNEW:  ${newLine}`);
+                this._addToLog(`[${this._filename}:${i+1}]\nAdded dependency-import "${nameToAdd}" for macro "${causingName}"\n` +
+                               `OLD:  ${oldLine}\nNEW:  ${newLine}`);
                 success = true;
             }
             
