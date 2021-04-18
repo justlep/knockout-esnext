@@ -1,5 +1,5 @@
 export const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
-export const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]);
+export const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]); //@inline-global:IS_SUBSCRIBABLE
 
 export const IS_OBSERVABLE = Symbol('IS_OBSERVABLE');
 export const isObservable = (obj) => !!(obj && obj[IS_OBSERVABLE]);
