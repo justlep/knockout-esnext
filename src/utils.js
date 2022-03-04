@@ -387,7 +387,7 @@ export const stringifyJson = (data, replacer, space) => JSON.stringify(unwrapObs
 export const postJson = function(urlOrForm, data, options) {
     options = options || {};
     let params = options['params'] || {},
-        includeFields = options['includeFields'] || ko.utils.fieldsIncludedWithJsonPost,
+        includeFields = options['includeFields'] || fieldsIncludedWithJsonPost,
         url = urlOrForm;
 
     // If we were given a form, use its 'action' URL and pick out any requested field values
