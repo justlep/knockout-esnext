@@ -37,7 +37,7 @@ export function computed(evaluatorFunctionOrOptions, evaluatorFunctionTarget, op
             isSleeping: false,
             readFunction: options.read,
             evaluatorFunctionTarget: evaluatorFunctionTarget || options.owner,
-            disposeWhenNodeIsRemoved: options.disposeWhenNodeIsRemoved || options.disposeWhenNodeIsRemoved || null,
+            disposeWhenNodeIsRemoved: options.disposeWhenNodeIsRemoved || null,
             disposeWhen: options.disposeWhen,
             domNodeDisposalCallback: null,
             dependencyTracking: {},
