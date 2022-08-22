@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod19-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod20-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod19-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod20-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -812,7 +812,7 @@
     const postJson = function(urlOrForm, data, options) {
         options = options || {};
         let params = options['params'] || {},
-            includeFields = options['includeFields'] || ko.utils.fieldsIncludedWithJsonPost,
+            includeFields = options['includeFields'] || fieldsIncludedWithJsonPost,
             url = urlOrForm;
 
         // If we were given a form, use its 'action' URL and pick out any requested field values
@@ -1358,7 +1358,7 @@
                 isSleeping: false,
                 readFunction: options$1.read,
                 evaluatorFunctionTarget: evaluatorFunctionTarget || options$1.owner,
-                disposeWhenNodeIsRemoved: options$1.disposeWhenNodeIsRemoved || options$1.disposeWhenNodeIsRemoved || null,
+                disposeWhenNodeIsRemoved: options$1.disposeWhenNodeIsRemoved || null,
                 disposeWhen: options$1.disposeWhen,
                 domNodeDisposalCallback: null,
                 dependencyTracking: {},
@@ -5988,7 +5988,7 @@
 
     // ********************** export all props/methods/namespaces to be exposed publicly *********************************
 
-    const ko$1 = {
+    const ko = {
         version, // eslint-disable-line no-undef
         options,
         utils: Object.assign({
@@ -6112,9 +6112,9 @@
         set onError(fnOrNull) { _overrideOnError(fnOrNull); }
     };
 
-    _setKoReferenceForBindingContexts(ko$1);
+    _setKoReferenceForBindingContexts(ko);
 
-    return ko$1;
+    return ko;
 
 })));
 //# sourceMappingURL=knockout-latest.debug.js.map
