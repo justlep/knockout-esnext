@@ -135,18 +135,15 @@ export const preProcessBindings = (bindingsStringOrKeyValueArray, bindingOptions
                 // For two-way bindings, provide a write method in case the value
                 // isn't a writable observable.
                 let writeKey = typeof twoWayBindingsValue === 'string' ? twoWayBindingsValue : key;
-                propertyAccessorResultStrings.push("'" + writeKey + "':function(_z){" + writableVal + "=_z}");
+                propertyAccessorResultStrings += ",'" + writeKey + "':function(_z){" + writableVal + "=_z}";
             }
         }
-        // Values are wrapped in a function so that each value can be accessed independently
-        if (makeValueAccessors) {
-            val = 'function(){return ' + val + ' }';
-        }
-        resultStrings.push("'" + key + "':" + val);
+        
+        resultStrings += ",'" + key + "':" + (makeValueAccessors ? 'function(){return ' + val + ' }' : val);
     };
-
-    let resultStrings = [],
-        propertyAccessorResultStrings = [],
+    
+    let resultStrings = '',
+        propertyAccessorResultStrings = '',
         makeValueAccessors = bindingOptions['valueAccessors'],
         bindingParams = bindingOptions['bindingParams'],
         keyValueArray = typeof bindingsStringOrKeyValueArray === "string" ?
@@ -157,10 +154,10 @@ export const preProcessBindings = (bindingsStringOrKeyValueArray, bindingOptions
     }
 
     if (propertyAccessorResultStrings.length) {
-        _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.join(",") + " }");
+        _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.substr(1) + " }");
     }
 
-    return resultStrings.join(",");
+    return resultStrings.substr(1);
 };
 
 export const bindingRewriteValidators = [];
