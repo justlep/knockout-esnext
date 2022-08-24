@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod20-esnext
+for Knockout JavaScript library v3.5.1-mod21-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -14,7 +14,7 @@ Found local macro: "_ensureNodeHasDomData"
 [bindingAttributeSyntax.js:39]
 Found local macro: "_getOrAddBindingInfoInDomData"
 
-[bindingAttributeSyntax.js:553]
+[bindingAttributeSyntax.js:552]
 Found local macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
 
 [bindingAttributeSyntax.js:188]
@@ -57,42 +57,42 @@ Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:400]
+[bindingAttributeSyntax.js:399]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:401]
+[bindingAttributeSyntax.js:400]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:558]
+[bindingAttributeSyntax.js:557]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
 
-[bindingAttributeSyntax.js:562]
+[bindingAttributeSyntax.js:561]
 Inlined: "_getBindingContext"
 OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
 NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
 
-[bindingAttributeSyntax.js:580]
+[bindingAttributeSyntax.js:579]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
 NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
 
-[bindingAttributeSyntax.js:593]
+[bindingAttributeSyntax.js:592]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
 NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
 
-[bindingAttributeSyntax.js:599]
+[bindingAttributeSyntax.js:598]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
 NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:606]
+[bindingAttributeSyntax.js:605]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
 NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
@@ -688,7 +688,7 @@ Local macros inlining summary:
  4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]
  4x  _ensureNodeHasDomData  - [src/binding/bindingAttributeSyntax.js:38]
  3x  _getOrAddBindingInfoInDomData  - [src/binding/bindingAttributeSyntax.js:39]
- 4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:553]
+ 4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:552]
  2x  virtualNodeBindingValue  - [src/binding/bindingProvider.js:7]
  2x  _getBindingsString  - [src/binding/bindingProvider.js:16]
  1x  parseMemoText  - [src/memoization.js:8]

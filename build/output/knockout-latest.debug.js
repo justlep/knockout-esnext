@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod20-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod21-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod20-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod21-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -2038,18 +2038,15 @@
                     // For two-way bindings, provide a write method in case the value
                     // isn't a writable observable.
                     let writeKey = typeof twoWayBindingsValue === 'string' ? twoWayBindingsValue : key;
-                    propertyAccessorResultStrings.push("'" + writeKey + "':function(_z){" + writableVal + "=_z}");
+                    propertyAccessorResultStrings += ",'" + writeKey + "':function(_z){" + writableVal + "=_z}";
                 }
             }
-            // Values are wrapped in a function so that each value can be accessed independently
-            if (makeValueAccessors) {
-                val = 'function(){return ' + val + ' }';
-            }
-            resultStrings.push("'" + key + "':" + val);
+            
+            resultStrings += ",'" + key + "':" + (makeValueAccessors ? 'function(){return ' + val + ' }' : val);
         };
-
-        let resultStrings = [],
-            propertyAccessorResultStrings = [],
+        
+        let resultStrings = '',
+            propertyAccessorResultStrings = '',
             makeValueAccessors = bindingOptions['valueAccessors'],
             bindingParams = bindingOptions['bindingParams'],
             keyValueArray = typeof bindingsStringOrKeyValueArray === "string" ?
@@ -2060,10 +2057,10 @@
         }
 
         if (propertyAccessorResultStrings.length) {
-            _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.join(",") + " }");
+            _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.substr(1) + " }");
         }
 
-        return resultStrings.join(",");
+        return resultStrings.substr(1);
     };
 
     const bindingRewriteValidators = [];
@@ -2659,14 +2656,17 @@
             return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ true);
         }
 
-        // The following function is only used internally by this default provider.
-        // It's not part of the interface definition for a general binding provider.
+        /**
+         * The following function is only used internally by this default provider.
+         * It's not part of the interface definition for a general binding provider.
+         * @return {function}
+         * @internal
+         */
         parseBindingsString(bindingsString, bindingContext, node, options) {
             let cacheKey = bindingsString + (options && options['valueAccessors'] || ''),
                 bindingFunction = this._cache.get(cacheKey);
             
             if (bindingFunction) {
-                // the function has been parsed once, so skip the try-catch extra scope 
                 return bindingFunction(bindingContext, node);
             }
             
@@ -2675,17 +2675,16 @@
                 // Build the source for a function that evaluates "expression"
                 // For each scope variable, add an extra level of "with" nesting
                 // Example result: with(sc1) { with(sc0) { return (expression) } }
-                let rewrittenBindings = preProcessBindings(bindingsString, options),
-                    functionBody = "with($context){with($data||{}){return{" + rewrittenBindings + "}}}",
-                    bindingFnToCache = new Function("$context", "$element", functionBody);
-                
-                this._cache.set(cacheKey, bindingFnToCache);
-                
-                return bindingFnToCache(bindingContext, node);
+
+                bindingFunction = new Function("$context", "$element", 
+                                    'with($context){with($data||{}){return{' + preProcessBindings(bindingsString, options) + '}}}');
             } catch (ex) {
                 ex.message = "Unable to parse bindings.\nBindings value: " + bindingsString + "\nMessage: " + ex.message;
                 throw ex;
             }
+
+            this._cache.set(cacheKey, bindingFunction);
+            return bindingFunction(bindingContext, node);
         }
     }
 
@@ -3052,11 +3051,10 @@
                 if (!binding) {
                     return;
                 }
-                let bindingAfter = binding.after;
                 // First add dependencies (if any) of the current binding
-                if (bindingAfter) {
+                if (binding.after) {
                     cyclicDependencyStack.push(bindingKey);
-                    for (let bindingDependencyKey of bindingAfter) {
+                    for (let bindingDependencyKey of binding.after) {
                         if (bindings[bindingDependencyKey]) {
                             if (cyclicDependencyStack.includes(bindingDependencyKey)) {
                                 throw Error("Cannot combine the following bindings, because they have a cyclic dependency: " + cyclicDependencyStack.join(", "));
