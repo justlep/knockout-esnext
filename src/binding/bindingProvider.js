@@ -53,14 +53,17 @@ export class KoBindingProvider {
         return addBindingsForCustomElement(parsedBindings, node, bindingContext, /* valueAccessors */ true);
     }
 
-    // The following function is only used internally by this default provider.
-    // It's not part of the interface definition for a general binding provider.
+    /**
+     * The following function is only used internally by this default provider.
+     * It's not part of the interface definition for a general binding provider.
+     * @return {function}
+     * @internal
+     */
     parseBindingsString(bindingsString, bindingContext, node, options) {
         let cacheKey = bindingsString + (options && options['valueAccessors'] || ''),
             bindingFunction = this._cache.get(cacheKey);
         
         if (bindingFunction) {
-            // the function has been parsed once, so skip the try-catch extra scope 
             return bindingFunction(bindingContext, node);
         }
         
@@ -69,17 +72,16 @@ export class KoBindingProvider {
             // Build the source for a function that evaluates "expression"
             // For each scope variable, add an extra level of "with" nesting
             // Example result: with(sc1) { with(sc0) { return (expression) } }
-            let rewrittenBindings = preProcessBindings(bindingsString, options),
-                functionBody = "with($context){with($data||{}){return{" + rewrittenBindings + "}}}",
-                bindingFnToCache = new Function("$context", "$element", functionBody);
-            
-            this._cache.set(cacheKey, bindingFnToCache);
-            
-            return bindingFnToCache(bindingContext, node);
+
+            bindingFunction = new Function("$context", "$element", 
+                                'with($context){with($data||{}){return{' + preProcessBindings(bindingsString, options) + '}}}');
         } catch (ex) {
             ex.message = "Unable to parse bindings.\nBindings value: " + bindingsString + "\nMessage: " + ex.message;
             throw ex;
         }
+
+        this._cache.set(cacheKey, bindingFunction);
+        return bindingFunction(bindingContext, node);
     }
 }
 

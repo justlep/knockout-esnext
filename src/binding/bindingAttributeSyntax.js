@@ -372,11 +372,10 @@ const _topologicalSortBindings = (bindings) => {
             if (!binding) {
                 return;
             }
-            let bindingAfter = binding.after;
             // First add dependencies (if any) of the current binding
-            if (bindingAfter) {
+            if (binding.after) {
                 cyclicDependencyStack.push(bindingKey);
-                for (let bindingDependencyKey of bindingAfter) {
+                for (let bindingDependencyKey of binding.after) {
                     if (bindings[bindingDependencyKey]) {
                         if (cyclicDependencyStack.includes(bindingDependencyKey)) {
                             throw Error("Cannot combine the following bindings, because they have a cyclic dependency: " + cyclicDependencyStack.join(", "));
