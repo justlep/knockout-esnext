@@ -23,6 +23,11 @@ Making *Knockout.js* slicker, faster, more maintainable than ever.
   * Added tests for type checking (`ko.isObservable` etc) in `basicTypeCheckBehaviors.js`
   * Removed IE/jQuery-related tests
 
+### Changes (in behavior)
+* When using `extend({notify: 'always'})` with observables/computeds, their current default *OR* custom `equalityComparer` is 
+  now memorized and can be restored by using the extender again with anything other than `'always'`. 
+  Original Knockout would only reassign its default equality comparer (`valuesArePrimitiveAndEqual`).
+
 ### Changes (build process):
 * Removed Google Closure Compiler and all code soothing its side-effects (`ko.exportSymbol`)
 * Using [Rollup](https://rollupjs.org/guide/en/) + [Terser](https://github.com/terser/terser) plugin for build & minification

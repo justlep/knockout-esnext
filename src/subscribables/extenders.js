@@ -60,9 +60,18 @@ extenders.rateLimit = (target, options) => {
     target.limit(callback => limitFunction(callback, timeout, options));
 };
 
+const ORIGINAL_EQUALITY_COMPARER = Symbol();
+
 extenders.notify = (target, notifyWhen) => {
-    // null equalityComparer means to always notify
-    target.equalityComparer = (notifyWhen === 'always') ? null : valuesArePrimitiveAndEqual;
+    let currentEqualityComparer = target.equalityComparer;
+    if (notifyWhen === 'always') {
+        if (currentEqualityComparer) {
+            target[ORIGINAL_EQUALITY_COMPARER] = currentEqualityComparer;
+            target.equalityComparer = null; // null equalityComparer means to always notify
+        }
+    } else if (!currentEqualityComparer) {
+        target.equalityComparer = target[ORIGINAL_EQUALITY_COMPARER]; 
+    }
 };
 
 export const defineThrottleExtender = (dependentObservable) => {

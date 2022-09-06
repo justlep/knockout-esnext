@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod21-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod22-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod21-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod22-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -1088,9 +1088,18 @@
         target.limit(callback => limitFunction(callback, timeout, options));
     };
 
+    const ORIGINAL_EQUALITY_COMPARER = Symbol();
+
     extenders.notify = (target, notifyWhen) => {
-        // null equalityComparer means to always notify
-        target.equalityComparer = (notifyWhen === 'always') ? null : valuesArePrimitiveAndEqual;
+        let currentEqualityComparer = target.equalityComparer;
+        if (notifyWhen === 'always') {
+            if (currentEqualityComparer) {
+                target[ORIGINAL_EQUALITY_COMPARER] = currentEqualityComparer;
+                target.equalityComparer = null; // null equalityComparer means to always notify
+            }
+        } else if (!currentEqualityComparer) {
+            target.equalityComparer = target[ORIGINAL_EQUALITY_COMPARER]; 
+        }
     };
 
     const defineThrottleExtender = (dependentObservable) => {
