@@ -1,4 +1,3 @@
-import {valuesArePrimitiveAndEqual} from '../utils';
 import {deferredExtender} from './deferredExtender';
 
 export const extenders = Object.create(null);
