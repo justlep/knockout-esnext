@@ -30,7 +30,7 @@ module.exports = function(grunt) {
         );
     });
 
-    grunt.registerTask('dist', ['npmRun:rollup-dist']);
+    grunt.registerTask('dist', ['npmRun:lint', 'npmRun:rollup-dist']);
     
     // Default task.
     grunt.registerTask('default', ['clean', 'npmRun:lint', 'npmRun:test' /* pretest includes npmRun:rollup-dev */, 'testtypes']);
