@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod22-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod23-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod22-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod23-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -3046,42 +3046,6 @@
         }
     };
 
-    const _topologicalSortBindings = (bindings) => {
-        // Depth-first sort
-        let result = [],                // The list of key/handler pairs that we will return
-            bindingsConsidered = {},    // A temporary record of which bindings are already in 'result'
-            cyclicDependencyStack = [], // Keeps track of a depth-search so that, if there's a cycle, we know which bindings caused it
-            _pushBinding = bindingKey => {
-                if (bindingsConsidered[bindingKey]) {
-                    return;
-                }
-                bindingsConsidered[bindingKey] = true;
-                let binding = getBindingHandler(bindingKey);
-                if (!binding) {
-                    return;
-                }
-                // First add dependencies (if any) of the current binding
-                if (binding.after) {
-                    cyclicDependencyStack.push(bindingKey);
-                    for (let bindingDependencyKey of binding.after) {
-                        if (bindings[bindingDependencyKey]) {
-                            if (cyclicDependencyStack.includes(bindingDependencyKey)) {
-                                throw Error("Cannot combine the following bindings, because they have a cyclic dependency: " + cyclicDependencyStack.join(", "));
-                            }
-                            _pushBinding(bindingDependencyKey);
-                        }
-                    }
-                    cyclicDependencyStack.length--;
-                }
-                // Next add the current binding
-                result.push({key: bindingKey, handler: binding});
-            };
-
-        for (let bindingKey of Object.keys(bindings)) {
-            _pushBinding(bindingKey);
-        }
-        return result;
-    };
 
     const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
         let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
@@ -3139,101 +3103,134 @@
             }
         }
 
+        if (!bindings) {
+            return {
+                bindingContextForDescendants: bindingContext
+            };
+        }
+        
         let contextToExtend = bindingContext,
             bindingHandlerThatControlsDescendantBindings;
 
-        if (bindings) {
-            // Return the value accessor for a given binding. When bindings are static (won't be updated because of a binding
-            // context update), just return the value accessor from the binding. Otherwise, return a function that always gets
-            // the latest binding value and registers a dependency on the binding updater.
-            let getValueAccessor = bindingsUpdater ? 
-                                        (bindingKey) => () => bindingsUpdater()[bindingKey]() : 
-                                        (bindingKey) => bindings[bindingKey];
+        // Return the value accessor for a given binding. When bindings are static (won't be updated because of a binding
+        // context update), just return the value accessor from the binding. Otherwise, return a function that always gets
+        // the latest binding value and registers a dependency on the binding updater.
+        let getValueAccessor = bindingsUpdater ? 
+                                    (bindingKey) => () => bindingsUpdater()[bindingKey]() : 
+                                    (bindingKey) => bindings[bindingKey];
 
-            // let allBindings = () => {
-            //     throw new Error('Use of allBindings as a function is no longer supported');
-            // };
-            // ^^^ using a function and add custom methods to it is 98% slower than direct object literals in Firefox 81, 
-            //     plus the 'no longer supported' message has existed since 2013.. time to drop it  
+        // let allBindings = () => {
+        //     throw new Error('Use of allBindings as a function is no longer supported');
+        // };
+        // ^^^ using a function and add custom methods to it is 98% slower than direct object literals in Firefox 81, 
+        //     plus the 'no longer supported' message has existed since 2013.. time to drop it  
 
-            // The following is the 3.x allBindings API
-            let allBindings = {
-                get: (key) => bindings[key] && getValueAccessor(key)(),
-                has: (key) => key in bindings
-            };
+        // The following is the 3.x allBindings API
+        let allBindings = {
+            get: (key) => bindings[key] && getValueAccessor(key)(),
+            has: (key) => key in bindings
+        };
 
-            if (EVENT_CHILDREN_COMPLETE in bindings) {
-                bindingEvent.subscribe(node, EVENT_CHILDREN_COMPLETE, () => {
-                    let callback = bindings[EVENT_CHILDREN_COMPLETE]();
-                    if (callback) {
-                        let nodes = childNodes(node);
-                        if (nodes.length) {
-                            callback(nodes, dataFor(nodes[0]));
-                        }
+        if (EVENT_CHILDREN_COMPLETE in bindings) {
+            bindingEvent.subscribe(node, EVENT_CHILDREN_COMPLETE, () => {
+                let callback = bindings[EVENT_CHILDREN_COMPLETE]();
+                if (callback) {
+                    let nodes = childNodes(node);
+                    if (nodes.length) {
+                        callback(nodes, dataFor(nodes[0]));
                     }
-                });
-            }
-
-            if (EVENT_DESCENDENTS_COMPLETE in bindings) {
-                contextToExtend = bindingEvent.startPossiblyAsyncContentBinding(node, bindingContext);
-                bindingEvent.subscribe(node, EVENT_DESCENDENTS_COMPLETE, () => {
-                    let callback = bindings[EVENT_DESCENDENTS_COMPLETE]();
-                    if (callback && firstChild(node)) {
-                        callback(node);
-                    }
-                });
-            }
-
-            // First put the bindings into the right order
-            let orderedBindings = _topologicalSortBindings(bindings);
-
-            // Go through the sorted bindings, calling init and update for each
-            orderedBindings.forEach(bindingKeyAndHandler => {
-                // Note that topologicalSortBindings has already filtered out any nonexistent binding handlers,
-                // so bindingKeyAndHandler.handler will always be nonnull.
-                let handlerInitFn = bindingKeyAndHandler.handler.init,
-                    handlerUpdateFn = bindingKeyAndHandler.handler.update,
-                    bindingKey = bindingKeyAndHandler.key;
-
-                if (node.nodeType === 8 && !allowedVirtualElementBindings[bindingKey]) {
-                    throw new Error("The binding '" + bindingKey + "' cannot be used with virtual elements");
-                }
-
-                try {
-                    // Run init, ignoring any dependencies
-                    if (typeof handlerInitFn === 'function') {
-                        ignoreDependencyDetectionNoArgs(() => {
-                            let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend);
-
-                            // If this binding handler claims to control descendant bindings, make a note of this
-                            if (initResult && initResult.controlsDescendantBindings) {
-                                if (bindingHandlerThatControlsDescendantBindings !== undefined) {
-                                    throw new Error("Multiple bindings (" + bindingHandlerThatControlsDescendantBindings + " and " + bindingKey + ") are trying to control descendant bindings of the same element. You cannot use these bindings together on the same element.");
-                                }
-                                bindingHandlerThatControlsDescendantBindings = bindingKey;
-                            }
-                        });
-                    }
-
-                    // Run update in its own computed wrapper
-                    if (typeof handlerUpdateFn === 'function') {
-                        dependentObservable(
-                            () => handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend),
-                            null,
-                            {disposeWhenNodeIsRemoved: node}
-                        );
-                    }
-                } catch (ex) {
-                    ex.message = `Unable to process binding "${bindingKey}: ${bindings[bindingKey]}"\nMessage:  + ${ex.message}`;
-                    throw ex;
                 }
             });
         }
 
-        let shouldBindDescendants = bindingHandlerThatControlsDescendantBindings === undefined;
+        if (EVENT_DESCENDENTS_COMPLETE in bindings) {
+            contextToExtend = bindingEvent.startPossiblyAsyncContentBinding(node, bindingContext);
+            bindingEvent.subscribe(node, EVENT_DESCENDENTS_COMPLETE, () => {
+                let callback = bindings[EVENT_DESCENDENTS_COMPLETE]();
+                if (callback && firstChild(node)) {
+                    callback(node);
+                }
+            });
+        }
+
+        // First put the bindings into depth-first order (topologicalSortBindings)
+        
+        let orderedBindings = [],       // The list of key/handler pairs that we will return
+            bindingsConsidered = {},    // A temporary record of which bindings are already in 'orderedBindings'
+            cyclicDependencyStack = [], // Keeps track of a depth-search so that, if there's a cycle, we know which bindings caused it
+            _pushBinding = (bindingKey) => {
+                if (bindingsConsidered[bindingKey]) {
+                    return;
+                }
+                bindingsConsidered[bindingKey] = true;
+                let binding = getBindingHandler(bindingKey);
+                if (!binding) {
+                    return;
+                }
+                // First add dependencies (if any) of the current binding
+                if (binding.after) {
+                    cyclicDependencyStack.push(bindingKey);
+                    for (let bindingDependencyKey of binding.after) {
+                        if (bindings[bindingDependencyKey]) {
+                            if (cyclicDependencyStack.includes(bindingDependencyKey)) {
+                                throw Error("Cannot combine the following bindings, because they have a cyclic dependency: " + cyclicDependencyStack.join(", "));
+                            }
+                            _pushBinding(bindingDependencyKey);
+                        }
+                    }
+                    cyclicDependencyStack.length--;
+                }
+                // Next add the current binding
+                orderedBindings.push({key: bindingKey, handler: binding});
+            };
+
+        for (let bindingKey of Object.keys(bindings)) {
+            _pushBinding(bindingKey);
+        }
+        
+        // Go through the sorted bindings, calling init and update for each
+        for (let bindingKeyAndHandler of orderedBindings) {
+            // Note that topologicalSortBindings has already filtered out any nonexistent binding handlers,
+            // so bindingKeyAndHandler.handler will always be nonnull.
+            let handlerInitFn = bindingKeyAndHandler.handler.init,
+                handlerUpdateFn = bindingKeyAndHandler.handler.update,
+                bindingKey = bindingKeyAndHandler.key;
+
+            if (node.nodeType === 8 && !allowedVirtualElementBindings[bindingKey]) {
+                throw new Error("The binding '" + bindingKey + "' cannot be used with virtual elements");
+            }
+
+            try {
+                // Run init, ignoring any dependencies
+                if (typeof handlerInitFn === 'function') {
+                    ignoreDependencyDetectionNoArgs(() => {
+                        let initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend);
+
+                        // If this binding handler claims to control descendant bindings, make a note of this
+                        if (initResult && initResult.controlsDescendantBindings) {
+                            if (bindingHandlerThatControlsDescendantBindings) {
+                                throw new Error("Multiple bindings (" + bindingHandlerThatControlsDescendantBindings + " and " + bindingKey + ") are trying to control descendant bindings of the same element. You cannot use these bindings together on the same element.");
+                            }
+                            bindingHandlerThatControlsDescendantBindings = bindingKey;
+                        }
+                    });
+                }
+                // Run update in its own computed wrapper
+                if (typeof handlerUpdateFn === 'function') {
+                    dependentObservable(
+                        () => handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, contextToExtend.$data, contextToExtend),
+                        null,
+                        {disposeWhenNodeIsRemoved: node}
+                    );
+                }
+            } catch (ex) {
+                ex.message = `Unable to process binding "${bindingKey}: ${bindings[bindingKey]}"\nMessage:  + ${ex.message}`;
+                throw ex;
+            }
+        }
+
         return {
-            shouldBindDescendants,
-            bindingContextForDescendants: shouldBindDescendants && contextToExtend
+            bindingContextForDescendants: bindingHandlerThatControlsDescendantBindings ? null : contextToExtend
         };
     };
 
