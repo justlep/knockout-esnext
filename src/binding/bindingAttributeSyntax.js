@@ -519,7 +519,7 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
 
                         // If this binding handler claims to control descendant bindings, make a note of this
                         if (initResult && initResult.controlsDescendantBindings) {
-                            if (bindingHandlerThatControlsDescendantBindings !== undefined) {
+                            if (bindingHandlerThatControlsDescendantBindings) {
                                 throw new Error("Multiple bindings (" + bindingHandlerThatControlsDescendantBindings + " and " + bindingKey + ") are trying to control descendant bindings of the same element. You cannot use these bindings together on the same element.");
                             }
                             bindingHandlerThatControlsDescendantBindings = bindingKey;
@@ -542,10 +542,8 @@ const _applyBindingsToNodeInternal = (node, sourceBindings, bindingContext) => {
         });
     }
 
-    let shouldBindDescendants = bindingHandlerThatControlsDescendantBindings === undefined;
     return {
-        shouldBindDescendants,
-        bindingContextForDescendants: shouldBindDescendants && contextToExtend
+        bindingContextForDescendants: bindingHandlerThatControlsDescendantBindings ? null : contextToExtend
     };
 };
 
