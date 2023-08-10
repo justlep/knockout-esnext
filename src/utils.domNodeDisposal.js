@@ -1,7 +1,8 @@
-import {nextDomDataKey,
-        getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey,
-        getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey,
-        getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey} from './utils.domData';
+import {DOM_DATASTORE_PROP,
+    nextDomDataKey,
+    getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey,
+    getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey, getDomData
+} from './utils.domData';
 import {ignoreDependencyDetectionNoArgs} from './subscribables/dependencyDetection';
 
 const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
@@ -15,12 +16,19 @@ const _isNodeTypeCleanableWithDescendents = nodeType => nodeType === 1 || nodeTy
 export let _cleanExternalData = null;
 export const _overrideCleanExternalData = (fn) => _cleanExternalData = fn;
 
-const _runDisposalCallbacksAndClearDomData = getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
-
 const _cleanSingleNode = (node) => {
     // Run all the dispose callbacks & ease the DOM data
-    _runDisposalCallbacksAndClearDomData(node);
-
+    let domData = node[DOM_DATASTORE_PROP];
+    if (domData) {
+        let disposeCallbackFns = domData[DISPOSE_CALLBACKS_DOM_DATA_KEY];
+        if (disposeCallbackFns) {
+            for (let fn of disposeCallbackFns.slice(0)) {
+                fn(node);
+            }
+        }
+        delete node[DOM_DATASTORE_PROP];
+    }
+    
     // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
     if (_cleanExternalData) {
         _cleanExternalData(node);

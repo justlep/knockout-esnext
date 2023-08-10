@@ -60,23 +60,3 @@ export const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArra
         dataForNode[itemArrayDomDataKey] = [itemToAdd];
     }
 };
-
-/**
- * Returns a function that will 
- *  (1) run all (function-)items of an array located under the node's domData[itemArrayDomDataKey], passing the node as parameter
- *  (2) clear the node's DOM data
- * @param {string} itemArrayDomDataKey
- * @return {function(Node): void}
- */
-export const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node) => {
-    let dataForNode = node[DOM_DATASTORE_PROP];
-    if (dataForNode) {
-        let itemArray = dataForNode[itemArrayDomDataKey];
-        if (itemArray) {
-            for (let i = 0, _fns = itemArray.slice(0), len = _fns.length; i < len; i++) {
-                _fns[i](node);
-            }
-        }
-        delete node[DOM_DATASTORE_PROP];
-    }    
-};
