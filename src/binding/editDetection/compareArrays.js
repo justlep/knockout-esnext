@@ -40,9 +40,7 @@ const STATUS_NOT_IN_OLD = 'added';
 const STATUS_NOT_IN_NEW = 'deleted';
 
 function compareSmallArrayToBigArray(smlArray, bigArray, statusNotInSml, statusNotInBig, options) {
-    let myMin = Math.min,
-        myMax = Math.max,
-        editDistanceMatrix = [],
+    let editDistanceMatrix = [],
         smlIndex, smlIndexMax = smlArray.length,
         bigIndex, bigIndexMax = bigArray.length,
         compareRange = (bigIndexMax - smlIndexMax) || 1,
@@ -53,8 +51,8 @@ function compareSmallArrayToBigArray(smlArray, bigArray, statusNotInSml, statusN
     for (smlIndex = 0; smlIndex <= smlIndexMax; smlIndex++) {
         lastRow = thisRow;
         editDistanceMatrix.push(thisRow = []);
-        bigIndexMaxForRow = myMin(bigIndexMax, smlIndex + compareRange);
-        bigIndexMinForRow = myMax(0, smlIndex - 1);
+        bigIndexMaxForRow = Math.min(bigIndexMax, smlIndex + compareRange);
+        bigIndexMinForRow = smlIndex > 1 ? smlIndex - 1 : 0;
         for (bigIndex = bigIndexMinForRow; bigIndex <= bigIndexMaxForRow; bigIndex++) {
             if (!bigIndex) {
                 thisRow[bigIndex] = smlIndex + 1;
@@ -65,7 +63,7 @@ function compareSmallArrayToBigArray(smlArray, bigArray, statusNotInSml, statusN
             } else {
                 let northDistance = lastRow[bigIndex] || maxDistance;       // not in big (deletion)
                 let westDistance = thisRow[bigIndex - 1] || maxDistance;    // not in small (addition)
-                thisRow[bigIndex] = myMin(northDistance, westDistance) + 1;
+                thisRow[bigIndex] = (northDistance < westDistance ? northDistance : westDistance) + 1;
             }
         }
     }

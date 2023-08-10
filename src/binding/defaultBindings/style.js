@@ -1,7 +1,6 @@
 import {bindingHandlers} from '../bindingHandlers';
 import {unwrapObservable} from '../../subscribables/observableUtils';
-
-const CUSTOM_CSS_PROPERTY_REGEX = /^--/;
+import {kebabToCamelCase} from '../../utils.js';
 
 bindingHandlers.style = {
     update(element, valueAccessor) {
@@ -20,11 +19,11 @@ bindingHandlers.style = {
                 newStyleValue = '';
             }
 
-            if (CUSTOM_CSS_PROPERTY_REGEX.test(styleName)) {
+            if (styleName.startsWith('--')) {
                 // Is styleName a custom CSS property?
                 _elementStyle.setProperty(styleName, newStyleValue);
             } else {
-                styleName = styleName.replace(/-(\w)/g, (all, letter) => letter.toUpperCase());
+                styleName = kebabToCamelCase(styleName);
 
                 let previousStyleValue = _elementStyle[styleName];
                 _elementStyle[styleName] = newStyleValue;

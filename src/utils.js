@@ -267,9 +267,20 @@ export const domNodeIsContainedBy = (node, containedByNode) => {
     return !!node;
 };
 
-export const domNodeIsAttachedToDocument = (node) => domNodeIsContainedBy(node, node.ownerDocument.documentElement);
+export const domNodeIsAttachedToDocument = (node) => node ? !!node.isConnected : false;
 
-export const anyDomNodeIsAttachedToDocument = (nodes) => !!arrayFirst(nodes, domNodeIsAttachedToDocument);
+/**
+ * @param {Node[]} nodes
+ * @return {boolean}
+ */
+export const anyDomNodeIsAttachedToDocument = (nodes) => {
+    for (let node of nodes) {
+        if (node.isConnected) {
+            return true;
+        }
+    }
+    return false;
+};
 
 // For HTML elements, tagName will always be upper case; for XHTML elements, it'll be lower case.
 // Possible future optimization: If we know it's an element from an XHTML document (not HTML),
@@ -365,6 +376,11 @@ export const makeArray = (arrayLikeObject) => {
     return result;
 };
 
+/**
+ * @param {string} identifier
+ * @return {symbol}
+ * @deprecated - in here for legacy purposes only
+ */
 export const createSymbolOrString = identifier => Symbol(identifier);
 
 export const getFormFields = (form, fieldName) => {
@@ -428,4 +444,24 @@ export const postJson = function(urlOrForm, data, options) {
     document.body.appendChild(form);
     options.submitter ? options.submitter(form) : form.submit();
     setTimeout(() => form.parentNode.removeChild(form), 0);
+};
+
+/**
+ * Converts a kebab-case string into camelCase.
+ * @param {string} s - a kebab string; a leading dash or contained double dashes are considered non-kebab
+ * @return {string} - the converted string if the input was kebab, otherwise the original string
+ */
+export const kebabToCamelCase = (s) => {
+    let lastI = 0,
+        i = s.indexOf('-'),
+        out = '';
+
+    while (i > 0) {
+        if (s[i+1] === '-') {
+            return s; // early-exit if non-kebab detected
+        }
+        out += s.substring(lastI, i) + s[i+1].toUpperCase();
+        i = s.indexOf('-', lastI = i + 2);
+    }
+    return lastI ? out + s.substring(lastI) : s;
 };

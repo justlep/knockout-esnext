@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod23-esnext
+for Knockout JavaScript library v3.5.1-mod24-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -419,22 +419,22 @@ Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(instance);
 NEW:  ((instance._subscriptions = {change: []}) && (instance._versionNumber = 1));
 
-[subscribable.js:103]
+[subscribable.js:102]
 Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(this);
 NEW:  (this._versionNumber++);
 
-[subscribable.js:105]
+[subscribable.js:104]
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!hasSubscriptionsForEvent(this, event)) {
 NEW:  if (!((this._subscriptions[event] || 0).length)) {
 
-[subscribable.js:134]
+[subscribable.js:133]
 Inlined: "hasSubscribableChanged" (global macro)
 OLD:  return hasSubscribableChanged(this, versionToCheck);
 NEW:  return (this.getVersion() !== versionToCheck);
 
-[subscribable.js:227]
+[subscribable.js:226]
 Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(this);
 NEW:  ((this._subscriptions = {change: []}) && (this._versionNumber = 1));

@@ -144,7 +144,7 @@ export const trackArrayChanges = extenders.trackArrayChanges = (target, options)
                 let startIndex = Math.min(Math.max(0, args[0] < 0 ? arrayLength + args[0] : args[0]), arrayLength),
                     endDeleteIndex = argsLength === 1 ? arrayLength : Math.min(startIndex + (args[1] || 0), arrayLength),
                     endAddIndex = startIndex + argsLength - 2,
-                    endIndex = Math.max(endDeleteIndex, endAddIndex),
+                    endIndex = endDeleteIndex > endAddIndex ? endDeleteIndex : endAddIndex,
                     additions = [],
                     nextAdditionIndex = 0,
                     deletions = [],

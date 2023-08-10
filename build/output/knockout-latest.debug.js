@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod23-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod24-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod23-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod24-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -692,9 +692,20 @@
         return !!node;
     };
 
-    const domNodeIsAttachedToDocument = (node) => domNodeIsContainedBy(node, node.ownerDocument.documentElement);
+    const domNodeIsAttachedToDocument = (node) => node ? !!node.isConnected : false;
 
-    const anyDomNodeIsAttachedToDocument = (nodes) => !!arrayFirst(nodes, domNodeIsAttachedToDocument);
+    /**
+     * @param {Node[]} nodes
+     * @return {boolean}
+     */
+    const anyDomNodeIsAttachedToDocument = (nodes) => {
+        for (let node of nodes) {
+            if (node.isConnected) {
+                return true;
+            }
+        }
+        return false;
+    };
 
     // For HTML elements, tagName will always be upper case; for XHTML elements, it'll be lower case.
     // Possible future optimization: If we know it's an element from an XHTML document (not HTML),
@@ -790,6 +801,11 @@
         return result;
     };
 
+    /**
+     * @param {string} identifier
+     * @return {symbol}
+     * @deprecated - in here for legacy purposes only
+     */
     const createSymbolOrString = identifier => Symbol(identifier);
 
     const getFormFields = (form, fieldName) => {
@@ -855,6 +871,26 @@
         setTimeout(() => form.parentNode.removeChild(form), 0);
     };
 
+    /**
+     * Converts a kebab-case string into camelCase.
+     * @param {string} s - a kebab string; a leading dash or contained double dashes are considered non-kebab
+     * @return {string} - the converted string if the input was kebab, otherwise the original string
+     */
+    const kebabToCamelCase = (s) => {
+        let lastI = 0,
+            i = s.indexOf('-'),
+            out = '';
+
+        while (i > 0) {
+            if (s[i+1] === '-') {
+                return s; // early-exit if non-kebab detected
+            }
+            out += s.substring(lastI, i) + s[i+1].toUpperCase();
+            i = s.indexOf('-', lastI = i + 2);
+        }
+        return lastI ? out + s.substring(lastI) : s;
+    };
+
     var utils = /*#__PURE__*/Object.freeze({
         __proto__: null,
         canSetPrototype: canSetPrototype,
@@ -902,7 +938,8 @@
         createSymbolOrString: createSymbolOrString,
         getFormFields: getFormFields,
         stringifyJson: stringifyJson,
-        postJson: postJson
+        postJson: postJson,
+        kebabToCamelCase: kebabToCamelCase
     });
 
     const _taskQueue = [];
@@ -1174,9 +1211,8 @@
 
         subscribe(callback, callbackTarget, event) {
             event = event || DEFAULT_EVENT;
-            let boundCallback = callbackTarget ? callback.bind(callbackTarget) : callback;
 
-            let subscription = new Subscription(this, boundCallback, () => {
+            let subscription = new Subscription(this, callbackTarget ? callback.bind(callbackTarget) : callback, () => {
                 let _subscriptions = this._subscriptions[event],
                     foundIndex = _subscriptions.indexOf(subscription);
                 if (foundIndex >= 0) {
@@ -1616,7 +1652,7 @@
                 return;
             }
 
-            if (state.disposeWhenNodeIsRemoved && !domNodeIsAttachedToDocument(state.disposeWhenNodeIsRemoved) || disposeWhen && disposeWhen()) {
+            if (state.disposeWhenNodeIsRemoved && !state.disposeWhenNodeIsRemoved.isConnected || disposeWhen && disposeWhen()) {
                 // See comment above about suppressDisposalUntilDisposeWhenReturnsFalse
                 if (!state.suppressDisposalUntilDisposeWhenReturnsFalse) {
                     this.dispose();
@@ -3399,9 +3435,7 @@
     const STATUS_NOT_IN_NEW = 'deleted';
 
     function compareSmallArrayToBigArray(smlArray, bigArray, statusNotInSml, statusNotInBig, options) {
-        let myMin = Math.min,
-            myMax = Math.max,
-            editDistanceMatrix = [],
+        let editDistanceMatrix = [],
             smlIndex, smlIndexMax = smlArray.length,
             bigIndex, bigIndexMax = bigArray.length,
             compareRange = (bigIndexMax - smlIndexMax) || 1,
@@ -3412,8 +3446,8 @@
         for (smlIndex = 0; smlIndex <= smlIndexMax; smlIndex++) {
             lastRow = thisRow;
             editDistanceMatrix.push(thisRow = []);
-            bigIndexMaxForRow = myMin(bigIndexMax, smlIndex + compareRange);
-            bigIndexMinForRow = myMax(0, smlIndex - 1);
+            bigIndexMaxForRow = Math.min(bigIndexMax, smlIndex + compareRange);
+            bigIndexMinForRow = smlIndex > 1 ? smlIndex - 1 : 0;
             for (bigIndex = bigIndexMinForRow; bigIndex <= bigIndexMaxForRow; bigIndex++) {
                 if (!bigIndex) {
                     thisRow[bigIndex] = smlIndex + 1;
@@ -3424,7 +3458,7 @@
                 } else {
                     let northDistance = lastRow[bigIndex] || maxDistance;       // not in big (deletion)
                     let westDistance = thisRow[bigIndex - 1] || maxDistance;    // not in small (addition)
-                    thisRow[bigIndex] = myMin(northDistance, westDistance) + 1;
+                    thisRow[bigIndex] = (northDistance < westDistance ? northDistance : westDistance) + 1;
                 }
             }
         }
@@ -3605,7 +3639,7 @@
                     let startIndex = Math.min(Math.max(0, args[0] < 0 ? arrayLength + args[0] : args[0]), arrayLength),
                         endDeleteIndex = argsLength === 1 ? arrayLength : Math.min(startIndex + (args[1] || 0), arrayLength),
                         endAddIndex = startIndex + argsLength - 2,
-                        endIndex = Math.max(endDeleteIndex, endAddIndex),
+                        endIndex = endDeleteIndex > endAddIndex ? endDeleteIndex : endAddIndex,
                         additions = [],
                         nextAdditionIndex = 0,
                         deletions = [],
@@ -4548,7 +4582,7 @@
                         firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
                     }
                 }, null, {
-                    disposeWhen: () => (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode), // Passive disposal (on next evaluation) 
+                    disposeWhen: () => !(firstTargetNode && firstTargetNode.isConnected), // Passive disposal (on next evaluation) 
                     disposeWhenNodeIsRemoved: (firstTargetNode && renderMode === 'replaceNode') ? firstTargetNode.parentNode : firstTargetNode
                 });
         } 
@@ -5545,8 +5579,6 @@
 
     twoWayBindings.selectedOptions = true;
 
-    const CUSTOM_CSS_PROPERTY_REGEX = /^--/;
-
     bindingHandlers.style = {
         update(element, valueAccessor) {
             let value = unwrapObservable(valueAccessor() || {});
@@ -5564,11 +5596,11 @@
                     newStyleValue = '';
                 }
 
-                if (CUSTOM_CSS_PROPERTY_REGEX.test(styleName)) {
+                if (styleName.startsWith('--')) {
                     // Is styleName a custom CSS property?
                     _elementStyle.setProperty(styleName, newStyleValue);
                 } else {
-                    styleName = styleName.replace(/-(\w)/g, (all, letter) => letter.toUpperCase());
+                    styleName = kebabToCamelCase(styleName);
 
                     let previousStyleValue = _elementStyle[styleName];
                     _elementStyle[styleName] = newStyleValue;

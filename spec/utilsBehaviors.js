@@ -1,3 +1,4 @@
+
 describe('unwrapObservable', function() {
     it('Should return the underlying value of observables', function() {
         var someObject = { abc: 123 },
@@ -441,5 +442,22 @@ describe('objectMap', function () {
         var result = ko.utils.objectMap({x:1}, identityFunction, expectedContext);
 
         expect(expectedContext).toEqual(actualContext);
+    });
+});
+
+describe('kebabToCamelCase', function() {
+    it('Should transform kebab-case strings to camcelCase', () => {
+        expect(ko.utils.kebabToCamelCase('foo-bar-baz')).toEqual('fooBarBaz');
+        expect(ko.utils.kebabToCamelCase('non_kebab')).toEqual('non_kebab');
+    });
+
+    it('Should return non-kebab-case strings unchanged', () => {
+        expect(ko.utils.kebabToCamelCase('non--kebab')).toEqual('non--kebab');
+        expect(ko.utils.kebabToCamelCase('-non_kebab')).toEqual('-non_kebab');
+        expect(ko.utils.kebabToCamelCase('-non-kebab')).toEqual('-non-kebab');
+        expect(ko.utils.kebabToCamelCase('--non-kebab')).toEqual('--non-kebab');
+        expect(ko.utils.kebabToCamelCase('nonkebab')).toEqual('nonkebab');
+        expect(ko.utils.kebabToCamelCase('nonKebab')).toEqual('nonKebab');
+        expect(ko.utils.kebabToCamelCase('NonKebab')).toEqual('NonKebab');
     });
 });

@@ -1,6 +1,6 @@
 import {nextSibling, setDomNodeChildren, emptyNode, childNodes, allowedBindings} from '../virtualElements';
 import {unmemoizeDomNodeAndDescendants, _hasMemoizedCallbacks} from '../memoization';
-import {fixUpContinuousNodeArray, replaceDomNodes, moveCleanedNodesToContainerElement, domNodeIsAttachedToDocument} from '../utils';
+import {fixUpContinuousNodeArray, replaceDomNodes, moveCleanedNodesToContainerElement} from '../utils';
 import {ensureTemplateIsRewritten} from './templateRewriting';
 import {isObservableArray, isObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {bindingRewriteValidators, keyValueArrayContainsKey} from '../binding/expressionRewriting';
@@ -178,7 +178,7 @@ export const renderTemplate = (template, dataOrBindingContext, options, targetNo
                     firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
                 }
             }, null, {
-                disposeWhen: () => (!firstTargetNode) || !domNodeIsAttachedToDocument(firstTargetNode), // Passive disposal (on next evaluation) 
+                disposeWhen: () => !(firstTargetNode && firstTargetNode.isConnected), // Passive disposal (on next evaluation) 
                 disposeWhenNodeIsRemoved: (firstTargetNode && renderMode === 'replaceNode') ? firstTargetNode.parentNode : firstTargetNode
             });
     } 

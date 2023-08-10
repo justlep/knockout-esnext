@@ -72,9 +72,8 @@ export const SUBSCRIBABLE_PROTOTYPE = {
 
     subscribe(callback, callbackTarget, event) {
         event = event || DEFAULT_EVENT;
-        let boundCallback = callbackTarget ? callback.bind(callbackTarget) : callback;
 
-        let subscription = new Subscription(this, boundCallback, () => {
+        let subscription = new Subscription(this, callbackTarget ? callback.bind(callbackTarget) : callback, () => {
             let _subscriptions = this._subscriptions[event],
                 foundIndex = _subscriptions.indexOf(subscription);
             if (foundIndex >= 0) {

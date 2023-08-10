@@ -3,7 +3,7 @@ import {registerDependencyInternal, beginDependencyDetection, endDependencyDetec
 import {deferredExtender} from './deferredExtender';
 import {hasSubscriptionsForEvent, SUBSCRIBABLE_PROTOTYPE, updateSubscribableVersion, hasSubscribableChanged, initSubscribableInternal} from './subscribable';
 import {removeDisposeCallback, addDisposeCallback} from '../utils.domNodeDisposal';
-import {setPrototypeOfOrExtend, trySetPrototypeOf, domNodeIsAttachedToDocument, valuesArePrimitiveAndEqual, canSetPrototype} from '../utils';
+import {setPrototypeOfOrExtend, trySetPrototypeOf, valuesArePrimitiveAndEqual, canSetPrototype} from '../utils';
 import {IS_COMPUTED, IS_OBSERVABLE, IS_PURE_COMPUTED} from './observableUtils';
 import {defineThrottleExtender} from './extenders';
 
@@ -286,7 +286,7 @@ const COMPUTED_PROTOTYPE = {
             return;
         }
 
-        if (state.disposeWhenNodeIsRemoved && !domNodeIsAttachedToDocument(state.disposeWhenNodeIsRemoved) || disposeWhen && disposeWhen()) {
+        if (state.disposeWhenNodeIsRemoved && !state.disposeWhenNodeIsRemoved.isConnected || disposeWhen && disposeWhen()) {
             // See comment above about suppressDisposalUntilDisposeWhenReturnsFalse
             if (!state.suppressDisposalUntilDisposeWhenReturnsFalse) {
                 this.dispose();
