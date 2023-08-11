@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod24-esnext
+for Knockout JavaScript library v3.5.1-mod25-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -67,6 +67,28 @@ Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
+[bindingAttributeSyntax.js:450]
+Inlined: "childNodes" (global macro)
+OLD:  let nodes = childNodes(node);
+NEW:  let nodes = (_isStartComment(node) ? _getVirtualChildren(node) : node.childNodes);
+
+[bindingAttributeSyntax.js:1]
+Added dependency-import "START_COMMENT_REGEX" for macro "childNodes"
+OLD:  import {childNodes, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
+NEW:  import {childNodes, START_COMMENT_REGEX, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
+
+[bindingAttributeSyntax.js:1]
+Added dependency-import "_getVirtualChildren" for macro "childNodes"
+OLD:  import {childNodes, START_COMMENT_REGEX, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
+NEW:  import {childNodes, _getVirtualChildren, START_COMMENT_REGEX, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
+
+[bindingAttributeSyntax.js:450]
+Inlined: "_isStartComment"  [iteration #2] (global macro)
+OLD:  let nodes = childNodes(node);
+NEW:  let nodes = (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes);
+
+Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in bindingAttributeSyntax.js
+
 [bindingAttributeSyntax.js:554]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
@@ -126,6 +148,28 @@ Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
 
+[ifIfnotWith.js:74]
+Inlined: "childNodes" (global macro)
+OLD:  savedNodes = cloneNodes(childNodes(element), true /* shouldCleanNodes */);
+NEW:  savedNodes = cloneNodes((_isStartComment(element) ? _getVirtualChildren(element) : element.childNodes), true /* shouldCleanNodes */);
+
+[ifIfnotWith.js:4]
+Added dependency-import "START_COMMENT_REGEX" for macro "childNodes"
+OLD:  import {childNodes, setDomNodeChildren, allowedVirtualElementBindings, emptyNode} from '../../virtualElements';
+NEW:  import {childNodes, START_COMMENT_REGEX, setDomNodeChildren, allowedVirtualElementBindings, emptyNode} from '../../virtualElements';
+
+[ifIfnotWith.js:4]
+Added dependency-import "_getVirtualChildren" for macro "childNodes"
+OLD:  import {childNodes, START_COMMENT_REGEX, setDomNodeChildren, allowedVirtualElementBindings, emptyNode} from '../../virtualElements';
+NEW:  import {childNodes, _getVirtualChildren, START_COMMENT_REGEX, setDomNodeChildren, allowedVirtualElementBindings, emptyNode} from '../../virtualElements';
+
+[ifIfnotWith.js:74]
+Inlined: "_isStartComment"  [iteration #2] (global macro)
+OLD:  savedNodes = cloneNodes(childNodes(element), true /* shouldCleanNodes */);
+NEW:  savedNodes = cloneNodes((((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes), true /* shouldCleanNodes */);
+
+Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in ifIfnotWith.js
+
 [arrayToDomNodeChildren.js:63]
 Inlined: "getDomData" (global macro)
 OLD:  let lastMappingResult = getDomData(domNode, LAST_MAPPING_RESULT_DOM_DATA_KEY);
@@ -153,26 +197,53 @@ NEW:  // TODO modify so that (cleanNode().remove()) becomes an explicit invocati
 
 Skipped adding macro-dependency cleanNode (already imported)
 
-[selectExtensions.js:12]
+[selectExtensions.js:11]
 Inlined: "getDomData" (global macro)
-OLD:  getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
-NEW:  (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
+OLD:  return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
+NEW:  return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
 
 [selectExtensions.js:1]
 Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
+[componentBinding.js:32]
+Inlined: "childNodes" (global macro)
+OLD:  originalChildNodes = Array.from(childNodes(element));
+NEW:  originalChildNodes = Array.from((_isStartComment(element) ? _getVirtualChildren(element) : element.childNodes));
+
+[componentBinding.js:2]
+Added dependency-import "START_COMMENT_REGEX" for macro "childNodes"
+OLD:  import {allowedBindings, childNodes, emptyNode, setDomNodeChildren} from '../virtualElements';
+NEW:  import {allowedBindings, childNodes, START_COMMENT_REGEX, emptyNode, setDomNodeChildren} from '../virtualElements';
+
+[componentBinding.js:2]
+Added dependency-import "_getVirtualChildren" for macro "childNodes"
+OLD:  import {allowedBindings, childNodes, START_COMMENT_REGEX, emptyNode, setDomNodeChildren} from '../virtualElements';
+NEW:  import {allowedBindings, childNodes, _getVirtualChildren, START_COMMENT_REGEX, emptyNode, setDomNodeChildren} from '../virtualElements';
+
+[componentBinding.js:32]
+Inlined: "_isStartComment"  [iteration #2] (global macro)
+OLD:  originalChildNodes = Array.from(childNodes(element));
+NEW:  originalChildNodes = Array.from((((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes));
+
+Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in componentBinding.js
+
 
 ------- src/memoization.js --------
 
-[memoization.js:8]
+[memoization.js:11]
 Found local macro: "parseMemoText"
 
-[memoization.js:50]
+[memoization.js:46]
 Inlined: "parseMemoText"
-OLD:  memoId = parseMemoText(nodeValue);
-NEW:  memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
+OLD:  // (!) additional memoText assignment to allow inlining of parseMemoText() call
+NEW:  // (!) additional memoText assignment to allow inlining of (.startsWith(MEMO_TEXT_START) ? .substring(9) : null) call
+
+[memoization.js:47]
+Inlined: "parseMemoText"
+OLD:  if ((memoText = node.nodeValue) && (memoId = parseMemoText(memoText))) {
+NEW:  if ((memoText = node.nodeValue) && (memoId = (memoText.startsWith(MEMO_TEXT_START) ? memoText.substring(9) : null))) {
 
 
 ------- src/subscribables/dependencyDetection.js --------
@@ -540,10 +611,32 @@ NEW:  if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTO
 
 Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templating.js
 
+[templating.js:298]
+Inlined: "childNodes" (global macro)
+OLD:  let templateNodes = childNodes(element);
+NEW:  let templateNodes = (_isStartComment(element) ? _getVirtualChildren(element) : element.childNodes);
+
+[templating.js:1]
+Added dependency-import "START_COMMENT_REGEX" for macro "childNodes"
+OLD:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, allowedBindings} from '../virtualElements';
+NEW:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
+
+[templating.js:1]
+Added dependency-import "_getVirtualChildren" for macro "childNodes"
+OLD:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
+NEW:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, _getVirtualChildren, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
+
+[templating.js:298]
+Inlined: "_isStartComment"  [iteration #2] (global macro)
+OLD:  let templateNodes = childNodes(element);
+NEW:  let templateNodes = (((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes);
+
+Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in templating.js
+
 
 ------- src/utils.domData.js --------
 
-[utils.domData.js:8]
+[utils.domData.js:9]
 Found global macro: "getDomData"
 Dependencies (to auto-import): DOM_DATASTORE_PROP
 
@@ -556,24 +649,24 @@ Found local macro: "_isNodeTypeCleanable"
 [utils.domNodeDisposal.js:11]
 Found local macro: "_isNodeTypeCleanableWithDescendents"
 
-[utils.domNodeDisposal.js:91]
+[utils.domNodeDisposal.js:115]
 Found global macro: "removeNode"
 Dependencies (to auto-import): cleanNode
 
-[utils.domNodeDisposal.js:31]
+[utils.domNodeDisposal.js:38]
 Inlined: "_isNodeTypeCleanableWithDescendents"
 OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
 
-[utils.domNodeDisposal.js:75]
+[utils.domNodeDisposal.js:99]
 Inlined: "_isNodeTypeCleanable"
-OLD:  if (_isNodeTypeCleanable(nodeType)) {
-NEW:  if ((nodeType === 1 || nodeType === 8 || nodeType === 9)) {
+OLD:  if (_isNodeTypeCleanable(node.nodeType)) {
+NEW:  if ((node.nodeType === 1 || node.nodeType === 8 || node.nodeType === 9)) {
 
-[utils.domNodeDisposal.js:80]
+[utils.domNodeDisposal.js:104]
 Inlined: "_isNodeTypeCleanableWithDescendents"
-OLD:  if (_isNodeTypeCleanableWithDescendents(nodeType)) {
-NEW:  if ((nodeType === 1 || nodeType === 9)) {
+OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
+NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
 
 [utils.domNodes.js:6]
 Inlined: "removeNode" (global macro)
@@ -585,7 +678,7 @@ Added dependency-import "cleanNode" for macro "removeNode"
 OLD:  import {removeNode} from './utils.domNodeDisposal';
 NEW:  import {removeNode, cleanNode} from './utils.domNodeDisposal';
 
-[utils.js:197]
+[utils.js:200]
 Inlined: "removeNode" (global macro)
 OLD:  removeNode(nodesToReplaceArray[i]);
 NEW:  (cleanNode(nodesToReplaceArray[i]).remove());
@@ -596,30 +689,41 @@ Skipped adding macro-dependency cleanNode (already imported)
 ------- src/virtualElements.js --------
 
 [virtualElements.js:19]
-Found local macro: "_isStartComment"
+Found global macro: "_isStartComment"
+Dependencies (to auto-import): START_COMMENT_REGEX
 
 [virtualElements.js:20]
-Found local macro: "_isEndComment"
+Found global macro: "_isEndComment"
+Dependencies (to auto-import): END_COMMENT_REGEX
+
+[virtualElements.js:56]
+Found global macro: "childNodes"
+Dependencies (to auto-import): START_COMMENT_REGEX, _getVirtualChildren
 
 [virtualElements.js:29]
-Inlined: "_isEndComment"
+Inlined: "_isEndComment" (global macro)
 OLD:  if (_isEndComment(currentNode)) {
 NEW:  if (((currentNode.nodeType === 8) && END_COMMENT_REGEX.test(currentNode.nodeValue))) {
 
 [virtualElements.js:36]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (_isStartComment(currentNode)) {
 NEW:  if (((currentNode.nodeType === 8) && START_COMMENT_REGEX.test(currentNode.nodeValue))) {
 
-[virtualElements.js:56]
-Inlined: "_isStartComment"
-OLD:  export const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes;
-NEW:  export const childNodes = (node) => ((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes;
-
 [virtualElements.js:59]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (!_isStartComment(node)) {
 NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
+
+[virtualElements.js:63]
+Inlined: "childNodes" (global macro)
+OLD:  let virtualChildren = childNodes(node);
+NEW:  let virtualChildren = (_isStartComment(node) ? _getVirtualChildren(node) : node.childNodes);
+
+[virtualElements.js:63]
+Inlined: "_isStartComment"  [iteration #2] (global macro)
+OLD:  let virtualChildren = childNodes(node);
+NEW:  let virtualChildren = (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes);
 
 [virtualElements.js:65]
 Inlined: "removeNode" (global macro)
@@ -632,49 +736,52 @@ OLD:  import {removeNode} from './utils.domNodeDisposal';
 NEW:  import {removeNode, cleanNode} from './utils.domNodeDisposal';
 
 [virtualElements.js:70]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (!_isStartComment(node)) {
 NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
 [virtualElements.js:84]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (_isStartComment(containerNode)) {
 NEW:  if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
 
 [virtualElements.js:107]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (_isStartComment(containerNode)) {
 NEW:  if (((containerNode.nodeType === 8) && START_COMMENT_REGEX.test(containerNode.nodeValue))) {
 
 [virtualElements.js:119]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (!_isStartComment(node)) {
 NEW:  if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
 [virtualElements.js:121]
-Inlined: "_isEndComment"
+Inlined: "_isEndComment" (global macro)
 OLD:  if (_nodeFirstChild && _isEndComment(_nodeFirstChild)) {
 NEW:  if (_nodeFirstChild && ((_nodeFirstChild.nodeType === 8) && END_COMMENT_REGEX.test(_nodeFirstChild.nodeValue))) {
 
 [virtualElements.js:127]
-Inlined: "_isEndComment"
+Inlined: "_isEndComment" (global macro)
 OLD:  if (!_nodeNextSibling|| _isEndComment(_nodeNextSibling)) {
 NEW:  if (!_nodeNextSibling|| ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 [virtualElements.js:134]
-Inlined: "_isStartComment"
+Inlined: "_isStartComment" (global macro)
 OLD:  if (_isStartComment(node)) {
 NEW:  if (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
 [virtualElements.js:138]
-Inlined: "_isEndComment"
+Inlined: "_isEndComment" (global macro)
 OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
 
 Global macros inlining summary:
- 4x  removeNode  - [src/utils.domNodeDisposal.js:91]
+ 12x  _isStartComment  - [src/virtualElements.js:19]
+ 4x  _isEndComment  - [src/virtualElements.js:20]
+ 5x  childNodes  - [src/virtualElements.js:56]
+ 4x  removeNode  - [src/utils.domNodeDisposal.js:115]
  7x  peekObservableInternal  - [src/subscribables/observable.js:60]
  7x  observableValueWillMutateInternal  - [src/subscribables/observable.js:63]
  1x  isSubscribable  - [src/subscribables/observableUtils.js:2]
@@ -682,7 +789,7 @@ Global macros inlining summary:
  5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:51]
  2x  hasSubscribableChanged  - [src/subscribables/subscribable.js:57]
  4x  initSubscribableInternal  - [src/subscribables/subscribable.js:64]
- 7x  getDomData  - [src/utils.domData.js:8]
+ 7x  getDomData  - [src/utils.domData.js:9]
 
 Local macros inlining summary:
  4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]
@@ -691,7 +798,7 @@ Local macros inlining summary:
  4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:549]
  2x  virtualNodeBindingValue  - [src/binding/bindingProvider.js:7]
  2x  _getBindingsString  - [src/binding/bindingProvider.js:16]
- 1x  parseMemoText  - [src/memoization.js:8]
+ 2x  parseMemoText  - [src/memoization.js:11]
  2x  _beginDependencyDetectionWithEmptyFrame  - [src/subscribables/dependencyDetection.js:12]
  2x  endDependencyDetection  - [src/subscribables/dependencyDetection.js:14]
  2x  _getId  - [src/subscribables/dependencyDetection.js:58]
@@ -702,10 +809,8 @@ Local macros inlining summary:
  2x  _resolveTemplateName  - [src/templating/templating.js:153]
  1x  _isNodeTypeCleanable  - [src/utils.domNodeDisposal.js:10]
  2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:11]
- 8x  _isStartComment  - [src/virtualElements.js:19]
- 4x  _isEndComment  - [src/virtualElements.js:20]
 
-=================================================
+==================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 28 (9 global) | Inlined usages: 93
-=================================================
+Found macros: 29 (12 global) | Inlined usages: 103
+==================================================

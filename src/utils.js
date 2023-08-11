@@ -164,13 +164,17 @@ export const objectMap = (source, mapping, mappingOwner) => {
 };
 
 export const moveCleanedNodesToContainerElement = (nodes) => {
-    // Ensure it's a real array, as we're about to reparent the nodes and
+    // Ensure it's a real array, as we're about to re-parent the nodes and
     // we don't want the underlying collection to change while we're doing that.
-    let nodesArray = [...nodes],
-        templateDocument = (nodesArray[0] && nodesArray[0].ownerDocument) || document,
-        container = templateDocument.createElement('div');
+    // (!) don't use 'nodesArray = [...nodes]' as rest parameter is rel. slow; see comment in parseHtmlFragment()
+    let nodesArray = [],
+        len = nodes.length,
+        container = (len && nodes[0].ownerDocument || document).createElement('div');
     
-    for (let i = 0, j = nodesArray.length; i < j; i++) {
+    for (let i = 0; i < len; i++) {
+        nodesArray[i] = nodes[i];
+    }
+    for (let i = 0; i < len; i++) {
         container.appendChild(cleanNode(nodesArray[i]));
     }
     return container;
@@ -178,9 +182,8 @@ export const moveCleanedNodesToContainerElement = (nodes) => {
 
 export const cloneNodes = (nodesArray, shouldCleanNodes) => {
     let newNodesArray = [];
-    for (let i = 0, j = nodesArray.length; i < j; i++) {
-        let clonedNode = nodesArray[i].cloneNode(true);
-        newNodesArray.push(shouldCleanNodes ? cleanNode(clonedNode) : clonedNode);
+    for (let i = 0, len = nodesArray.length; i < len; i++) {
+        newNodesArray[i] = shouldCleanNodes ? cleanNode(nodesArray[i].cloneNode(true)) : nodesArray[i].cloneNode(true);
     }
     return newNodesArray;
 };

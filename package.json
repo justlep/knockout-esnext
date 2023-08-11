@@ -2,7 +2,7 @@
   "name": "knockout-esnext",
   "description": "A modernized fork of Knockout.js intended for ES6+ browsers only",
   "homepage": "http://knockoutjs.com/",
-  "version": "3.5.1-mod25-pre",
+  "version": "3.5.1-mod25",
   "license": "MIT",
   "author": "The Knockout.js team",
   "main": "build/output/knockout-latest.js",
@@ -11,7 +11,7 @@
     "prepublish": "grunt",
     "pretest": "npm run rollup-dev",
     "test": "node spec/runner.node.js",
-    "rollup-dist": "rollup -c --environment BUILD_TARGET_ENV:dist",
+    "rollup-dist": "eslint --max-warnings 0 src/ && rollup -c --environment BUILD_TARGET_ENV:dist",
     "rollup-dev": "rollup -c --environment BUILD_TARGET_ENV:dev",
     "lint": "eslint --max-warnings 5 src/"
   },

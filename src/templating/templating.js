@@ -1,5 +1,5 @@
 import {nextSibling, setDomNodeChildren, emptyNode, childNodes, allowedBindings} from '../virtualElements';
-import {unmemoizeDomNodeAndDescendants, _hasMemoizedCallbacks} from '../memoization';
+import {unmemoizeDomNodeAndDescendants, _memoMap} from '../memoization';
 import {fixUpContinuousNodeArray, replaceDomNodes, moveCleanedNodesToContainerElement} from '../utils';
 import {ensureTemplateIsRewritten} from './templateRewriting';
 import {isObservableArray, isObservable, unwrapObservable} from '../subscribables/observableUtils';
@@ -89,7 +89,7 @@ const _activateBindingsOnContinuousNodeArray = (continuousNodeArray, bindingCont
         (node) => (node.nodeType === 1 || node.nodeType === 8) && applyBindings(bindingContext, node)
     );
     
-    if (_hasMemoizedCallbacks) {
+    if (_memoMap.size) {
         _invokeForEachNodeInContinuousRange(firstNode, lastNode,
             (node) => (node.nodeType === 1 || node.nodeType === 8) && unmemoizeDomNodeAndDescendants(node, [bindingContext])
         );

@@ -90,7 +90,7 @@ export const parseObjectLiteral = (objectLiteralString) => {
                 let match = tokens[i - 1].match(DIVISION_LOOK_BEHIND);
                 if (match && !KEYWORD_REGEX_LOOK_BEHIND[match[0]]) {
                     // The slash is actually a division punctuator; re-parse the remainder of the string (not including the slash)
-                    str = str.substr(str.indexOf(tok) + 1);
+                    str = str.substring(str.indexOf(tok) + 1);
                     tokens = str.match(BINDING_TOKEN);
                     i = -1;
                     // Continue with just the slash
@@ -154,10 +154,10 @@ export const preProcessBindings = (bindingsStringOrKeyValueArray, bindingOptions
     }
 
     if (propertyAccessorResultStrings.length) {
-        _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.substr(1) + " }");
+        _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.substring(1) + " }");
     }
 
-    return resultStrings.substr(1);
+    return resultStrings.substring(1);
 };
 
 export const bindingRewriteValidators = [];

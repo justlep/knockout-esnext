@@ -12,7 +12,7 @@ export function applyExtenders(requestedExtenders) {
             if (typeof extenderHandler === 'function') {
                 target = extenderHandler(target, requestedExtenders[key]) || target;
             } else {
-                console.warn('Missing extender: ' + key);
+                console.warn('Missing extender: ' + key); // eslint-disable-line no-console
             }
         }
     }

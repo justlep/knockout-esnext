@@ -1,5 +1,6 @@
 
 export const DOM_DATASTORE_PROP = Symbol('ko-domdata');
+
 const KEY_PREFIX = 'ko_' + Date.now().toString(36) + '_';
 
 let _keyCount = 0;
@@ -20,7 +21,7 @@ export const setDomData = (node, key, value) => {
  * @param {Node} node
  * @return {boolean} - true if there was actually a domData deleted on the node
  */
-export const clearDomData = (node) => !!node[DOM_DATASTORE_PROP] && delete node[DOM_DATASTORE_PROP];
+export const clearDomData = (node) => node[DOM_DATASTORE_PROP] ? !(node[DOM_DATASTORE_PROP] = undefined) : false;
 
 /**
  * Returns a function that removes a given item from an array located under the node's domData[itemArrayDomDataKey].

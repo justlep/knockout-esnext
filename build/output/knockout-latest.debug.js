@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod24-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod25-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod24-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod25-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -24,6 +24,7 @@
     };
 
     const DOM_DATASTORE_PROP = Symbol('ko-domdata');
+
     const KEY_PREFIX = 'ko_' + Date.now().toString(36) + '_';
 
     let _keyCount = 0;
@@ -44,29 +45,7 @@
      * @param {Node} node
      * @return {boolean} - true if there was actually a domData deleted on the node
      */
-    const clearDomData = (node) => !!node[DOM_DATASTORE_PROP] && delete node[DOM_DATASTORE_PROP];
-
-    /**
-     * Returns a function that removes a given item from an array located under the node's domData[itemArrayDomDataKey].
-     * If the array IS or BECOMES empty, it will be deleted from the domData. 
-     * @return {function(Node, *): void}
-     */
-    const getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToRemove) => {
-        let dataForNode = node[DOM_DATASTORE_PROP],
-            itemArray;
-
-        if (dataForNode && (itemArray = dataForNode[itemArrayDomDataKey])) {
-            let index = itemArray.indexOf(itemToRemove);
-            if (index === 0) {
-                itemArray.shift();
-            } else if (index > 0) {
-                itemArray.splice(index, 1);
-            }
-            if (!itemArray.length) {
-                dataForNode[itemArrayDomDataKey] = undefined;
-            }
-        }
-    };
+    const clearDomData = (node) => node[DOM_DATASTORE_PROP] ? !(node[DOM_DATASTORE_PROP] = undefined) : false;
 
     /**
      * Returns a function that adds a given item to an array located under the node's domData[itemArrayDomDataKey].
@@ -83,26 +62,6 @@
         } else {
             dataForNode[itemArrayDomDataKey] = [itemToAdd];
         }
-    };
-
-    /**
-     * Returns a function that will 
-     *  (1) run all (function-)items of an array located under the node's domData[itemArrayDomDataKey], passing the node as parameter
-     *  (2) clear the node's DOM data
-     * @param {string} itemArrayDomDataKey
-     * @return {function(Node): void}
-     */
-    const getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node) => {
-        let dataForNode = node[DOM_DATASTORE_PROP];
-        if (dataForNode) {
-            let itemArray = dataForNode[itemArrayDomDataKey];
-            if (itemArray) {
-                for (let i = 0, _fns = itemArray.slice(0), len = _fns.length; i < len; i++) {
-                    _fns[i](node);
-                }
-            }
-            delete node[DOM_DATASTORE_PROP];
-        }    
     };
 
     const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
@@ -191,16 +150,23 @@
     const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
 
 
-    /** @type {function} */
-    let _cleanExternalData = null;
+    /** @type {function|boolean} */
+    let _cleanExternalData = false;
     const _overrideCleanExternalData = (fn) => _cleanExternalData = fn;
-
-    const _runDisposalCallbacksAndClearDomData = getCurriedDomDataArrayInvokeEachAndClearDomDataFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
     const _cleanSingleNode = (node) => {
         // Run all the dispose callbacks & ease the DOM data
-        _runDisposalCallbacksAndClearDomData(node);
-
+        let domData = node[DOM_DATASTORE_PROP];
+        if (domData) {
+            let disposeCallbackFns = domData[DISPOSE_CALLBACKS_DOM_DATA_KEY];
+            if (disposeCallbackFns) {
+                for (let fn of disposeCallbackFns.slice(0)) {
+                    fn(node);
+                }
+            }
+            node[DOM_DATASTORE_PROP] = undefined;
+        }
+        
         // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
         if (_cleanExternalData) {
             _cleanExternalData(node);
@@ -209,9 +175,8 @@
         // Clear any immediate-child comment nodes, as these wouldn't have been found by
         // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
         if ((node.nodeType === 1 || node.nodeType === 9)) {
-            let cleanableNodesList = node.childNodes;
-            if (cleanableNodesList.length) {
-                _cleanNodesInList(cleanableNodesList, true /*onlyComments*/);
+            if (node.hasChildNodes()) {
+                _cleanNodesInList(node.childNodes, true /*onlyComments*/);
             }
         }
     };
@@ -242,8 +207,27 @@
     /** @type {function(Node, Function): void} */
     const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
-    /** @type {function(Node, Function): void} */
-    const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
+    /**
+     * @param {Node} node
+     * @param {function} callbackToRemove
+     */
+    const removeDisposeCallback = (node, callbackToRemove) => {
+        let dataForNode = node[DOM_DATASTORE_PROP],
+            callbacks,
+            index;
+
+        if (dataForNode && (callbacks = dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY]) && (index = callbacks.indexOf(callbackToRemove)) >= 0) {
+            if (callbacks.length === 1) {
+                // just leave the entire array to garbage collection 
+                // not using 'delete' here as it seems 98% slower in chrome  
+                dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = undefined;
+            } else if (!index) {
+                callbacks.shift();
+            } else if (index > 0) {
+                callbacks.splice(index, 1);
+            }
+        }
+    };
 
     /**
      * Cleanable node types: Element 1, Comment 8, Document 9
@@ -251,13 +235,12 @@
      * @return {Node|HTMLElement}
      */
     const cleanNode = (node) => {
-        let nodeType = node.nodeType;
-        if ((nodeType === 1 || nodeType === 8 || nodeType === 9)) {
+        if ((node.nodeType === 1 || node.nodeType === 8 || node.nodeType === 9)) {
             ignoreDependencyDetectionNoArgs(() => {
                 // First clean this node, where applicable
                 _cleanSingleNode(node);
                 // ... then its descendants, where applicable
-                if ((nodeType === 1 || nodeType === 9)) {
+                if ((node.nodeType === 1 || node.nodeType === 9)) {
                     let cleanableNodesList = node.getElementsByTagName('*');
                     if (cleanableNodesList.length) {
                         _cleanNodesInList(cleanableNodesList);
@@ -289,12 +272,14 @@
     // "Virtual elements" is an abstraction on top of the usual DOM API which understands the notion that comment nodes
 
     const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
-
     const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
+
     const SYM_MATCHED_END_COMMENT = Symbol('__ko_matchedEndComment__');
 
     const allowedBindings = {};
     const allowedVirtualElementBindings = allowedBindings;
+
+    const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline-global:START_COMMENT_REGEX
 
     const _getVirtualChildren = (startComment, allowUnbalanced) => {
             let currentNode = startComment.nextSibling,
@@ -330,14 +315,14 @@
         return null; // Must have no matching end comment, and allowUnbalanced is true
     };
 
-    const childNodes = (node) => ((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes;
+    const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes; //@inline-global:START_COMMENT_REGEX,_getVirtualChildren
 
     const emptyNode = (node) => {
         if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
             emptyDomNode(node);
             return;
         }
-        let virtualChildren = childNodes(node);
+        let virtualChildren = (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes);
         for (let i = 0, j = virtualChildren.length; i < j; i++) {
             (cleanNode(virtualChildren[i]).remove());
         }
@@ -589,13 +574,17 @@
     };
 
     const moveCleanedNodesToContainerElement = (nodes) => {
-        // Ensure it's a real array, as we're about to reparent the nodes and
+        // Ensure it's a real array, as we're about to re-parent the nodes and
         // we don't want the underlying collection to change while we're doing that.
-        let nodesArray = [...nodes],
-            templateDocument = (nodesArray[0] && nodesArray[0].ownerDocument) || document,
-            container = templateDocument.createElement('div');
+        // (!) don't use 'nodesArray = [...nodes]' as rest parameter is rel. slow; see comment in parseHtmlFragment()
+        let nodesArray = [],
+            len = nodes.length,
+            container = (len && nodes[0].ownerDocument || document).createElement('div');
         
-        for (let i = 0, j = nodesArray.length; i < j; i++) {
+        for (let i = 0; i < len; i++) {
+            nodesArray[i] = nodes[i];
+        }
+        for (let i = 0; i < len; i++) {
             container.appendChild(cleanNode(nodesArray[i]));
         }
         return container;
@@ -603,9 +592,8 @@
 
     const cloneNodes = (nodesArray, shouldCleanNodes) => {
         let newNodesArray = [];
-        for (let i = 0, j = nodesArray.length; i < j; i++) {
-            let clonedNode = nodesArray[i].cloneNode(true);
-            newNodesArray.push(shouldCleanNodes ? cleanNode(clonedNode) : clonedNode);
+        for (let i = 0, len = nodesArray.length; i < len; i++) {
+            newNodesArray[i] = shouldCleanNodes ? cleanNode(nodesArray[i].cloneNode(true)) : nodesArray[i].cloneNode(true);
         }
         return newNodesArray;
     };
@@ -1078,7 +1066,7 @@
                 if (typeof extenderHandler === 'function') {
                     target = extenderHandler(target, requestedExtenders[key]) || target;
                 } else {
-                    console.warn('Missing extender: ' + key);
+                    console.warn('Missing extender: ' + key); // eslint-disable-line no-console
                 }
             }
         }
@@ -2038,7 +2026,7 @@
                     let match = tokens[i - 1].match(DIVISION_LOOK_BEHIND);
                     if (match && !KEYWORD_REGEX_LOOK_BEHIND[match[0]]) {
                         // The slash is actually a division punctuator; re-parse the remainder of the string (not including the slash)
-                        str = str.substr(str.indexOf(tok) + 1);
+                        str = str.substring(str.indexOf(tok) + 1);
                         tokens = str.match(BINDING_TOKEN);
                         i = -1;
                         // Continue with just the slash
@@ -2102,10 +2090,10 @@
         }
 
         if (propertyAccessorResultStrings.length) {
-            _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.substr(1) + " }");
+            _processKeyValue(PROPERTY_WRITERS_BINDING_KEY, "{" + propertyAccessorResultStrings.substring(1) + " }");
         }
 
-        return resultStrings.substr(1);
+        return resultStrings.substring(1);
     };
 
     const bindingRewriteValidators = [];
@@ -2285,65 +2273,53 @@
         }
     };
 
-    const NONE = [0, '', ''],
-        TABLE = [1, '<table>', '</table>'],
-        TBODY = [2, '<table><tbody>', '</tbody></table>'],
-        TR = [3, '<table><tbody><tr>', '</tr></tbody></table>'],
-        SELECT = [1, '<select multiple="multiple">', '</select>'],
-        LOOKUP = {
-            thead: TABLE, THEAD: TABLE,
-            tbody: TABLE, TBODY: TABLE,
-            tfoot: TABLE, TFOOT: TABLE,
-            tr: TBODY, TR: TBODY, 
-            td: TR, TD: TR,
-            th: TR, TH: TR,
-            option: SELECT, OPTION: SELECT,
-            optgroup: SELECT, OPTGROUP: SELECT
-        },
-        TAGS_REGEX = /^(?:<!--.*?-->\s*?)*?<([a-zA-Z]+)[\s>]/;
+    const TABLE = [1, '<table>', '</table>'];
+    const TBODY = [2, '<table><tbody>', '</tbody></table>'];
+    const TR = [3, '<table><tbody><tr>', '</tr></tbody></table>'];
+    const SELECT = [1, '<select multiple="multiple">', '</select>'];
+    const WRAP_BY_TAG_NAME = {
+        thead: TABLE, THEAD: TABLE,
+        tbody: TABLE, TBODY: TABLE,
+        tfoot: TABLE, TFOOT: TABLE,
+        tr: TBODY, TR: TBODY, 
+        td: TR, TD: TR,
+        th: TR, TH: TR,
+        option: SELECT, OPTION: SELECT,
+        optgroup: SELECT, OPTGROUP: SELECT
+    };
 
-    const parseHtmlFragment = (html, documentContext) => {
-        if (!documentContext) {
-            documentContext = document;
-        }
-        let windowContext = documentContext.parentWindow || documentContext.defaultView || window;
+    // TODO try replacing regex call w/ "scan for first tagName function
+    const TAGS_REGEX = /^(?:<!--.*?-->\s*?)*<([a-zA-Z]+)[\s>]/;
 
-        // Based on jQuery's "clean" function, but only accounting for table-related elements.
-        // If you have referenced jQuery, this won't be used anyway - KO will use jQuery's "clean" function directly
+    /**
+     * A DIV element used for parsing HTML fragments exclusively for the own document (which should cover 99% of cases). 
+     * @type {?HTMLDivElement} 
+     */
+    let _reusedDiv;
 
-        // Note that there's still an issue in IE < 9 whereby it will discard comment nodes that are the first child of
-        // a descendant node. For example: "<div><!-- mycomment -->abc</div>" will get parsed as "<div>abc</div>"
-        // This won't affect anyone who has referenced jQuery, and there's always the workaround of inserting a dummy node
-        // (possibly a text node) in front of the comment. So, KO does not attempt to workaround this IE issue automatically at present.
-
-        // Trim whitespace, otherwise indexOf won't work as expected
-        let div = documentContext.createElement('div'),
-            wrap = (TAGS_REGEX.test((html || '').trim()) && LOOKUP[RegExp.$1]) || NONE,
-            depth = wrap[0];
-
-        // Go to html and back, then peel off extra wrappers
-        // Note that we always prefix with some dummy text, because otherwise, IE<9 will strip out leading comment nodes in descendants. Total madness.
-        let markup = 'ignored<div>' + wrap[1] + html + wrap[2] + '</div>';
-        if (typeof windowContext['innerShiv'] === 'function') {
-            // Note that innerShiv is deprecated in favour of html5shiv. We should consider adding
-            // support for html5shiv (except if no explicit support is needed, e.g., if html5shiv
-            // somehow shims the native APIs so it just works anyway)
-            div.appendChild(windowContext['innerShiv'](markup));
+    const parseHtmlFragment = (html, doc = document) => {
+        let container = (doc === document) ? (_reusedDiv || (_reusedDiv = doc.createElement('div'))) : doc.createElement('div'),
+            wrap = TAGS_REGEX.test(html.trim()) && WRAP_BY_TAG_NAME[RegExp.$1];
+        
+        if (wrap) {
+            container.innerHTML = '<div>' + wrap[1] + html + wrap[2] + '</div>';
+            for (let depth = wrap[0]; depth >= 0; --depth) {
+                container = container.lastChild;
+            }
         } else {
-            div.innerHTML = markup;
+            container.innerHTML = '<div>' + html + '</div>';
+            container = container.lastChild;
         }
 
-        // Move to the right depth
-        while (depth--) {
-            div = div.lastChild;
-        }
-
-        // return [...div.lastChild.childNodes];
-        // Rest operator is slow (manual creation of nodes array is 60% faster in FF81, 80% faster in Chrome; re-check in the future)
+        // Tried spread -> return [...div.lastChild.childNodes];
+        // But rest operator is slow; for-loop filling nodes array is 60% faster in FF81, 80% faster in Chrome (TODO: re-check in the future)
         let nodesArray = [];
-        for (let i = 0, nodeList = div.lastChild.childNodes, len = nodeList.length; i < len; i++) {
+        for (let i = 0, nodeList = container.childNodes, len = nodeList.length; i < len; i++) {
             nodesArray[i] = nodeList[i];
         }
+
+        container.remove(); // make sure to cut ties with the reused div
+        
         return nodesArray;
     };
 
@@ -3171,7 +3147,7 @@
             bindingEvent.subscribe(node, EVENT_CHILDREN_COMPLETE, () => {
                 let callback = bindings[EVENT_CHILDREN_COMPLETE]();
                 if (callback) {
-                    let nodes = childNodes(node);
+                    let nodes = (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes);
                     if (nodes.length) {
                         callback(nodes, dataFor(nodes[0]));
                     }
@@ -3793,18 +3769,18 @@
         };
     }
 
-    /** @type {Map<string, function>} */
+    /** 
+     * @type {Map<string, function>}
+     * @internal
+     */
     const _memoMap = new Map();
 
-    const MEMO_ID_PREFIX = Math.random() + '_';
-    const MEMO_TEXT_START = '[ko_memo:'; // length 9 (= magic number used inside `parseMemoText`)
+    const MEMO_TEXT_START = '[!KoMemo:'; // length 9 (= magic number used inside `parseMemoText`)
+    const MEMO_ID_PREFIX = Date.now().toString(36) + '_';
 
-    const parseMemoText = (memoText) => memoText.startsWith(MEMO_TEXT_START) ? memoText.substr(9, memoText.length - 10) : null; //@inline
+    const parseMemoText = (memoText) => memoText.startsWith(MEMO_TEXT_START) ? memoText.substring(9) : null; //@inline
 
     let _nextMemoId = 1;
-
-    // exported for knockout-internal performance optimizations only
-    let _hasMemoizedCallbacks = false;
 
     const memoize = (callback) => {
         if (typeof callback !== "function") {
@@ -3812,8 +3788,7 @@
         }
         let memoId = MEMO_ID_PREFIX + (_nextMemoId++);
         _memoMap.set(memoId, callback);
-        _hasMemoizedCallbacks = true;
-        return '<!--' + MEMO_TEXT_START + memoId + ']-->';
+        return '<!--' + MEMO_TEXT_START + memoId + '-->';
     };
 
     const unmemoize = (memoId, callbackParams) => {
@@ -3826,43 +3801,35 @@
             return true;
         } finally {
             _memoMap.delete(memoId);
-            _hasMemoizedCallbacks = !!_memoMap.size;
         }
     };
 
     const unmemoizeDomNodeAndDescendants = (domNode, extraCallbackParamsArray) => {
-        if (!_hasMemoizedCallbacks || !domNode) {
+        if (!_memoMap.size || !domNode) {
             return;
         }
-        let memos = [];
+        let nodeAndMemoIdObjs = [];
 
         // (1) find memo comments in sub-tree
-        for (let node = domNode, nextNodes = []; node; node = nextNodes && nextNodes.shift()) {
-            let nodeType = node.nodeType;
-            if (nodeType === 8) {
-                let nodeValue = node.nodeValue, // local nodeValue looks redundant but will reduce size of inlined `parseMemoText` call
-                    memoId = (nodeValue.startsWith(MEMO_TEXT_START) ? nodeValue.substr(9, nodeValue.length - 10) : null);
-                if (memoId) {
-                    memos.push({node, memoId});
+        for (let node = domNode, nextNodes = [], memoId, memoText, nodeType; node; node = nextNodes.length && nextNodes.shift()) {
+            if ((nodeType = node.nodeType) === 8) {
+                // (!) additional memoText assignment to allow inlining of (.startsWith(MEMO_TEXT_START) ? .substring(9) : null) call
+                if ((memoText = node.nodeValue) && (memoId = (memoText.startsWith(MEMO_TEXT_START) ? memoText.substring(9) : null))) {
+                    nodeAndMemoIdObjs.push({node, memoId});
                 }
-            } else if (nodeType === 1) {
-                let childNodes = node.childNodes;
-                if (childNodes.length) {
-                    if (nextNodes.length) {
-                        nextNodes.unshift(...childNodes);
-                    } else {
-                        nextNodes = [...childNodes];
-                    }
+            } else if (nodeType === 1 && node.hasChildNodes()) {
+                if (nextNodes.length) {
+                    nextNodes.unshift(...node.childNodes);
+                } else {
+                    nextNodes = [...node.childNodes];
                 }
             }
         }
         
         // (2) unmemoize & run memoized callbacks
-        for (let memo of memos) {
-            let node = memo.node,
-                combinedParams = extraCallbackParamsArray ? [node, ...extraCallbackParamsArray] : [node];
-            
-            unmemoize(memo.memoId, combinedParams);
+        for (let o of nodeAndMemoIdObjs) {
+            let node = o.node;
+            unmemoize(o.memoId, extraCallbackParamsArray ? [node, ...extraCallbackParamsArray] : [node]);
             node.nodeValue = ''; // Neuter this node so we don't try to unmemoize it again
             node.remove(); // If possible, erase it totally (not always possible - someone else might just hold a reference to it then call unmemoizeDomNodeAndDescendants again)
         }
@@ -4508,7 +4475,7 @@
             (node) => (node.nodeType === 1 || node.nodeType === 8) && applyBindings(bindingContext, node)
         );
         
-        if (_hasMemoizedCallbacks) {
+        if (_memoMap.size) {
             _invokeForEachNodeInContinuousRange(firstNode, lastNode,
                 (node) => (node.nodeType === 1 || node.nodeType === 8) && unmemoizeDomNodeAndDescendants(node, [bindingContext])
             );
@@ -4699,7 +4666,7 @@
                 new AnonymousTemplate(element).nodes(container);
             } else {
                 // It's an anonymous template - store the element contents, then clear the element
-                let templateNodes = childNodes(element);
+                let templateNodes = (((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes);
                 if (templateNodes.length) {
                     let container = moveCleanedNodesToContainerElement(templateNodes); // This also removes the nodes from their current parent
                     new AnonymousTemplate(element).nodes(container);
@@ -4786,10 +4753,13 @@
          */
         renderTemplateSource(templateSource, bindingContext, options, templateDocument) {
             let templateNode = templateSource.nodes();
-
+            
             if (templateNode) {
-                // Array.from is 35% slower than spread in Chrome 79
-                return [...templateNode.cloneNode(true).childNodes];
+                // Use-case "single-child templateNode" is very frequent, so deserves a faster treatment
+                // Array.from is 35% slower than spread in Chrome 79; 
+                // Spread is 25% slower than copy-by-for-loop, but more readable
+                return (templateNode.childNodes.length === 1) ? [templateNode.firstChild.cloneNode(true)]
+                                                              : [...templateNode.cloneNode(true).childNodes];
             }
             let templateText = templateSource.text();
             return parseHtmlFragment(templateText, templateDocument);
@@ -4825,7 +4795,7 @@
 
                 // Find the namespace of this attribute, if any.
                 let prefixLen = attrName.indexOf(':');
-                let namespace = prefixLen > 0 && element.lookupNamespaceURI && element.lookupNamespaceURI(attrName.substr(0, prefixLen));
+                let namespace = prefixLen > 0 && element.lookupNamespaceURI && element.lookupNamespaceURI(attrName.substring(0, prefixLen));
 
                 // To cover cases like "attr: { checked:someProp }", we want to remove the attribute entirely
                 // when someProp is a "no value"-like value (strictly null, false, or undefined)
@@ -5247,7 +5217,7 @@
 
                     // Save a copy of the inner nodes on the initial update, but only if we have dependencies.
                     if (isInitial && getDependenciesCount()) {
-                        savedNodes = cloneNodes(childNodes(element), true /* shouldCleanNodes */);
+                        savedNodes = cloneNodes((((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes), true /* shouldCleanNodes */);
                     }
 
                     if (shouldDisplay) {
@@ -5300,8 +5270,7 @@
     const readSelectOrOptionValue = (element) => {
         switch (element.tagName.toLowerCase()) {
             case 'option':
-                return (element[HAS_DOM_DATA_EXPANDO_PROPERTY]) ?
-                    (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
+                return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
             case 'select': {
                 let selectedIndex = element.selectedIndex;
                 return selectedIndex >= 0 ? readSelectOrOptionValue(element.options[selectedIndex]) : undefined;
@@ -5930,7 +5899,7 @@
                     // Any in-flight loading operation is no longer relevant, so make sure we ignore its completion
                     currentLoadingOperationId = null;
                 },
-                originalChildNodes = Array.from(childNodes(element));
+                originalChildNodes = Array.from((((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes));
 
             emptyNode(element);
             addDisposeCallback(element, disposeAssociatedComponentViewModel);

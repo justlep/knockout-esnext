@@ -9,17 +9,17 @@ import {emptyDomNode, setDomNodeChildren as utilsSetDomNodeChildren} from './uti
 import {removeNode} from './utils.domNodeDisposal';
 
 export const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
+export const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
 
-const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
 const SYM_MATCHED_END_COMMENT = Symbol('__ko_matchedEndComment__');
 
 export const allowedBindings = {};
 export const allowedVirtualElementBindings = allowedBindings;
 
-const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline
-const _isEndComment = (node) => (node.nodeType === 8) && END_COMMENT_REGEX.test(node.nodeValue); //@inline
+const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline-global:START_COMMENT_REGEX
+const _isEndComment = (node) => (node.nodeType === 8) && END_COMMENT_REGEX.test(node.nodeValue); //@inline-global:END_COMMENT_REGEX
 
-const _getVirtualChildren = (startComment, allowUnbalanced) => {
+export const _getVirtualChildren = (startComment, allowUnbalanced) => {
         let currentNode = startComment.nextSibling,
             depth = 1,
             childIndex = -1,
@@ -53,7 +53,7 @@ const _getMatchingEndComment = (startComment, allowUnbalanced) => {
     return null; // Must have no matching end comment, and allowUnbalanced is true
 };
 
-export const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes;
+export const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes; //@inline-global:START_COMMENT_REGEX,_getVirtualChildren
 
 export const emptyNode = (node) => {
     if (!_isStartComment(node)) {

@@ -9,7 +9,7 @@ bindingHandlers.attr = {
 
             // Find the namespace of this attribute, if any.
             let prefixLen = attrName.indexOf(':');
-            let namespace = prefixLen > 0 && element.lookupNamespaceURI && element.lookupNamespaceURI(attrName.substr(0, prefixLen));
+            let namespace = prefixLen > 0 && element.lookupNamespaceURI && element.lookupNamespaceURI(attrName.substring(0, prefixLen));
 
             // To cover cases like "attr: { checked:someProp }", we want to remove the attribute entirely
             // when someProp is a "no value"-like value (strictly null, false, or undefined)

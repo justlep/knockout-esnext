@@ -8,8 +8,7 @@ const OPTION_VALUE_DOM_DATA_KEY = nextDomDataKey();
 export const readSelectOrOptionValue = (element) => {
     switch (element.tagName.toLowerCase()) {
         case 'option':
-            return (element[HAS_DOM_DATA_EXPANDO_PROPERTY]) ?
-                getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
+            return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
         case 'select': {
             let selectedIndex = element.selectedIndex;
             return selectedIndex >= 0 ? readSelectOrOptionValue(element.options[selectedIndex]) : undefined;

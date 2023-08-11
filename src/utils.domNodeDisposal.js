@@ -1,7 +1,6 @@
 import {DOM_DATASTORE_PROP,
     nextDomDataKey,
-    getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey,
-    getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey, getDomData
+    getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey
 } from './utils.domData';
 import {ignoreDependencyDetectionNoArgs} from './subscribables/dependencyDetection';
 
@@ -12,8 +11,8 @@ const _isNodeTypeCleanable = nodeType => nodeType === 1 || nodeType === 8 || nod
 const _isNodeTypeCleanableWithDescendents = nodeType => nodeType === 1 || nodeType === 9; //@inline
 
 
-/** @type {function} */
-export let _cleanExternalData = null;
+/** @type {function|boolean} */
+export let _cleanExternalData = false;
 export const _overrideCleanExternalData = (fn) => _cleanExternalData = fn;
 
 const _cleanSingleNode = (node) => {
@@ -26,7 +25,7 @@ const _cleanSingleNode = (node) => {
                 fn(node);
             }
         }
-        delete node[DOM_DATASTORE_PROP];
+        node[DOM_DATASTORE_PROP] = undefined;
     }
     
     // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
@@ -37,9 +36,8 @@ const _cleanSingleNode = (node) => {
     // Clear any immediate-child comment nodes, as these wouldn't have been found by
     // node.getElementsByTagName("*") in cleanNode() (comment nodes aren't elements)
     if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
-        let cleanableNodesList = node.childNodes;
-        if (cleanableNodesList.length) {
-            _cleanNodesInList(cleanableNodesList, true /*onlyComments*/);
+        if (node.hasChildNodes()) {
+            _cleanNodesInList(node.childNodes, true /*onlyComments*/);
         }
     }
 };
@@ -70,8 +68,27 @@ const _cleanNodesInList = (nodeList, onlyComments) => {
 /** @type {function(Node, Function): void} */
 export const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
 
-/** @type {function(Node, Function): void} */
-export const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
+/**
+ * @param {Node} node
+ * @param {function} callbackToRemove
+ */
+export const removeDisposeCallback = (node, callbackToRemove) => {
+    let dataForNode = node[DOM_DATASTORE_PROP],
+        callbacks,
+        index;
+
+    if (dataForNode && (callbacks = dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY]) && (index = callbacks.indexOf(callbackToRemove)) >= 0) {
+        if (callbacks.length === 1) {
+            // just leave the entire array to garbage collection 
+            // not using 'delete' here as it seems 98% slower in chrome  
+            dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = undefined;
+        } else if (!index) {
+            callbacks.shift();
+        } else if (index > 0) {
+            callbacks.splice(index, 1);
+        }
+    }
+};
 
 /**
  * Cleanable node types: Element 1, Comment 8, Document 9
@@ -79,13 +96,12 @@ export const removeDisposeCallback = getCurriedDomDataArrayItemRemovalFunctionFo
  * @return {Node|HTMLElement}
  */
 export const cleanNode = (node) => {
-    let nodeType = node.nodeType;
-    if (_isNodeTypeCleanable(nodeType)) {
+    if (_isNodeTypeCleanable(node.nodeType)) {
         ignoreDependencyDetectionNoArgs(() => {
             // First clean this node, where applicable
             _cleanSingleNode(node);
             // ... then its descendants, where applicable
-            if (_isNodeTypeCleanableWithDescendents(nodeType)) {
+            if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
                 let cleanableNodesList = node.getElementsByTagName('*');
                 if (cleanableNodesList.length) {
                     _cleanNodesInList(cleanableNodesList);
