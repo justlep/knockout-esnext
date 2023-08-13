@@ -1,7 +1,7 @@
 import {createFilter} from '@rollup/pluginutils';
-import {basename, join, relative, sep} from 'path';
-import {format} from 'util';
-import {writeFileSync, readFileSync} from 'fs';
+import {basename, join, relative, sep, resolve, dirname} from 'node:path';
+import {format} from 'node:util';
+import {writeFileSync, readFileSync, readdirSync} from 'node:fs';
 
 const MARKER_COMMENT = '//@inline';
 const MACRO_DEFINITION_REGEX = /^\s*(?:export )?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^;]*);?\s*?\/\/@inline(?:(-global)(:[\S]*)?)?/;
@@ -48,6 +48,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
     
     let totalMacros = 0,
         totalReplacements = 0,
+        totalChangedFiles = 0,
         totalErrors = 0;
     
     /**
@@ -114,16 +115,138 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             getImportsHelper: () => _importsHelper || (_importsHelper = new ImportsHelper(relativeFilePath, lines, logEntriesForFile))
         };
     };
+
+    /**
+     * Phase 1: load each file, parse macro definitions + keep references to the lines they're found in
+     * @param {string} id - the file path
+     */
+    const scanFile = (id) => {
+        // console.log('[SCAN] ' + id);
+        const code = readFileSync(id).toString('utf-8');
+        const {localMacros, lines, LOG, LOG_FORCE, getLineReference, relativeFilePath, filename} = getFileUtils(id, code, true);
+
+        // (1) find arrow functions marked as macro
+
+        for (let lineIndex = 0, len = lines.length, line, match; lineIndex < len; lineIndex++) {
+            line = lines[lineIndex];
+            let lineReference = getLineReference(lineIndex);
+            if (!(match = ~line.indexOf(MARKER_COMMENT) && line.match(MACRO_DEFINITION_REGEX))) {
+                continue;
+            }
+            let [, name, paramsString, body, flag, dependenciesSuffix] = match,
+                trimmedBody = body.trim(),
+                isMultilineExpression = !trimmedBody,
+                isGlobal = flag === FLAG_GLOBAL,
+                hasFunctionBody = trimmedBody === '{',
+                skipLines = 0,
+                error,
+                /** @type {?string[]} */
+                dependencies = null;
+
+            if (hasFunctionBody) {
+                error = `Non-single-expression function bodies are not yet supported ("${name}")`;
+            } else if (globalMacrosByName.has(name)) {
+                error = isGlobal ? `Duplicate name for global macro "${name}"`
+                    : `Ambiguous name for local macro "${name}" (name already used by global macro)`;
+            }
+
+            if (dependenciesSuffix) {
+                dependencies = dependenciesSuffix.substr(1).split(',').map(s => s.trim());
+                if (!dependencies.every(isValidDependencyName)) {
+                    error = `Invalid dependency list for macro "${name}: "${dependenciesSuffix}"`;
+                    console.warn(dependencies);
+                }
+            }
+
+            if (error) {
+                LOG_FORCE(lineIndex, '(!) ERROR: ' + error);
+                totalErrors++;
+                continue;
+            }
+
+            if (isMultilineExpression) {
+                // Expressions that span over multiple lines will be trimmed line-wise & concatenated
+                // - An empty'ish or comment line is considered the end of the macro
+                // - Since we're not parsing code here, trailing '// comments' will break the expression!
+                for (let lookaheadLineIndex = lineIndex + 1; lookaheadLineIndex < len; lookaheadLineIndex++) {
+                    let _trimmedLine = lines[lookaheadLineIndex].trim();
+                    // keep a reference to all lines of the macro (incl the end marker line), 
+                    // so these lines can be skipped in phase 2 for replacements
+                    allMacroDefinitionLineReferences.add(getLineReference(lookaheadLineIndex));
+                    if (!_trimmedLine || /^\s*\/[/*]/.test(_trimmedLine)) {
+                        skipLines = (lookaheadLineIndex - lineIndex);
+                        break;
+                    }
+                    trimmedBody += ' ' + _trimmedLine.replace(/;\s*$/, '');
+                }
+            }
+
+            allMacroDefinitionLineReferences.add(lineReference);
+
+            let invocationRegex = new RegExp(`([^a-zA-Z._~$])${name}\\(([^)]*?)\\)`, 'g'), // groups = prefixChar, paramsString
+                params = paramsString.replace(/\s/g,'').split(','),
+                bodyWithPlaceholders = !params.length ? trimmedBody : params.reduce((body, paramName, i) => {
+                    let paramRegex = new RegExp(`([^a-zA-Z._~$])${paramName}([^a-zA-Z_~$])`, 'g');
+                    return body.replace(paramRegex, (m, prefix, suffix) => `${prefix}${getParamPlaceholderForIndex(i)}${suffix}`);
+                }, `(${trimmedBody})`);
+
+            /** @type {RollupInlineMacrosPlugin_InlineMacro} */
+            let macro = {
+                name,
+                params,
+                body: trimmedBody,
+                bodyWithPlaceholders,
+                invocationRegex,
+                replacementsCount: 0,
+                lineReference,
+                relativeFilePath,
+                filename,
+                dependencies,
+                isGlobal
+            };
+
+            if (isGlobal) {
+                globalMacrosByName.set(name, macro);
+            } else {
+                localMacros.push(macro);
+            }
+
+            LOG(lineIndex, `Found ${isGlobal ? 'global' : 'local'} macro: "${macro.name}"` +
+                (isMultilineExpression ? '  (MULTI-LINE-EXPRESSION)' : '') +
+                (dependencies ? `\nDependencies (to auto-import): ${dependencies.join(', ')}` : ''));
+            totalMacros++;
+            lineIndex += skipLines; // non-zero if we had multiline-expressions
+        }
+    };
     
     return {
         name: 'inline-macros',
-        buildStart() {
+        buildStart(inputOpts) {
             if (logFilePath) {
                 // write log file header
                 let versionInfo = opts.versionName ? `\nfor ${opts.versionName}\n` : '';
                 writeFileSync(logFilePath, `\nRunning ${LOGGED_PLUGIN_NAME}${versionInfo}\n`);
             }
             console.log('Scanning for macros...');
+            
+            let entryFilePath = resolve('./' + inputOpts.input[0]),
+                totalScannedFiles = 0,
+                remainingDirPaths = [dirname(entryFilePath)];
+            
+            for (let dirPath = remainingDirPaths.shift(), entries; dirPath; dirPath = remainingDirPaths.shift()) {
+                for (let entry of readdirSync(dirPath, {withFileTypes: true})) {
+                    let entryPath = join(dirPath, entry.name);
+                    if (entry.isFile() && canProcess(entryPath)) {
+                        scanFile(entryPath);
+                        totalScannedFiles++;
+                    } else if (entry.isDirectory()) {
+                        remainingDirPaths.push(entryPath);
+                    }
+                }
+            }
+            
+            console.log(` => ${totalScannedFiles} files scanned\n` +
+                        ` => ${totalMacros} macros found (${globalMacrosByName.size} global)`);
         },
         buildEnd(err) {
             let hasUnusedMacros = false;
@@ -138,7 +261,6 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             };
             
             let usageSummary = [
-                '',
                 'Global macros inlining summary:',
                 ...Array.from(globalMacrosByName.values()).map(toMacroUsageString),
                 '',
@@ -152,7 +274,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             ].join('\n');
             
             let summaryLine1 = `${LOGGED_PLUGIN_NAME} finished ${totalErrors ? `with ${totalErrors} ERROR${totalErrors === 1 ? '' : 'S'}`  : 'successfully'}`,
-                summaryLine2 = `Found macros: ${totalMacros} (${globalMacrosByName.size} global) | Inlined usages: ${totalReplacements}`,
+                summaryLine2 = `Inlined ${totalReplacements} usages of ${totalMacros} macros (${globalMacrosByName.size} global) in ${totalChangedFiles} files`,
                 unusedWarning = hasUnusedMacros ? 'NOTICE: found macros which never got inlined\n' : '',
                 hr = '='.repeat(Math.max(summaryLine1.length, summaryLine2.length)),
                 summary = `\n${usageSummary}\n${hr}\n${summaryLine1}\n${summaryLine2}\n${unusedWarning}${hr}`;
@@ -177,114 +299,6 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             }
         },
         /**
-         * Phase 1: load each file, parse macro definitions + keep references to the lines they're found in
-         * @param {string} id - the file path
-         */
-        load(id) {
-            if (!canProcess(id)) {
-                // skip & defer to other loaders,
-                // see https://github.com/rollup/rollup/blob/master/docs/05-plugin-development.md#load
-                return null;
-            }
-            const code = readFileSync(id).toString('utf-8');
-            const {localMacros, lines, LOG, LOG_FORCE, getLineReference, relativeFilePath, filename} = getFileUtils(id, code, true);
-
-            // (1) find arrow functions marked as macro
-            
-            for (let lineIndex = 0, len = lines.length, line, match; lineIndex < len; lineIndex++) {
-                line = lines[lineIndex];
-                let lineReference = getLineReference(lineIndex);
-                if (!(match = ~line.indexOf(MARKER_COMMENT) && line.match(MACRO_DEFINITION_REGEX))) {
-                    continue;
-                }
-                let [, name, paramsString, body, flag, dependenciesSuffix] = match,
-                    trimmedBody = body.trim(),
-                    isMultilineExpression = !trimmedBody, 
-                    isGlobal = flag === FLAG_GLOBAL,
-                    hasFunctionBody = trimmedBody === '{',
-                    skipLines = 0,
-                    error,
-                    /** @type {?string[]} */
-                    dependencies = null;
-                
-                if (hasFunctionBody) {
-                    error = `Non-single-expression function bodies are not yet supported ("${name}")`;
-                } else if (globalMacrosByName.has(name)) {
-                    error = isGlobal ? `Duplicate name for global macro "${name}"` 
-                                     : `Ambiguous name for local macro "${name}" (name already used by global macro)`;
-                }
-
-                if (dependenciesSuffix) {
-                    dependencies = dependenciesSuffix.substr(1).split(',').map(s => s.trim());
-                    if (!dependencies.every(isValidDependencyName)) {
-                        error = `Invalid dependency list for macro "${name}: "${dependenciesSuffix}"`;
-                        console.warn(dependencies);
-                    }
-                }
-                
-                if (error) {
-                    LOG_FORCE(lineIndex, '(!) ERROR: ' + error);
-                    totalErrors++;
-                    continue;
-                }
-                
-                if (isMultilineExpression) {
-                    // Expressions that span over multiple lines will be trimmed line-wise & concatenated
-                    // - An empty'ish or comment line is considered the end of the macro
-                    // - Since we're not parsing code here, trailing '// comments' will break the expression!
-                    for (let lookaheadLineIndex = lineIndex + 1; lookaheadLineIndex < len; lookaheadLineIndex++) {
-                        let _trimmedLine = lines[lookaheadLineIndex].trim();
-                        // keep a reference to all lines of the macro (incl the end marker line), 
-                        // so these lines can be skipped in phase 2 for replacements
-                        allMacroDefinitionLineReferences.add(getLineReference(lookaheadLineIndex));
-                        if (!_trimmedLine || /^\s*\/[/*]/.test(_trimmedLine)) {
-                            skipLines = (lookaheadLineIndex - lineIndex);
-                            break;
-                        }
-                        trimmedBody += ' ' + _trimmedLine.replace(/;\s*$/, '');
-                    }
-                }
-
-                allMacroDefinitionLineReferences.add(lineReference);
-                
-                let invocationRegex = new RegExp(`([^a-zA-Z._~$])${name}\\(([^)]*?)\\)`, 'g'), // groups = prefixChar, paramsString
-                    params = paramsString.replace(/\s/g,'').split(','),
-                    bodyWithPlaceholders = !params.length ? trimmedBody : params.reduce((body, paramName, i) => {
-                        let paramRegex = new RegExp(`([^a-zA-Z._~$])${paramName}([^a-zA-Z_~$])`, 'g');
-                        return body.replace(paramRegex, (m, prefix, suffix) => `${prefix}${getParamPlaceholderForIndex(i)}${suffix}`);
-                    }, `(${trimmedBody})`);
-                
-                /** @type {RollupInlineMacrosPlugin_InlineMacro} */
-                let macro = {
-                    name, 
-                    params, 
-                    body: trimmedBody, 
-                    bodyWithPlaceholders, 
-                    invocationRegex,
-                    replacementsCount: 0,
-                    lineReference,
-                    relativeFilePath,
-                    filename,
-                    dependencies,
-                    isGlobal
-                };
-
-                if (isGlobal) {
-                    globalMacrosByName.set(name, macro);
-                } else {
-                    localMacros.push(macro); 
-                }
-
-                LOG(lineIndex, `Found ${isGlobal ? 'global' : 'local'} macro: "${macro.name}"` + 
-                                (isMultilineExpression ? '  (MULTI-LINE-EXPRESSION)' : '') +
-                                (dependencies ? `\nDependencies (to auto-import): ${dependencies.join(', ')}` : ''));
-                totalMacros++;
-                lineIndex += skipLines; // non-zero if we had multiline-expressions
-            }
-            
-            return code;
-        },
-        /**
          * Phase 2: within each file, find invocations of local+global macros and replace invocation with macro body expression
          * @param {string} code - the file content returned from phase 1
          * @param {string} id - the file path
@@ -293,7 +307,10 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             if (!canProcess(id)) {
                 return;
             }
+            // console.log('[TRANSFORM] ' + id);
 
+            let totalReplacementsBefore = totalReplacements;
+            
             const fileUtils = getFileUtils(id, code, false);
             const {localMacros, getLineReference, LOG, lines, relativeFilePath} = fileUtils;
 
@@ -374,6 +391,10 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                     }
                 }
             });
+            
+            if (totalReplacements > totalReplacementsBefore) {
+                totalChangedFiles++;
+            } 
             
             return {code: lines.join('\n'), map: null};
         }
