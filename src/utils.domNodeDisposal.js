@@ -1,6 +1,5 @@
 import {DOM_DATASTORE_PROP,
-    nextDomDataKey,
-    getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey
+    nextDomDataKey
 } from './utils.domData';
 import {ignoreDependencyDetectionNoArgs} from './subscribables/dependencyDetection';
 
@@ -65,10 +64,22 @@ const _cleanNodesInList = (nodeList, onlyComments) => {
     }
 };
 
-/** @type {function(Node, Function): void} */
-export const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
-
 /**
+ * @param {Node} node
+ * @param {function} callback 
+ */
+export const addDisposeCallback = (node, callback) => {
+    let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
+        itemArray = dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY];
+
+    if (itemArray) {
+        itemArray.push(callback);
+    } else {
+        dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = [callback];
+    }
+};
+
+ /**
  * @param {Node} node
  * @param {function} callbackToRemove
  */
@@ -84,7 +95,7 @@ export const removeDisposeCallback = (node, callbackToRemove) => {
             dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = undefined;
         } else if (!index) {
             callbacks.shift();
-        } else if (index > 0) {
+        } else {
             callbacks.splice(index, 1);
         }
     }

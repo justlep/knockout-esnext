@@ -1,5 +1,5 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod25-esnext-debug
+ * Knockout JavaScript library v3.5.1-mod26-esnext-debug
  * ESNext Edition - https://github.com/justlep/knockout-esnext
  * (c) The Knockout.js team - http://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -11,7 +11,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod25-esnext'; // inserted by rollup intro
+    const version = '3.5.1-mod26-esnext'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -46,23 +46,6 @@
      * @return {boolean} - true if there was actually a domData deleted on the node
      */
     const clearDomData = (node) => node[DOM_DATASTORE_PROP] ? !(node[DOM_DATASTORE_PROP] = undefined) : false;
-
-    /**
-     * Returns a function that adds a given item to an array located under the node's domData[itemArrayDomDataKey].
-     * If the domData or the array didn't exist, either will be created.
-     * @param {string} itemArrayDomDataKey
-     * @return {function(Node, *): void}
-     */
-    const getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey = (itemArrayDomDataKey) => (node, itemToAdd) => {
-        let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
-            itemArray = dataForNode[itemArrayDomDataKey]; 
-        
-        if (itemArray) {
-            itemArray.push(itemToAdd);
-        } else {
-            dataForNode[itemArrayDomDataKey] = [itemToAdd];
-        }
-    };
 
     const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
     const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]); //@inline-global:IS_SUBSCRIBABLE
@@ -204,10 +187,22 @@
         }
     };
 
-    /** @type {function(Node, Function): void} */
-    const addDisposeCallback = getCurriedDomDataArrayItemAddFunctionForArrayDomDataKey(DISPOSE_CALLBACKS_DOM_DATA_KEY);
-
     /**
+     * @param {Node} node
+     * @param {function} callback 
+     */
+    const addDisposeCallback = (node, callback) => {
+        let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
+            itemArray = dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY];
+
+        if (itemArray) {
+            itemArray.push(callback);
+        } else {
+            dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = [callback];
+        }
+    };
+
+     /**
      * @param {Node} node
      * @param {function} callbackToRemove
      */
@@ -223,7 +218,7 @@
                 dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = undefined;
             } else if (!index) {
                 callbacks.shift();
-            } else if (index > 0) {
+            } else {
                 callbacks.splice(index, 1);
             }
         }
@@ -1149,7 +1144,7 @@
     };
 
     class Subscription {
-        
+
         constructor(target, callback, disposeCallback) {
             this._target = target;
             this._callback = callback;
@@ -1158,7 +1153,7 @@
             this._node = null;
             this._domNodeDisposalCallback = null;
         }
-        
+
         dispose() {
             if (this._isDisposed) {
                 return;
@@ -1170,7 +1165,7 @@
             this._disposeCallback();
             this._target = this._callback = this._disposeCallback = this._node = this._domNodeDisposalCallback = null;
         }
-        
+
         disposeWhenNodeIsRemoved(node) {
             this._node = node;
             addDisposeCallback(node, this._domNodeDisposalCallback = this.dispose.bind(this));

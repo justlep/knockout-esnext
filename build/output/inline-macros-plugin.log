@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout JavaScript library v3.5.1-mod25-esnext
+for Knockout JavaScript library v3.5.1-mod26-esnext
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -473,39 +473,39 @@ Dependencies (to auto-import): IS_SUBSCRIBABLE
 
 ------- src/subscribables/subscribable.js --------
 
-[subscribable.js:49]
+[subscribable.js:20]
 Found global macro: "updateSubscribableVersion"
 
-[subscribable.js:51]
+[subscribable.js:22]
 Found global macro: "hasSubscriptionsForEvent"
 
-[subscribable.js:57]
+[subscribable.js:28]
 Found global macro: "hasSubscribableChanged"
 
-[subscribable.js:64]
+[subscribable.js:35]
 Found global macro: "initSubscribableInternal"
 
-[subscribable.js:70]
+[subscribable.js:41]
 Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(instance);
 NEW:  ((instance._subscriptions = {change: []}) && (instance._versionNumber = 1));
 
-[subscribable.js:102]
+[subscribable.js:73]
 Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(this);
 NEW:  (this._versionNumber++);
 
-[subscribable.js:104]
+[subscribable.js:75]
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!hasSubscriptionsForEvent(this, event)) {
 NEW:  if (!((this._subscriptions[event] || 0).length)) {
 
-[subscribable.js:133]
+[subscribable.js:104]
 Inlined: "hasSubscribableChanged" (global macro)
 OLD:  return hasSubscribableChanged(this, versionToCheck);
 NEW:  return (this.getVersion() !== versionToCheck);
 
-[subscribable.js:226]
+[subscribable.js:197]
 Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(this);
 NEW:  ((this._subscriptions = {change: []}) && (this._versionNumber = 1));
@@ -643,27 +643,27 @@ Dependencies (to auto-import): DOM_DATASTORE_PROP
 
 ------- src/utils.domNodeDisposal.js --------
 
-[utils.domNodeDisposal.js:10]
+[utils.domNodeDisposal.js:9]
 Found local macro: "_isNodeTypeCleanable"
 
-[utils.domNodeDisposal.js:11]
+[utils.domNodeDisposal.js:10]
 Found local macro: "_isNodeTypeCleanableWithDescendents"
 
-[utils.domNodeDisposal.js:115]
+[utils.domNodeDisposal.js:126]
 Found global macro: "removeNode"
 Dependencies (to auto-import): cleanNode
 
-[utils.domNodeDisposal.js:38]
+[utils.domNodeDisposal.js:37]
 Inlined: "_isNodeTypeCleanableWithDescendents"
 OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
 
-[utils.domNodeDisposal.js:99]
+[utils.domNodeDisposal.js:110]
 Inlined: "_isNodeTypeCleanable"
 OLD:  if (_isNodeTypeCleanable(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 8 || node.nodeType === 9)) {
 
-[utils.domNodeDisposal.js:104]
+[utils.domNodeDisposal.js:115]
 Inlined: "_isNodeTypeCleanableWithDescendents"
 OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
@@ -776,20 +776,19 @@ OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
 
-
 Global macros inlining summary:
+ 7x  getDomData  - [src/utils.domData.js:9]
+ 4x  removeNode  - [src/utils.domNodeDisposal.js:126]
  12x  _isStartComment  - [src/virtualElements.js:19]
  4x  _isEndComment  - [src/virtualElements.js:20]
  5x  childNodes  - [src/virtualElements.js:56]
- 4x  removeNode  - [src/utils.domNodeDisposal.js:115]
  7x  peekObservableInternal  - [src/subscribables/observable.js:60]
  7x  observableValueWillMutateInternal  - [src/subscribables/observable.js:63]
  1x  isSubscribable  - [src/subscribables/observableUtils.js:2]
- 4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:49]
- 5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:51]
- 2x  hasSubscribableChanged  - [src/subscribables/subscribable.js:57]
- 4x  initSubscribableInternal  - [src/subscribables/subscribable.js:64]
- 7x  getDomData  - [src/utils.domData.js:9]
+ 4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:20]
+ 5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:22]
+ 2x  hasSubscribableChanged  - [src/subscribables/subscribable.js:28]
+ 4x  initSubscribableInternal  - [src/subscribables/subscribable.js:35]
 
 Local macros inlining summary:
  4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]
@@ -807,10 +806,10 @@ Local macros inlining summary:
  2x  _getTemplateDomData  - [src/templating/templateSources.js:42]
  3x  _getFirstNodeFromPossibleArray  - [src/templating/templating.js:106]
  2x  _resolveTemplateName  - [src/templating/templating.js:153]
- 1x  _isNodeTypeCleanable  - [src/utils.domNodeDisposal.js:10]
- 2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:11]
+ 1x  _isNodeTypeCleanable  - [src/utils.domNodeDisposal.js:9]
+ 2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:10]
 
-==================================================
+=======================================================
 Rollup inline-macros plugin finished successfully
-Found macros: 29 (12 global) | Inlined usages: 103
-==================================================
+Inlined 103 usages of 29 macros (12 global) in 19 files
+=======================================================
