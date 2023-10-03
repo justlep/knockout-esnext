@@ -2,8 +2,8 @@
 *
 !build/knockout.js
 !build/knockout.esm.js
-!build/knockout.debug.js
-!build/knockout.debug.js.map
+#!build/knockout.debug.js
+#!build/knockout.debug.js.map
 !build/types/knockout.d.ts
 !package.json
 !LICENSE
