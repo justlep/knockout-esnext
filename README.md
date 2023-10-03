@@ -1,4 +1,4 @@
-# Knockout-ESNext 
+# Knockout-ESNext  [![NPM Version](https://img.shields.io/npm/v/knockout-esnext.svg)](https://www.npmjs.com/package/knockout-esnext)
 
 A complete overhaul of the [Knockout.js](https://knockoutjs.com/) library and build process.
 
