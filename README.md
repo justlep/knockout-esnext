@@ -1,9 +1,11 @@
-# Knockout ESNext [![Build Status](https://travis-ci.com/justlep/knockout-esnext.svg?branch=master)](https://app.travis-ci.com/github/justlep/knockout-esnext) 
+# Knockout-ESNext 
 
 A complete overhaul of the [Knockout.js](https://knockoutjs.com/) library and build process.
 
 Making *Knockout.js* slicker, faster, more maintainable than ever.
 
+Version scheme is `v3.5.1xxx`, where `3.5.1` is the initial Knockout version this library was forked off,
+and `xxx` the modifications since then.
 
 ### Changes (in code):
 * Rewrote all library code in ES6+ supported in all modern browsers
@@ -35,20 +37,21 @@ Making *Knockout.js* slicker, faster, more maintainable than ever.
 * Now exporting the Knockout.js library in 3 flavors:
     * Minified UMD (`knockout.js`)
     * Minified ES Module (`knockout.esm.js`)
-    * Non-minified UMD **debug version incl. sourcemap** (`knockout-debug.js`, `knockout-debug.js.map`)
+    * Non-minified UMD **debug version incl. sourcemap** (`knockout.debug.js` & `knockout.debug.js.map`, not part of the `knockout-esnext` NPM package) 
 * Removed deprecated `PhantomJS`
+* Removed `Grunt`
 * Added [`ESLint`](https://eslint.org/) for code quality checks 
 
 ### Changes (testing/debugging)
 * After changing any source file during browser testing (`spec/runner.html`), 
-  you now have to run the `rollup-dev` task before the next test-run:    
+  you now have to run the `build` task before the next test-run:    
     * ```shell script
-      npm run rollup-dev
+      npm run build
       ```
-  This will rebuild the `build/output/knockout-latest.debug.js` used by `runner.html`.    
-* The debug version now has a sourcemap generated alongside it (`knockout-latest.debug.js.map`), 
+  This will rebuild the `build/knockout.debug.js` used by `runner.html`.    
+* The debug version now has a sourcemap generated alongside it (`knockout.debug.js.map`), 
   so you can attach your IDE's debugger to e.g. `runner.html` and add breakpoints
-  inside the actual source files rather than the generated `knockout-latest.debug.js`.  
+  inside the actual source files rather than the generated `knockout.debug.js`.  
   
 
 
@@ -94,22 +97,23 @@ If you prefer to build the library yourself:
    Make sure you have [Node.js](http://nodejs.org/) installed on your workstation. This is only needed to _build_ Knockout from sources. Knockout itself has no dependency on Node.js once it is built (it works with any server technology or none). Now run:
 
    ```sh
-   npm install -g grunt-cli
    npm install
    ```
 
-   The first `npm` command sets up the popular [Grunt](http://gruntjs.com/) build tool. You might need to run this command with `sudo` if you're on Linux or Mac OS X, or in an Administrator command prompt on Windows. The second `npm` command fetches the remaining build dependencies.
-
-3. **Run the build tool**
+3. **Start the build**
 
    ```sh
-   grunt
+   npm run build
    ```
-   Now you'll find the built files in `build/output/`.
+   Now you'll find the built files in `build/`.
 
 ## Running the tests
 
-If you have [phantomjs](http://phantomjs.org/download.html) installed, then the `grunt` script will automatically run the specification suite and report its results.
+If you want to run the specs in Node.js
+
+   ```sh
+   npm test
+   ```
 
 Or, if you want to run the specs in a browser (e.g., for debugging), simply open `spec/runner.html` in your browser.
 

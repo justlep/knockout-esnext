@@ -1,7 +1,9 @@
 # Only package the build output for npm. Developers who want sources/tests can get them from the KO repo.
 *
-!build/output/knockout-latest.js
-!build/output/knockout-latest.esm.js
-!build/output/knockout-latest.debug.js
-!build/output/knockout-latest.debug.js.map
+!build/knockout.js
+!build/knockout.esm.js
+!build/knockout.debug.js
+!build/knockout.debug.js.map
 !build/types/knockout.d.ts
+!package.json
+!LICENSE

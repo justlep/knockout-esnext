@@ -1,7 +1,8 @@
 /*!
- * Knockout JavaScript library v3.5.1-mod26-esnext-debug
- * ESNext Edition - https://github.com/justlep/knockout-esnext
- * (c) The Knockout.js team - http://knockoutjs.com/
+ * Knockout-ESNext JavaScript library v3.5.1026
+ * https://github.com/justlep/knockout-esnext
+ * Forked from Knockout v3.5.1
+ * (c) The Knockout.js team - https://knockoutjs.com/
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
  */
 
@@ -11,7 +12,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1-mod26-esnext'; // inserted by rollup intro
+    const version = '3.5.1026'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -6117,4 +6118,4 @@
     return ko;
 
 })));
-//# sourceMappingURL=knockout-latest.debug.js.map
+//# sourceMappingURL=knockout.debug.js.map

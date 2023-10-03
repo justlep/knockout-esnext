@@ -15,5 +15,6 @@ perf/*
 .DS_Store
 npm-debug.log
 node_modules
-dist
 /.idea
+/.run
+build/*.js.map

@@ -11,7 +11,7 @@ for (var key in jasmine) {
 require('./lib/jasmine.extensions');
 
 // export ko globals
-global.ko = require('../build/output/knockout-latest.debug.js');
+global.ko = require('../build/knockout.debug.js');
 
 // reference behaviors that should work out of browser
 require('./arrayEditDetectionBehaviors');
