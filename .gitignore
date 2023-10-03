@@ -18,3 +18,4 @@ node_modules
 /.idea
 /.run
 build/*.js.map
+knockout*.tgz

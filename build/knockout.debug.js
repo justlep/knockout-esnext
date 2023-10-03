@@ -3,7 +3,7 @@
  * https://github.com/justlep/knockout-esnext
  * Forked from Knockout v3.5.1
  * (c) The Knockout.js team - https://knockoutjs.com/
- * License: MIT (http://www.opensource.org/licenses/mit-license.php)
+ * License: MIT (https://www.opensource.org/licenses/mit-license.php)
  */
 
 (function (global, factory) {
