@@ -75,21 +75,22 @@ For more details, see
  * Documentation on [the project's website](http://knockoutjs.com/documentation/introduction.html)
  * Online examples at [http://knockoutjs.com/examples/](http://knockoutjs.com/examples/)
 
-## Downloading Knockout
+## Downloading Knockout-ESNext
 
-You can [download released versions of Knockout](http://knockoutjs.com/downloads/) from the project's website.
+You can download released versions of [Knockout-ESNext](https://github.com/justlep/knockout-esnext/releases) from Github, 
+or the [original Knockout](http://knockoutjs.com/downloads/) from the project's website.
 
-For Node.js developers, Knockout is also available from [npm](https://npmjs.org/) - just run `npm install knockout`.
+For Node.js developers, Knockout-ESNext is also available from [npm](https://npmjs.org/) - just run `npm install knockout-esnext`.
 
-## Building Knockout from sources
+## Building Knockout-ESNext from sources
 
 If you prefer to build the library yourself:
 
 1. **Clone the repo from GitHub**
 
    ```sh
-   git clone https://github.com/knockout/knockout.git
-   cd knockout
+   git clone https://github.com/justlep/knockout-esnext.git
+   cd knockout-esnext
    ```
 
 2. **Acquire build dependencies.**
