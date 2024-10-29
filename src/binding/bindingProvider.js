@@ -72,14 +72,8 @@ export class KoBindingProvider {
             // Build the source for a function that evaluates "expression"
             // For each scope variable, add an extra level of "with" nesting
             // Example result: with(sc1) { with(sc0) { return (expression) } }
-            bindingFunction = new Function("$context", "$element", "$context['$element'] = $element;\
-                $context = new Proxy(\
-                    $context,\
-                    {\
-                        has: () => true,\
-                        get: (target, key) => target[key] || target['$data'][key]/* || window[key]*/\
-                    }\
-                );with($context){return{" + preProcessBindings(bindingsString, options) + "}}");
+            bindingFunction = new Function("$context",
+                "with($context){return{" + preProcessBindings(bindingsString, options) + "}}");
 
         } catch (ex) {
             ex.message = "Unable to parse bindings.\nBindings value: " + bindingsString + "\nMessage: " + ex.message;
@@ -87,7 +81,15 @@ export class KoBindingProvider {
         }
 
         this._cache.set(cacheKey, bindingFunction);
-        return bindingFunction(bindingContext, node);
+        bindingContext['$element'] = node;
+        bindingContext = new Proxy(
+            bindingContext,
+            {
+                has: () => true,
+                get: (target, key) => target[key] || target['$data'][key]
+            }
+        );
+        return bindingFunction(bindingContext);
     }
 }
 
