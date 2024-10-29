@@ -9,7 +9,7 @@ const virtualNodeBindingValue = (node) => START_COMMENT_REGEX.test(node.nodeValu
 /**
  * The following function is only used internally by this default provider.
  * It's not part of the interface definition for a general binding provider.
- * @param {Node|HTMLElement} node - type 1 === element, type 8 === comment  
+ * @param {Node|HTMLElement} node - type 1 === element, type 8 === comment
  * @return {string|null}
  * @private
  */
@@ -20,13 +20,13 @@ export let bindingProviderMaySupportTextNodes = false;
 export class KoBindingProvider {
 
     // getter/setter only added to allow external scripts (jasmine) to replace the provider via 'ko.bindingProvider.instance'
-    // Internally, the direct reference to 'bindingProviderInstance' is used 
+    // Internally, the direct reference to 'bindingProviderInstance' is used
     static get instance() { return bindingProviderInstance; }
-    static set instance(newInstance) { 
+    static set instance(newInstance) {
         bindingProviderInstance = newInstance;
         bindingProviderMaySupportTextNodes = true;
     }
-    
+
     constructor() {
         this._cache = new Map();
     }
@@ -62,19 +62,25 @@ export class KoBindingProvider {
     parseBindingsString(bindingsString, bindingContext, node, options) {
         let cacheKey = bindingsString + (options && options['valueAccessors'] || ''),
             bindingFunction = this._cache.get(cacheKey);
-        
+
         if (bindingFunction) {
             return bindingFunction(bindingContext, node);
         }
-        
+
         try {
             //binding = this._createBindingsStringEvaluator(bindingsString, options);
             // Build the source for a function that evaluates "expression"
             // For each scope variable, add an extra level of "with" nesting
             // Example result: with(sc1) { with(sc0) { return (expression) } }
+            bindingFunction = new Function("$context", "$element", "$context['$element'] = $element;\
+                $context = new Proxy(\
+                    $context,\
+                    {\
+                        has: () => true,\
+                        get: (target, key) => target[key] || target['$data'][key]/* || window[key]*/\
+                    }\
+                );with($context){return{" + preProcessBindings(bindingsString, options) + "}}");
 
-            bindingFunction = new Function("$context", "$element", 
-                                'with($context){with($data||{}){return{' + preProcessBindings(bindingsString, options) + '}}}');
         } catch (ex) {
             ex.message = "Unable to parse bindings.\nBindings value: " + bindingsString + "\nMessage: " + ex.message;
             throw ex;
