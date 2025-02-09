@@ -1,5 +1,5 @@
 /*!
- * Knockout-ESNext JavaScript library v3.5.1026
+ * Knockout-ESNext JavaScript library v3.5.1027
  * https://github.com/justlep/knockout-esnext
  * Forked from Knockout v3.5.1
  * (c) The Knockout.js team - https://knockoutjs.com/
@@ -12,7 +12,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 }(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1026'; // inserted by rollup intro
+    const version = '3.5.1027'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -31,6 +31,7 @@
     let _keyCount = 0;
     const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
+    // don't use optional chaining here as it's still 20% slower (2025)
     const getDomData = (node, key) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][key]; //@inline-global:DOM_DATASTORE_PROP
 
     const setDomData = (node, key, value) => {
@@ -816,7 +817,7 @@
             url = urlOrForm;
 
         // If we were given a form, use its 'action' URL and pick out any requested field values
-        if ((typeof urlOrForm === 'object') && (tagNameLower(urlOrForm) === 'form')) {
+        if (typeof urlOrForm === 'object' && urlOrForm.tagName === 'FORM') {
             let originalForm = urlOrForm;
             url = originalForm.action;
             for (let i = includeFields.length - 1; i >= 0; i--) {
@@ -2431,6 +2432,9 @@
         }
     };
 
+    /**
+     * @param {KnockoutTemplateLoaderErrorCallback} errorCallback
+     */
     const _resolveTemplate = (errorCallback, templateConfig, callback) => {
         if (typeof templateConfig === 'string') {
             // Markup - parse it
@@ -2438,26 +2442,29 @@
         } 
         if (templateConfig.element) {
             let elementIdOrNode = templateConfig.element,
-                elemNode;
+                elem;
+            
             if (typeof elementIdOrNode === 'string') {
-                elemNode = document.getElementById(elementIdOrNode);
-                if (!elemNode) {
-                    errorCallback('Cannot find element with ID ' + elementIdOrNode);
-                }
-            } else if (elementIdOrNode && elementIdOrNode.tagName && elementIdOrNode.nodeType === 1) {
-                // isDomElement-check (= less precise than `instanceof HTMLElement' but a lot cheaper) 
-                elemNode = elementIdOrNode;
+                elem = document.getElementById(elementIdOrNode) || errorCallback('Cannot find element with ID ' + elementIdOrNode);
+            } else if (elementIdOrNode && elementIdOrNode.tagName && elementIdOrNode.nodeType === 1) { // cheaper than `instanceof HTMLElement`
+                elem = elementIdOrNode;
             } else {
                 errorCallback('Unknown element type: ' + elementIdOrNode);
             }
-            // Element instance found - copy its child nodes
-            return callback(_cloneNodesFromTemplateSourceElement(elemNode));
+            // Element instance found - copy its child nodes...
+            let tagName = elem.tagName;
+            return callback(
+                tagName === 'SCRIPT' ? parseHtmlFragment(elem.text) :
+                tagName === 'TEMPLATE' ? cloneNodes(elem.content.childNodes) :
+                tagName === 'TEXTAREA' ? parseHtmlFragment(elem.value) :
+                /* Regular elements such as <div> */ cloneNodes(elem.childNodes)
+            );
         }  
         if (Array.isArray(templateConfig)) {
             // Assume already an array of DOM nodes - pass through unchanged
             return callback(templateConfig);
         }
-        if (_isDocumentFragment(templateConfig)) {
+        if ((templateConfig && templateConfig.nodeType === 11)) {
             // Document fragment - use its child nodes
             return callback([...templateConfig.childNodes]);
         } 
@@ -2490,27 +2497,6 @@
         errorCallback('Unknown viewModel value: ' + viewModelConfig);
     };
 
-    const _cloneNodesFromTemplateSourceElement = (elemInstance) => {
-        let tagName = elemInstance.tagName.toLowerCase();
-        switch (tagName) {
-            case 'script':   
-                return parseHtmlFragment(elemInstance.text);
-            case 'textarea': 
-                return parseHtmlFragment(elemInstance.value);
-            case 'template':
-                // For browsers with proper <template> element support (i.e., where the .content property
-                // gives a document fragment), use that document fragment.
-                if (_isDocumentFragment(elemInstance.content)) {
-                    return cloneNodes(elemInstance.content.childNodes);
-                }
-        }
-        // Regular elements such as <div>, and <template> elements on old browsers that don't really
-        // understand <template> and just treat it as a regular container
-        return cloneNodes(elemInstance.childNodes);
-    };
-
-    const _isDocumentFragment = obj => obj && obj.nodeType === 11;
-
     const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
         if (typeof config.require !== 'string') {
             callback(config);
@@ -2530,6 +2516,15 @@
         }
     };
 
+    /**
+     * @callback KnockoutTemplateLoaderErrorCallback
+     * @throws {Error}
+     */
+
+    /**
+     * @param {string} componentName
+     * @return {KnockoutTemplateLoaderErrorCallback}
+     */
     const _makeErrorCallback = (componentName) => message => {
         throw new Error('Component \'' + componentName + '\': ' + message);
     };
@@ -2656,9 +2651,8 @@
          *     make sure to change {@link bindingProviderMaySupportTextNodes} accordingly.
          */
         nodeHasBindings(node) {
-            let nodeType = node.nodeType;
-            return (nodeType === 1) ? (node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) !== null || getComponentNameForNode(node)) :
-                   (nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
+            return (node.nodeType === 1) ? !!(node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) || getComponentNameForNode(node)) :
+                   (node.nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
         }
 
         getBindings(node, bindingContext) {
@@ -3853,6 +3847,7 @@
         }
     };
 
+    // TODO remove opera anno 2011 hack
     const _constructMemoizedTagReplacement = (dataBindAttributeValue, tagToRetain, nodeName, templateEngine) => {
         let dataBindKeyValueArray = parseObjectLiteral(dataBindAttributeValue);
         _validateDataBindValuesForRewriting(dataBindKeyValueArray);
@@ -4247,10 +4242,10 @@
     // ---- ko.templateSources.domElement -----
 
     // template types
-    const TEMPLATE_SCRIPT = 1;
-    const TEMPLATE_TEXTAREA = 2;
-    const TEMPLATE_TEMPLATE = 3;
-    const TEMPLATE_ELEMENT = 4;
+    const TPL_TYPE_SCRIPT = 1;
+    const TPL_TYPE_TEXTAREA = 2;
+    const TPL_TYPE_TEMPLATE = 3;
+    const TPL_TYPE_ELEMENT = 4;
 
     const DOM_DATA_KEY_PREFIX = nextDomDataKey() + '_';
     const TEMPLATES_DOM_DATA_KEY = nextDomDataKey();
@@ -4258,21 +4253,18 @@
     const SKIP_TEMPLATE_TYPE = Symbol();
 
     class DomElementTemplate {
-        constructor(element /*, skipTemplateType */) {
-            this.domElement = element;
-
-            if (element && arguments[1] !== SKIP_TEMPLATE_TYPE) {
-                let tagNameLower = element.tagName && element.tagName.toLowerCase();
-                this.templateType = tagNameLower === 'script' ? TEMPLATE_SCRIPT :
-                                    tagNameLower === 'textarea' ? TEMPLATE_TEXTAREA :
-                                    // For browsers with proper <template> element support, where the .content property gives a document fragment
-                                    tagNameLower === 'template' && element.content && element.content.nodeType === 11 ? TEMPLATE_TEMPLATE : TEMPLATE_ELEMENT;
+        constructor(elem /*, skipTemplateType */) {
+            this.domElement = elem;
+            if (elem && arguments[1] !== SKIP_TEMPLATE_TYPE) {
+                 this.templateType = elem.tagName === 'SCRIPT' ? TPL_TYPE_SCRIPT :
+                                     elem.tagName === 'TEMPLATE' ? TPL_TYPE_TEMPLATE :
+                                     elem.tagName === 'TEXTAREA' ? TPL_TYPE_TEXTAREA : TPL_TYPE_ELEMENT;
             }
         }
 
         text(/* valueToWrite */) {
-            let elemContentsProperty = this.templateType === TEMPLATE_SCRIPT ? 'text' : 
-                                       this.templateType === TEMPLATE_TEXTAREA ? 'value' : 'innerHTML';
+            let elemContentsProperty = this.templateType === TPL_TYPE_SCRIPT ? 'text' : 
+                                       this.templateType === TPL_TYPE_TEXTAREA ? 'value' : 'innerHTML';
 
             if (!arguments.length) {
                 return this.domElement[elemContentsProperty];
@@ -4297,8 +4289,8 @@
             if (!arguments.length) {
                 let templateData = ((element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {}),
                     nodes = templateData.containerData || (
-                            this.templateType === TEMPLATE_TEMPLATE ? element.content :
-                            this.templateType === TEMPLATE_ELEMENT ? element : undefined);
+                            this.templateType === TPL_TYPE_TEMPLATE ? element.content :
+                            this.templateType === TPL_TYPE_ELEMENT ? element : undefined);
                 
                 if (!nodes || templateData.alwaysCheckText) {
                     // If the template is associated with an element that stores the template as text,
@@ -5262,25 +5254,19 @@
 
     const OPTION_VALUE_DOM_DATA_KEY = nextDomDataKey();
 
-
-    const readSelectOrOptionValue = (element) => {
-        switch (element.tagName.toLowerCase()) {
-            case 'option':
-                return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
-            case 'select': {
-                let selectedIndex = element.selectedIndex;
-                return selectedIndex >= 0 ? readSelectOrOptionValue(element.options[selectedIndex]) : undefined;
-            }
-        }
-        return element.value;
-    };
+    /**
+     * @param {HTMLSelectElement|HTMLOptionElement|HTMLElement} elem
+     * @return {*|undefined}
+     */
+    const readSelectOrOptionValue = (elem) => 
+        elem.tagName === 'OPTION' ? elem[HAS_DOM_DATA_EXPANDO_PROPERTY] ? (elem[DOM_DATASTORE_PROP] && elem[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : elem.value : 
+        elem.tagName === 'SELECT' ? elem.selectedIndex >= 0 ? readSelectOrOptionValue(elem.options[elem.selectedIndex]) : undefined : elem.value;
 
     // Normally, SELECT elements and their OPTIONs can only take value of type 'string' (because the values
     // are stored on DOM attributes). ko.selectExtensions provides a way for SELECTs/OPTIONs to have values
     // that are arbitrary objects. This is very convenient when implementing things like cascading dropdowns.
     const writeSelectOrOptionValue = (element, value, allowUnset) => {
-        let tagNameLower = element.tagName.toLowerCase();
-        if (tagNameLower === 'option') {
+        if (element.tagName === 'OPTION') {
             let valueType = typeof value;
             if (valueType === 'string') {
                 setDomData(element, OPTION_VALUE_DOM_DATA_KEY, undefined);
@@ -5297,7 +5283,7 @@
             }
             return;
         }
-        if (tagNameLower === 'select') {
+        if (element.tagName === 'SELECT') {
             if (value === '' || value === null) {       // A blank string or null value will select the caption
                 value = undefined;
             }
@@ -5335,7 +5321,7 @@
          * @param {HTMLSelectElement} element
          */
         init(element) {
-            if (element.tagName.toLowerCase() !== 'select') {
+            if (element.tagName !== 'SELECT') {
                 throw new Error("options binding applies only to SELECT elements");
             }
 
@@ -5496,7 +5482,7 @@
          * @param {HTMLSelectElement} element
          */
         init(element, valueAccessor, allBindings) {
-            if (element.tagName.toLowerCase() !== 'select') {
+            if (element.tagName !== 'SELECT') {
                 throw new Error("selectedOptions binding applies only to SELECT elements");
             }
             
@@ -5739,12 +5725,12 @@
 
     bindingHandlers.value = {
         /** 
-         * @param {HTMLInputElement|HTMLButtonElement|HTMLSelectElement} element 
+         * @param {HTMLInputElement|HTMLButtonElement|HTMLSelectElement} element
+         * @param {function} valueAccessor
          **/
         init(element, valueAccessor, allBindings) {
-            let tagName = element.nodeName.toLowerCase(),
-                isInputElement = tagName === 'input',
-                inputType = isInputElement && element.type;
+            let tagName = element.tagName,
+                inputType = tagName === 'INPUT' ? element.type : null;
 
             // If the value binding is placed on a radio/checkbox, then just pass through to checkedValue and quit
             if (inputType === 'checkbox' || inputType === 'radio') {
@@ -5818,7 +5804,7 @@
                     if (newValue === elementValue && elementValue !== undefined) {
                         return; // no changes
                     }
-                    if (tagName === 'select') {
+                    if (tagName === 'SELECT') {
                         let allowUnset = allBindings.get('valueAllowUnset');
                         writeSelectOrOptionValue(element, newValue, allowUnset);
                         if (!allowUnset && newValue !== readSelectOrOptionValue(element)) {
@@ -5832,7 +5818,7 @@
                 };
             }
 
-            if (tagName === 'select') {
+            if (tagName === 'SELECT') {
                 let isChangeHandlerBound = false;
                 bindingEvent.subscribe(element, EVENT_CHILDREN_COMPLETE, () => {
                     if (!isChangeHandlerBound) {

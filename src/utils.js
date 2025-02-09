@@ -410,7 +410,7 @@ export const postJson = function(urlOrForm, data, options) {
         url = urlOrForm;
 
     // If we were given a form, use its 'action' URL and pick out any requested field values
-    if ((typeof urlOrForm === 'object') && (tagNameLower(urlOrForm) === 'form')) {
+    if (typeof urlOrForm === 'object' && urlOrForm.tagName === 'FORM') {
         let originalForm = urlOrForm;
         url = originalForm.action;
         for (let i = includeFields.length - 1; i >= 0; i--) {

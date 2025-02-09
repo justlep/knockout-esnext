@@ -29,10 +29,10 @@ import {parseHtmlForTemplateNodes} from '../utils.domManipulation';
 // ---- ko.templateSources.domElement -----
 
 // template types
-const TEMPLATE_SCRIPT = 1;
-const TEMPLATE_TEXTAREA = 2;
-const TEMPLATE_TEMPLATE = 3;
-const TEMPLATE_ELEMENT = 4;
+const TPL_TYPE_SCRIPT = 1;
+const TPL_TYPE_TEXTAREA = 2;
+const TPL_TYPE_TEMPLATE = 3;
+const TPL_TYPE_ELEMENT = 4;
 
 const DOM_DATA_KEY_PREFIX = nextDomDataKey() + '_';
 const TEMPLATES_DOM_DATA_KEY = nextDomDataKey();
@@ -42,21 +42,18 @@ const SKIP_TEMPLATE_TYPE = Symbol();
 const _getTemplateDomData = (element) => getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}; //@inline
 
 export class DomElementTemplate {
-    constructor(element /*, skipTemplateType */) {
-        this.domElement = element;
-
-        if (element && arguments[1] !== SKIP_TEMPLATE_TYPE) {
-            let tagNameLower = element.tagName && element.tagName.toLowerCase();
-            this.templateType = tagNameLower === 'script' ? TEMPLATE_SCRIPT :
-                                tagNameLower === 'textarea' ? TEMPLATE_TEXTAREA :
-                                // For browsers with proper <template> element support, where the .content property gives a document fragment
-                                tagNameLower === 'template' && element.content && element.content.nodeType === 11 ? TEMPLATE_TEMPLATE : TEMPLATE_ELEMENT;
+    constructor(elem /*, skipTemplateType */) {
+        this.domElement = elem;
+        if (elem && arguments[1] !== SKIP_TEMPLATE_TYPE) {
+             this.templateType = elem.tagName === 'SCRIPT' ? TPL_TYPE_SCRIPT :
+                                 elem.tagName === 'TEMPLATE' ? TPL_TYPE_TEMPLATE :
+                                 elem.tagName === 'TEXTAREA' ? TPL_TYPE_TEXTAREA : TPL_TYPE_ELEMENT;
         }
     }
 
     text(/* valueToWrite */) {
-        let elemContentsProperty = this.templateType === TEMPLATE_SCRIPT ? 'text' : 
-                                   this.templateType === TEMPLATE_TEXTAREA ? 'value' : 'innerHTML';
+        let elemContentsProperty = this.templateType === TPL_TYPE_SCRIPT ? 'text' : 
+                                   this.templateType === TPL_TYPE_TEXTAREA ? 'value' : 'innerHTML';
 
         if (!arguments.length) {
             return this.domElement[elemContentsProperty];
@@ -81,8 +78,8 @@ export class DomElementTemplate {
         if (!arguments.length) {
             let templateData = _getTemplateDomData(element),
                 nodes = templateData.containerData || (
-                        this.templateType === TEMPLATE_TEMPLATE ? element.content :
-                        this.templateType === TEMPLATE_ELEMENT ? element : undefined);
+                        this.templateType === TPL_TYPE_TEMPLATE ? element.content :
+                        this.templateType === TPL_TYPE_ELEMENT ? element : undefined);
             
             if (!nodes || templateData.alwaysCheckText) {
                 // If the template is associated with an element that stores the template as text,

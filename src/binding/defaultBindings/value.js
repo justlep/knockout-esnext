@@ -9,12 +9,12 @@ import {unwrapObservable} from '../../subscribables/observableUtils';
 
 bindingHandlers.value = {
     /** 
-     * @param {HTMLInputElement|HTMLButtonElement|HTMLSelectElement} element 
+     * @param {HTMLInputElement|HTMLButtonElement|HTMLSelectElement} element
+     * @param {function} valueAccessor
      **/
     init(element, valueAccessor, allBindings) {
-        let tagName = element.nodeName.toLowerCase(),
-            isInputElement = tagName === 'input',
-            inputType = isInputElement && element.type;
+        let tagName = element.tagName,
+            inputType = tagName === 'INPUT' ? element.type : null;
 
         // If the value binding is placed on a radio/checkbox, then just pass through to checkedValue and quit
         if (inputType === 'checkbox' || inputType === 'radio') {
@@ -88,7 +88,7 @@ bindingHandlers.value = {
                 if (newValue === elementValue && elementValue !== undefined) {
                     return; // no changes
                 }
-                if (tagName === 'select') {
+                if (tagName === 'SELECT') {
                     let allowUnset = allBindings.get('valueAllowUnset');
                     writeSelectOrOptionValue(element, newValue, allowUnset);
                     if (!allowUnset && newValue !== readSelectOrOptionValue(element)) {
@@ -102,7 +102,7 @@ bindingHandlers.value = {
             };
         }
 
-        if (tagName === 'select') {
+        if (tagName === 'SELECT') {
             let isChangeHandlerBound = false;
             bindingEvent.subscribe(element, EVENT_CHILDREN_COMPLETE, () => {
                 if (!isChangeHandlerBound) {

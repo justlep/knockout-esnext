@@ -24,6 +24,7 @@ const _validateDataBindValuesForRewriting = (keyValueArray) => {
     }
 };
 
+// TODO remove opera anno 2011 hack
 const _constructMemoizedTagReplacement = (dataBindAttributeValue, tagToRetain, nodeName, templateEngine) => {
     let dataBindKeyValueArray = parseObjectLiteral(dataBindAttributeValue);
     _validateDataBindValuesForRewriting(dataBindKeyValueArray);

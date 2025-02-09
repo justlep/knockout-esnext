@@ -11,7 +11,7 @@ bindingHandlers.selectedOptions = {
      * @param {HTMLSelectElement} element
      */
     init(element, valueAccessor, allBindings) {
-        if (element.tagName.toLowerCase() !== 'select') {
+        if (element.tagName !== 'SELECT') {
             throw new Error("selectedOptions binding applies only to SELECT elements");
         }
         

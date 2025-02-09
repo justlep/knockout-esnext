@@ -92,6 +92,9 @@ const _resolveConfig = (componentName, errorCallback, config, callback) => {
     }
 };
 
+/**
+ * @param {KnockoutTemplateLoaderErrorCallback} errorCallback
+ */
 const _resolveTemplate = (errorCallback, templateConfig, callback) => {
     if (typeof templateConfig === 'string') {
         // Markup - parse it
@@ -99,20 +102,23 @@ const _resolveTemplate = (errorCallback, templateConfig, callback) => {
     } 
     if (templateConfig.element) {
         let elementIdOrNode = templateConfig.element,
-            elemNode;
+            elem;
+        
         if (typeof elementIdOrNode === 'string') {
-            elemNode = document.getElementById(elementIdOrNode);
-            if (!elemNode) {
-                errorCallback('Cannot find element with ID ' + elementIdOrNode);
-            }
-        } else if (elementIdOrNode && elementIdOrNode.tagName && elementIdOrNode.nodeType === 1) {
-            // isDomElement-check (= less precise than `instanceof HTMLElement' but a lot cheaper) 
-            elemNode = elementIdOrNode;
+            elem = document.getElementById(elementIdOrNode) || errorCallback('Cannot find element with ID ' + elementIdOrNode);
+        } else if (elementIdOrNode && elementIdOrNode.tagName && elementIdOrNode.nodeType === 1) { // cheaper than `instanceof HTMLElement`
+            elem = elementIdOrNode;
         } else {
             errorCallback('Unknown element type: ' + elementIdOrNode);
         }
-        // Element instance found - copy its child nodes
-        return callback(_cloneNodesFromTemplateSourceElement(elemNode));
+        // Element instance found - copy its child nodes...
+        let tagName = elem.tagName;
+        return callback(
+            tagName === 'SCRIPT' ? parseHtmlFragment(elem.text) :
+            tagName === 'TEMPLATE' ? cloneNodes(elem.content.childNodes) :
+            tagName === 'TEXTAREA' ? parseHtmlFragment(elem.value) :
+            /* Regular elements such as <div> */ cloneNodes(elem.childNodes)
+        );
     }  
     if (Array.isArray(templateConfig)) {
         // Assume already an array of DOM nodes - pass through unchanged
@@ -151,26 +157,7 @@ const _resolveViewModel = (errorCallback, viewModelConfig, callback) => {
     errorCallback('Unknown viewModel value: ' + viewModelConfig);
 };
 
-const _cloneNodesFromTemplateSourceElement = (elemInstance) => {
-    let tagName = elemInstance.tagName.toLowerCase();
-    switch (tagName) {
-        case 'script':   
-            return parseHtmlFragment(elemInstance.text);
-        case 'textarea': 
-            return parseHtmlFragment(elemInstance.value);
-        case 'template':
-            // For browsers with proper <template> element support (i.e., where the .content property
-            // gives a document fragment), use that document fragment.
-            if (_isDocumentFragment(elemInstance.content)) {
-                return cloneNodes(elemInstance.content.childNodes);
-            }
-    }
-    // Regular elements such as <div>, and <template> elements on old browsers that don't really
-    // understand <template> and just treat it as a regular container
-    return cloneNodes(elemInstance.childNodes);
-};
-
-const _isDocumentFragment = obj => obj && obj.nodeType === 11;
+const _isDocumentFragment = obj => obj && obj.nodeType === 11; //@inline
 
 const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
     if (typeof config.require !== 'string') {
@@ -191,6 +178,15 @@ const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
     }
 };
 
+/**
+ * @callback KnockoutTemplateLoaderErrorCallback
+ * @throws {Error}
+ */
+
+/**
+ * @param {string} componentName
+ * @return {KnockoutTemplateLoaderErrorCallback}
+ */
 const _makeErrorCallback = (componentName) => message => {
     throw new Error('Component \'' + componentName + '\': ' + message);
 };

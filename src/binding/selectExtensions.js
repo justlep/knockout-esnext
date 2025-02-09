@@ -4,25 +4,19 @@ const HAS_DOM_DATA_EXPANDO_PROPERTY = Symbol('ko_hasDomDataOptionValue');
 
 const OPTION_VALUE_DOM_DATA_KEY = nextDomDataKey();
 
-
-export const readSelectOrOptionValue = (element) => {
-    switch (element.tagName.toLowerCase()) {
-        case 'option':
-            return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
-        case 'select': {
-            let selectedIndex = element.selectedIndex;
-            return selectedIndex >= 0 ? readSelectOrOptionValue(element.options[selectedIndex]) : undefined;
-        }
-    }
-    return element.value;
-};
+/**
+ * @param {HTMLSelectElement|HTMLOptionElement|HTMLElement} elem
+ * @return {*|undefined}
+ */
+export const readSelectOrOptionValue = (elem) => 
+    elem.tagName === 'OPTION' ? elem[HAS_DOM_DATA_EXPANDO_PROPERTY] ? getDomData(elem, OPTION_VALUE_DOM_DATA_KEY) : elem.value : 
+    elem.tagName === 'SELECT' ? elem.selectedIndex >= 0 ? readSelectOrOptionValue(elem.options[elem.selectedIndex]) : undefined : elem.value;
 
 // Normally, SELECT elements and their OPTIONs can only take value of type 'string' (because the values
 // are stored on DOM attributes). ko.selectExtensions provides a way for SELECTs/OPTIONs to have values
 // that are arbitrary objects. This is very convenient when implementing things like cascading dropdowns.
 export const writeSelectOrOptionValue = (element, value, allowUnset) => {
-    let tagNameLower = element.tagName.toLowerCase();
-    if (tagNameLower === 'option') {
+    if (element.tagName === 'OPTION') {
         let valueType = typeof value;
         if (valueType === 'string') {
             setDomData(element, OPTION_VALUE_DOM_DATA_KEY, undefined);
@@ -39,7 +33,7 @@ export const writeSelectOrOptionValue = (element, value, allowUnset) => {
         }
         return;
     }
-    if (tagNameLower === 'select') {
+    if (element.tagName === 'SELECT') {
         if (value === '' || value === null) {       // A blank string or null value will select the caption
             value = undefined;
         }

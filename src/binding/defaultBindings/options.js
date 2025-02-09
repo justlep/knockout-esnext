@@ -23,7 +23,7 @@ bindingHandlers.options = {
      * @param {HTMLSelectElement} element
      */
     init(element) {
-        if (element.tagName.toLowerCase() !== 'select') {
+        if (element.tagName !== 'SELECT') {
             throw new Error("options binding applies only to SELECT elements");
         }
 

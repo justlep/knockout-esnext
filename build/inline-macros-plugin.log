@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout-ESNext JavaScript library v3.5.1026
+for Knockout-ESNext JavaScript library v3.5.1027
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -128,22 +128,22 @@ Found local macro: "virtualNodeBindingValue"
 [bindingProvider.js:16]
 Found local macro: "_getBindingsString"
 
-[bindingProvider.js:45]
+[bindingProvider.js:44]
 Inlined: "_getBindingsString"
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
 
-[bindingProvider.js:45]
+[bindingProvider.js:44]
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
 
-[bindingProvider.js:51]
+[bindingProvider.js:50]
 Inlined: "_getBindingsString"
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
 
-[bindingProvider.js:51]
+[bindingProvider.js:50]
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
@@ -197,10 +197,10 @@ NEW:  // TODO modify so that (cleanNode().remove()) becomes an explicit invocati
 
 Skipped adding macro-dependency cleanNode (already imported)
 
-[selectExtensions.js:11]
+[selectExtensions.js:12]
 Inlined: "getDomData" (global macro)
-OLD:  return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? getDomData(element, OPTION_VALUE_DOM_DATA_KEY) : element.value;
-NEW:  return element[HAS_DOM_DATA_EXPANDO_PROPERTY] ? (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : element.value;
+OLD:  elem.tagName === 'OPTION' ? elem[HAS_DOM_DATA_EXPANDO_PROPERTY] ? getDomData(elem, OPTION_VALUE_DOM_DATA_KEY) : elem.value :
+NEW:  elem.tagName === 'OPTION' ? elem[HAS_DOM_DATA_EXPANDO_PROPERTY] ? (elem[DOM_DATASTORE_PROP] && elem[DOM_DATASTORE_PROP][OPTION_VALUE_DOM_DATA_KEY]) : elem.value :
 
 [selectExtensions.js:1]
 Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
@@ -228,6 +228,17 @@ OLD:  originalChildNodes = Array.from(childNodes(element));
 NEW:  originalChildNodes = Array.from((((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes));
 
 Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in componentBinding.js
+
+
+------- src/components/defaultLoader.js --------
+
+[defaultLoader.js:160]
+Found local macro: "_isDocumentFragment"
+
+[defaultLoader.js:127]
+Inlined: "_isDocumentFragment"
+OLD:  if (_isDocumentFragment(templateConfig)) {
+NEW:  if ((templateConfig && templateConfig.nodeType === 11)) {
 
 
 ------- src/memoization.js --------
@@ -516,7 +527,7 @@ NEW:  ((this._subscriptions = {change: []}) && (this._versionNumber = 1));
 [templateSources.js:42]
 Found local macro: "_getTemplateDomData"
 
-[templateSources.js:74]
+[templateSources.js:71]
 Inlined: "getDomData" (global macro)
 OLD:  return getDomData(this.domElement, DOM_DATA_KEY_PREFIX + key);
 NEW:  return (this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][DOM_DATA_KEY_PREFIX + key]);
@@ -526,24 +537,24 @@ Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
-[templateSources.js:82]
+[templateSources.js:79]
 Inlined: "_getTemplateDomData"
 OLD:  let templateData = _getTemplateDomData(element),
 NEW:  let templateData = (getDomData(element, TEMPLATES_DOM_DATA_KEY) || {}),
 
-[templateSources.js:82]
+[templateSources.js:79]
 Inlined: "getDomData" (global macro)
 OLD:  let templateData = _getTemplateDomData(element),
 NEW:  let templateData = ((element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {}),
 
 Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templateSources.js
 
-[templateSources.js:123]
+[templateSources.js:120]
 Inlined: "_getTemplateDomData"
 OLD:  let templateData = _getTemplateDomData(this.domElement);
 NEW:  let templateData = (getDomData(this.domElement, TEMPLATES_DOM_DATA_KEY) || {});
 
-[templateSources.js:123]
+[templateSources.js:120]
 Inlined: "getDomData" (global macro)
 OLD:  let templateData = _getTemplateDomData(this.domElement);
 NEW:  let templateData = ((this.domElement[DOM_DATASTORE_PROP] && this.domElement[DOM_DATASTORE_PROP][TEMPLATES_DOM_DATA_KEY]) || {});
@@ -636,7 +647,7 @@ Skipped adding dependency import - some import like {START_COMMENT_REGEX} from '
 
 ------- src/utils.domData.js --------
 
-[utils.domData.js:9]
+[utils.domData.js:10]
 Found global macro: "getDomData"
 Dependencies (to auto-import): DOM_DATASTORE_PROP
 
@@ -777,7 +788,7 @@ NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_
 
 
 Global macros inlining summary:
- 7x  getDomData  - [src/utils.domData.js:9]
+ 7x  getDomData  - [src/utils.domData.js:10]
  4x  removeNode  - [src/utils.domNodeDisposal.js:126]
  12x  _isStartComment  - [src/virtualElements.js:19]
  4x  _isEndComment  - [src/virtualElements.js:20]
@@ -797,6 +808,7 @@ Local macros inlining summary:
  4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:549]
  2x  virtualNodeBindingValue  - [src/binding/bindingProvider.js:7]
  2x  _getBindingsString  - [src/binding/bindingProvider.js:16]
+ 1x  _isDocumentFragment  - [src/components/defaultLoader.js:160]
  2x  parseMemoText  - [src/memoization.js:11]
  2x  _beginDependencyDetectionWithEmptyFrame  - [src/subscribables/dependencyDetection.js:12]
  2x  endDependencyDetection  - [src/subscribables/dependencyDetection.js:14]
@@ -811,5 +823,5 @@ Local macros inlining summary:
 
 =======================================================
 Rollup inline-macros plugin finished successfully
-Inlined 103 usages of 29 macros (12 global) in 19 files
+Inlined 104 usages of 30 macros (12 global) in 20 files
 =======================================================

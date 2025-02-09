@@ -36,9 +36,8 @@ export class KoBindingProvider {
      *     make sure to change {@link bindingProviderMaySupportTextNodes} accordingly.
      */
     nodeHasBindings(node) {
-        let nodeType = node.nodeType;
-        return (nodeType === 1) ? (node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) !== null || getComponentNameForNode(node)) :
-               (nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
+        return (node.nodeType === 1) ? !!(node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) || getComponentNameForNode(node)) :
+               (node.nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
     }
 
     getBindings(node, bindingContext) {

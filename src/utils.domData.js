@@ -6,6 +6,7 @@ const KEY_PREFIX = 'ko_' + Date.now().toString(36) + '_';
 let _keyCount = 0;
 export const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
+// not using optional chaining here as it's 20% slower (2025)
 export const getDomData = (node, key) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][key]; //@inline-global:DOM_DATASTORE_PROP
 
 export const setDomData = (node, key, value) => {
