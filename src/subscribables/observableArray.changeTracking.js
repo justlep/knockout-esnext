@@ -121,17 +121,16 @@ export const trackArrayChanges = extenders.trackArrayChanges = (target, options)
 
         switch (operationName) {
             case 'push':
-                offset = arrayLength; 
-                // eslint-disable-line no-fallthrough
+                offset = arrayLength;
+            // eslint-disable-next-line no-fallthrough
             case 'unshift':
                 for (let index = 0; index < argsLength; index++) {
                     _pushDiff('added', args[index], offset + index);
                 }
                 break;
-
             case 'pop':
-                offset = arrayLength - 1; 
-                // eslint-disable-line no-fallthrough
+                offset = arrayLength - 1;
+            // eslint-disable-next-line no-fallthrough
             case 'shift':
                 if (arrayLength) {
                     _pushDiff('deleted', rawArray[offset], offset);

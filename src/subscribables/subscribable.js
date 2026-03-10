@@ -30,8 +30,9 @@ export const hasSubscribableChanged = (subscribable, versionToCheck) => subscrib
 /**
  * @param subscribable
  * cleaner but slower would be { [DEFAULT_EVENT]: [] } instead of {change: []}
- * TODO remove the && once macros with function bodies are supported 
+ * TODO remove the && once macros with function bodies are supported
  */
+// eslint-disable-next-line no-constant-binary-expression
 export const initSubscribableInternal = (subscribable) => (subscribable._subscriptions = {change: []}) && (subscribable._versionNumber = 1); //@inline-global 
 
 export const SUBSCRIBABLE_PROTOTYPE = {

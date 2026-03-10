@@ -1,5 +1,5 @@
 /*!
- * Knockout-ESNext JavaScript library v3.5.1027
+ * Knockout-ESNext JavaScript library v3.5.1028
  * https://github.com/justlep/knockout-esnext
  * Forked from Knockout v3.5.1
  * (c) The Knockout.js team - https://knockoutjs.com/
@@ -10,9 +10,9 @@
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
     typeof define === 'function' && define.amd ? define(factory) :
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
-}(this, (function () {
+})(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1027'; // inserted by rollup intro
+    const version = '3.5.1028'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -31,7 +31,7 @@
     let _keyCount = 0;
     const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
-    // don't use optional chaining here as it's still 20% slower (2025)
+    // not using optional chaining here as it's 20% slower (2025)
     const getDomData = (node, key) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][key]; //@inline-global:DOM_DATASTORE_PROP
 
     const setDomData = (node, key, value) => {
@@ -257,7 +257,7 @@
         }
     };
 
-    const setDomNodeChildren = (domNode, childNodes) => {
+    const setDomNodeChildren$1 = (domNode, childNodes) => {
         emptyDomNode(domNode);
         if (childNodes) {
             for (let i = 0, j = childNodes.length; i < j; i++) {
@@ -267,6 +267,12 @@
     };
 
     // "Virtual elements" is an abstraction on top of the usual DOM API which understands the notion that comment nodes
+    // may be used to represent hierarchy (in addition to the DOM's natural hierarchy).
+    // If you call the DOM-manipulating functions on ko.virtualElements, you will be able to read and write the state
+    // of that virtual hierarchy
+    //
+    // The point of all this is to support containerless templates (e.g., <!-- ko foreach:someCollection -->blah<!-- /ko -->)
+    // without having to scatter special cases all over the binding and templating code.
 
     const START_COMMENT_REGEX = /^\s*ko(?:\s+([\s\S]+))?\s*$/;
     const END_COMMENT_REGEX =   /^\s*\/ko\s*$/;
@@ -297,14 +303,13 @@
                 }
                 currentNode = currentNode.nextSibling;
             }
-            if (!allowUnbalanced) {
+            {
                 throw new Error('Cannot find closing comment tag to match: ' + startComment.nodeValue);
             }
-            return null;
         };
 
     const _getMatchingEndComment = (startComment, allowUnbalanced) => {
-        let allVirtualChildren = _getVirtualChildren(startComment, allowUnbalanced);
+        let allVirtualChildren = _getVirtualChildren(startComment);
         if (allVirtualChildren) {
             let totalVirtualChildren = allVirtualChildren.length;
             return (totalVirtualChildren ? allVirtualChildren[totalVirtualChildren - 1] : startComment).nextSibling;
@@ -325,9 +330,9 @@
         }
     };
 
-    const setDomNodeChildren$1 = (node, childNodes) => {
+    const setDomNodeChildren = (node, childNodes) => {
         if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
-            setDomNodeChildren(node, childNodes);
+            setDomNodeChildren$1(node, childNodes);
             return;
         }
         emptyNode(node);
@@ -760,7 +765,7 @@
         // we'll clear everything and create a single text node.
         let innerTextNode = firstChild(element);
         if (!innerTextNode || innerTextNode.nodeType !== 3 || nextSibling(innerTextNode)) {
-            setDomNodeChildren$1(element, [element.ownerDocument.createTextNode(value)]);
+            setDomNodeChildren(element, [element.ownerDocument.createTextNode(value)]);
         } else {
             innerTextNode.data = value;
         }
@@ -878,53 +883,53 @@
 
     var utils = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        canSetPrototype: canSetPrototype,
-        hasOwnProperty: hasOwnProperty,
-        objectForEach: objectForEach,
-        extend: extend,
-        setPrototypeOf: setPrototypeOf,
-        trySetPrototypeOf: trySetPrototypeOf,
-        setPrototypeOfOrExtend: setPrototypeOfOrExtend,
-        toggleObjectClassPropertyString: toggleObjectClassPropertyString,
-        toggleDomNodeCssClass: toggleDomNodeCssClass,
-        fieldsIncludedWithJsonPost: fieldsIncludedWithJsonPost,
-        arrayForEach: arrayForEach,
-        arrayIndexOf: arrayIndexOf,
-        arrayFirst: arrayFirst,
-        arrayRemoveItem: arrayRemoveItem,
-        arrayGetDistinctValues: arrayGetDistinctValues,
-        arrayMap: arrayMap,
-        arrayFilter: arrayFilter,
-        arrayPushAll: arrayPushAll,
-        peekObservable: peekObservable,
         addOrRemoveItem: addOrRemoveItem,
-        objectMap: objectMap,
-        moveCleanedNodesToContainerElement: moveCleanedNodesToContainerElement,
-        cloneNodes: cloneNodes,
-        replaceDomNodes: replaceDomNodes,
-        fixUpContinuousNodeArray: fixUpContinuousNodeArray,
-        setOptionNodeSelectionState: setOptionNodeSelectionState,
-        stringTrim: stringTrim,
-        stringStartsWith: stringStartsWith,
-        domNodeIsContainedBy: domNodeIsContainedBy,
-        domNodeIsAttachedToDocument: domNodeIsAttachedToDocument,
         anyDomNodeIsAttachedToDocument: anyDomNodeIsAttachedToDocument,
-        tagNameLower: tagNameLower,
+        arrayFilter: arrayFilter,
+        arrayFirst: arrayFirst,
+        arrayForEach: arrayForEach,
+        arrayGetDistinctValues: arrayGetDistinctValues,
+        arrayIndexOf: arrayIndexOf,
+        arrayMap: arrayMap,
+        arrayPushAll: arrayPushAll,
+        arrayRemoveItem: arrayRemoveItem,
+        canSetPrototype: canSetPrototype,
         catchFunctionErrors: catchFunctionErrors,
-        setTimeoutWithCatchError: setTimeoutWithCatchError,
-        deferError: deferError,
-        valuesArePrimitiveAndEqual: valuesArePrimitiveAndEqual,
-        registerEventHandler: registerEventHandler,
-        triggerEvent: triggerEvent,
-        setTextContent: setTextContent,
-        setElementName: setElementName,
-        range: range,
-        makeArray: makeArray,
+        cloneNodes: cloneNodes,
         createSymbolOrString: createSymbolOrString,
+        deferError: deferError,
+        domNodeIsAttachedToDocument: domNodeIsAttachedToDocument,
+        domNodeIsContainedBy: domNodeIsContainedBy,
+        extend: extend,
+        fieldsIncludedWithJsonPost: fieldsIncludedWithJsonPost,
+        fixUpContinuousNodeArray: fixUpContinuousNodeArray,
         getFormFields: getFormFields,
-        stringifyJson: stringifyJson,
+        hasOwnProperty: hasOwnProperty,
+        kebabToCamelCase: kebabToCamelCase,
+        makeArray: makeArray,
+        moveCleanedNodesToContainerElement: moveCleanedNodesToContainerElement,
+        objectForEach: objectForEach,
+        objectMap: objectMap,
+        peekObservable: peekObservable,
         postJson: postJson,
-        kebabToCamelCase: kebabToCamelCase
+        range: range,
+        registerEventHandler: registerEventHandler,
+        replaceDomNodes: replaceDomNodes,
+        setElementName: setElementName,
+        setOptionNodeSelectionState: setOptionNodeSelectionState,
+        setPrototypeOf: setPrototypeOf,
+        setPrototypeOfOrExtend: setPrototypeOfOrExtend,
+        setTextContent: setTextContent,
+        setTimeoutWithCatchError: setTimeoutWithCatchError,
+        stringStartsWith: stringStartsWith,
+        stringTrim: stringTrim,
+        stringifyJson: stringifyJson,
+        tagNameLower: tagNameLower,
+        toggleDomNodeCssClass: toggleDomNodeCssClass,
+        toggleObjectClassPropertyString: toggleObjectClassPropertyString,
+        triggerEvent: triggerEvent,
+        trySetPrototypeOf: trySetPrototypeOf,
+        valuesArePrimitiveAndEqual: valuesArePrimitiveAndEqual
     });
 
     const _taskQueue = [];
@@ -1622,7 +1627,7 @@
 
             let state = this[COMPUTED_STATE],
                 disposeWhen = state.disposeWhen,
-                changed = false;
+                changed;
             
             if (state.isBeingEvaluated) {
                 // If the evaluation of a ko.computed causes side effects, it's possible that it will trigger its own re-evaluation.
@@ -1664,7 +1669,7 @@
 
             let computedObservable = this,
                 state = computedObservable[COMPUTED_STATE],
-                changed = false;
+                changed;
 
             // Initially, we assume that none of the subscriptions are still being used (i.e., all are candidates for disposal).
             // Then, during evaluation, we cross off any that are in fact still being used.
@@ -3582,17 +3587,16 @@
 
             switch (operationName) {
                 case 'push':
-                    offset = arrayLength; 
-                    // eslint-disable-line no-fallthrough
+                    offset = arrayLength;
+                // eslint-disable-next-line no-fallthrough
                 case 'unshift':
                     for (let index = 0; index < argsLength; index++) {
                         _pushDiff('added', args[index], offset + index);
                     }
                     break;
-
                 case 'pop':
-                    offset = arrayLength - 1; 
-                    // eslint-disable-line no-fallthrough
+                    offset = arrayLength - 1;
+                // eslint-disable-next-line no-fallthrough
                 case 'shift':
                     if (arrayLength) {
                         _pushDiff('deleted', rawArray[offset], offset);
@@ -4339,6 +4343,32 @@
     }
 
     // If you want to make a custom template engine,
+    //
+    // [1] Inherit from this class (like ko.nativeTemplateEngine does)
+    // [2] Override 'renderTemplateSource', supplying a function with this signature:
+    //
+    //        function (templateSource, bindingContext, options) {
+    //            // - templateSource.text() is the text of the template you should render
+    //            // - bindingContext.$data is the data you should pass into the template
+    //            //   - you might also want to make bindingContext.$parent, bindingContext.$parents,
+    //            //     and bindingContext.$root available in the template too
+    //            // - options gives you access to any other properties set on "data-bind: { template: options }"
+    //            // - templateDocument is the document object of the template
+    //            //
+    //            // Return value: an array of DOM nodes
+    //        }
+    //
+    // [3] Override 'createJavaScriptEvaluatorBlock', supplying a function with this signature:
+    //
+    //        function (script) {
+    //            // Return value: Whatever syntax means "Evaluate the JavaScript statement 'script' and output the result"
+    //            //               For example, the jquery.tmpl template engine converts 'someScript' to '${ someScript }'
+    //        }
+    //
+    //     This is only necessary if you want to allow data-bind attributes to reference arbitrary template variables.
+    //     If you don't want to allow that, you can set the property 'allowTemplateRewriting' to false (like ko.nativeTemplateEngine does)
+    //     and then you don't need to override 'createJavaScriptEvaluatorBlock'.
+
 
     class TemplateEngine {
 
@@ -4490,7 +4520,7 @@
 
         let haveAddedNodesToParent = false;
         if (renderMode === 'replaceChildren') {
-            setDomNodeChildren$1(targetNodeOrNodeArray, renderedNodesArray);
+            setDomNodeChildren(targetNodeOrNodeArray, renderedNodesArray);
             haveAddedNodesToParent = true;
         } else if (renderMode === 'replaceNode') {
             replaceDomNodes(targetNodeOrNodeArray, renderedNodesArray);
@@ -4916,8 +4946,6 @@
 
             // The second responds to changes in the model value (the one associated with the checked binding)
             computed(_updateView, null, {disposeWhenNodeIsRemoved: element});
-
-            rawValue = undefined;
         }
     };
 
@@ -5210,7 +5238,7 @@
 
                     if (shouldDisplay) {
                         if (!isInitial) {
-                            setDomNodeChildren$1(element, cloneNodes(savedNodes));
+                            setDomNodeChildren(element, cloneNodes(savedNodes));
                         }
 
                         applyBindingsToDescendants(childContext, element);
@@ -5952,7 +5980,7 @@
             throw new Error('Component \'' + componentName + '\' has no template');
         }
         let clonedNodesArray = cloneNodes(template);
-        setDomNodeChildren$1(element, clonedNodesArray);
+        setDomNodeChildren(element, clonedNodesArray);
     };
 
     const _createViewModel = (componentDefinition, componentParams, componentInfo) => {
@@ -5963,6 +5991,8 @@
     };
 
     // This is the final knockout library to be built. 
+    // Anything that's not contained in the default export at the bottom of this file won't be accessible later.  
+
 
     const expressionRewriting = {
         bindingRewriteValidators,
@@ -6059,7 +6089,7 @@
             emptyNode,
             insertAfter,
             prepend,
-            setDomNodeChildren: setDomNodeChildren$1
+            setDomNodeChildren
         },
         bindingProvider: KoBindingProvider,
         get getBindingHandler() { return getBindingHandler; },
@@ -6103,5 +6133,5 @@
 
     return ko;
 
-})));
+}));
 //# sourceMappingURL=knockout.debug.js.map

@@ -118,8 +118,6 @@ bindingHandlers.checked = {
 
         // The second responds to changes in the model value (the one associated with the checked binding)
         computed(_updateView, null, {disposeWhenNodeIsRemoved: element});
-
-        rawValue = undefined;
     }
 };
 

@@ -1,11 +1,10 @@
-const {terser} = require('rollup-plugin-terser');
-const pkg = require('./package.json');
-
-import createRollupInlineMacrosPlugin from './rollup-plugin-inline-macros';
+import terser from '@rollup/plugin-terser';
+import pkg from './package.json' with {type: 'json'};
+import {createRollupInlineMacrosPlugin} from './rollup-plugin-inline-macros.mjs';
 
 const getVersion = () => `${pkg.version}`;
 
-const getFullReleaseName = () => `Knockout-ESNext JavaScript library v${getVersion()}`; 
+const getFullReleaseName = () => `Knockout-ESNext JavaScript library v${getVersion()}`;
 
 const getBanner = () => `/*!
  * ${getFullReleaseName()}
@@ -15,7 +14,7 @@ const getBanner = () => `/*!
  * License: ${pkg.licenses[0].type} (${pkg.licenses[0].url})
  */
 `;
-const getIntro = (debugEnabled) => 
+const getIntro = (debugEnabled) =>
     `const DEBUG = ${!!debugEnabled}; // inserted by rollup intro\n`+
     `const version = '${getVersion()}'; // inserted by rollup intro`;
 
@@ -31,9 +30,9 @@ export default {
             intro: getIntro(),
             sourcemap: false,
             strict: false,
-            plugins: [terser()]
+            plugins: [terser({maxWorkers: 3})]
         },
-        {   // the non-minified debug version incl. sourcemap (DEBUG=true) 
+        {   // the non-minified debug version incl. sourcemap (DEBUG=true)
             format: 'umd',
             name: 'ko',
             file: 'build/knockout.debug.js',
@@ -49,7 +48,7 @@ export default {
             intro: getIntro(),
             sourcemap: false,
             strict: false,
-            plugins: [terser()]
+            plugins: [terser({maxWorkers: 3})]
         }
     ],
     plugins: [

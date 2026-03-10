@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout-ESNext JavaScript library v3.5.1027
+for Knockout-ESNext JavaScript library v3.5.1028
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -493,30 +493,30 @@ Found global macro: "hasSubscriptionsForEvent"
 [subscribable.js:28]
 Found global macro: "hasSubscribableChanged"
 
-[subscribable.js:35]
+[subscribable.js:36]
 Found global macro: "initSubscribableInternal"
 
-[subscribable.js:41]
+[subscribable.js:42]
 Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(instance);
 NEW:  ((instance._subscriptions = {change: []}) && (instance._versionNumber = 1));
 
-[subscribable.js:73]
+[subscribable.js:74]
 Inlined: "updateSubscribableVersion" (global macro)
 OLD:  updateSubscribableVersion(this);
 NEW:  (this._versionNumber++);
 
-[subscribable.js:75]
+[subscribable.js:76]
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  if (!hasSubscriptionsForEvent(this, event)) {
 NEW:  if (!((this._subscriptions[event] || 0).length)) {
 
-[subscribable.js:104]
+[subscribable.js:105]
 Inlined: "hasSubscribableChanged" (global macro)
 OLD:  return hasSubscribableChanged(this, versionToCheck);
 NEW:  return (this.getVersion() !== versionToCheck);
 
-[subscribable.js:197]
+[subscribable.js:198]
 Inlined: "initSubscribableInternal" (global macro)
 OLD:  initSubscribableInternal(this);
 NEW:  ((this._subscriptions = {change: []}) && (this._versionNumber = 1));
@@ -799,7 +799,7 @@ Global macros inlining summary:
  4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:20]
  5x  hasSubscriptionsForEvent  - [src/subscribables/subscribable.js:22]
  2x  hasSubscribableChanged  - [src/subscribables/subscribable.js:28]
- 4x  initSubscribableInternal  - [src/subscribables/subscribable.js:35]
+ 4x  initSubscribableInternal  - [src/subscribables/subscribable.js:36]
 
 Local macros inlining summary:
  4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]

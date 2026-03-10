@@ -1,7 +1,8 @@
-import {createFilter} from '@rollup/pluginutils';
+import utils from '@rollup/pluginutils';
 import {basename, join, relative, sep, resolve, dirname} from 'node:path';
 import {format} from 'node:util';
 import {writeFileSync, readFileSync, readdirSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 
 const MARKER_COMMENT = '//@inline';
 const MACRO_DEFINITION_REGEX = /^\s*(?:export )?const ([^ ]+?)\s*=\s\(?([^)]*?)\)?\s*=>\s*([^;]*);?\s*?\/\/@inline(?:(-global)(:[\S]*)?)?/;
@@ -16,10 +17,18 @@ const getParamPlaceholderForIndex = (index) => `%~%>${index}<%~%`; // regex-safe
 const getParamPlaceholderReplacementRegexForIndex = (index) => new RegExp(getParamPlaceholderForIndex(index), 'g');
 const isValidDependencyName = s => s && VALID_DEPENDENCY_NAME_REGEX.test(s);
 
+const PROJECT_ROOT_PATH = resolve(fileURLToPath(import.meta.url), '..');
+
+/**
+ * @param {string} [relPath]
+ * @return {string}
+ */
+export const resolveProjectPath = (relPath) => relPath ? join(PROJECT_ROOT_PATH, relPath) : PROJECT_ROOT_PATH;
+
 /**
  * A rollup plugin that scans each file for const arrow functions marked with a trailing '//@inline' comment.
  * Invocations of those functions within the same file are then replaced with the actual arrow-function code,
- * much like early Pascal "inline" functions or macros in other languages.  
+ * much like early Pascal "inline" functions or macros in other languages.
  * Helpful to keep sources DRY while boosting performance in hot execution paths by saving some function calls.
  *
  * Example:
@@ -27,46 +36,46 @@ const isValidDependencyName = s => s && VALID_DEPENDENCY_NAME_REGEX.test(s);
  *
  * Invocations like following:
  *   if (_isLowercaseString(foo)) {
- * will be expanded to:  
+ * will be expanded to:
  *   if ((typeof foo === 'string' && foo.toLowerCase() === foo)) {
- * 
- * 
+ *
+ *
  * Current limitations:
- *   - multiline-expressions MUST NOT contain line-comments (except the initial inline-marker comment) 
+ *   - multiline-expressions MUST NOT contain line-comments (except the initial inline-marker comment)
  *   - the invocation must match the number of formal parameters (optional parameters MUST be passed explicitly as undefined)
- *   - invocation parameters that are no identifiers (e.g. object literals or strings) MUST NOT contain commas 
- * 
+ *   - invocation parameters that are no identifiers (e.g. object literals or strings) MUST NOT contain commas
+ *
  * @param {RollupInlineMacrosPluginOptions} opts
- * 
+ *
  * Author: Lennart Pegel - https://github.com/justlep
  * License: MIT (http://www.opensource.org/licenses/mit-license.php)
  */
-export default function createRollupInlineMacrosPlugin(opts = {}) {
+export function createRollupInlineMacrosPlugin(opts = {}) {
     // Using Rollup's recommended include/exclude filter mechanism -> https://rollupjs.org/guide/en/#example-transformer
-    const canProcess = createFilter(opts.include || DEFAULT_INCLUDED_FILENAMES_REGEX, opts.exclude);
-    const logFilePath = opts.logFile && join(__dirname, opts.logFile);
-    
+    const canProcess = utils.createFilter(opts.include || DEFAULT_INCLUDED_FILENAMES_REGEX, opts.exclude);
+    const logFilePath = opts.logFile && resolveProjectPath(opts.logFile);
+
     let totalMacros = 0,
         totalReplacements = 0,
         totalChangedFiles = 0,
         totalErrors = 0;
-    
+
     /**
-     * A set of all line references that belong to macro definitions. 
-     * (may contain multiple entries per single macro in case of multi-line expression macros) 
-     * @type {Set<RollupInlineMacrosPlugin_LineReference>} 
+     * A set of all line references that belong to macro definitions.
+     * (may contain multiple entries per single macro in case of multi-line expression macros)
+     * @type {Set<RollupInlineMacrosPlugin_LineReference>}
      */
     const allMacroDefinitionLineReferences = new Set();
-        
+
     /** @type {Map<string, RollupInlineMacrosPlugin_InlineMacro>} */
     const globalMacrosByName = new Map();
-    
+
     /** @type {Map<string, RollupInlineMacrosPlugin_InlineMacro[]>} */
     const localMacrosByFileId = new Map();
-        
+
     /** @type {Map<string, string[]>|null} */
     const logEntriesByFileId = logFilePath ? new Map() : null;
-    
+
     /**
      * @param {string} id - the file id in Rollup speak (i.e. the file path)
      * @param {string} code
@@ -75,7 +84,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
      */
     const getFileUtils = (id, code, logFilePathOnce) => {
         let filename = basename(id),
-            relativeFilePath = (sep === '\\') ? relative(__dirname, id).replace(/\\/g, '/') : relative(__dirname, id),
+            relativeFilePath = (sep === '\\') ? relative(PROJECT_ROOT_PATH, id).replace(/\\/g, '/') : relative(PROJECT_ROOT_PATH, id),
             filePathToLogOnce = logFilePathOnce ? `\n------- ${relativeFilePath} --------\n\n` : '',
             logEntriesForFile = logEntriesByFileId ? logEntriesByFileId.get(id) : null,
             localMacros = localMacrosByFileId.get(id),
@@ -170,7 +179,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                 // - Since we're not parsing code here, trailing '// comments' will break the expression!
                 for (let lookaheadLineIndex = lineIndex + 1; lookaheadLineIndex < len; lookaheadLineIndex++) {
                     let _trimmedLine = lines[lookaheadLineIndex].trim();
-                    // keep a reference to all lines of the macro (incl the end marker line), 
+                    // keep a reference to all lines of the macro (incl the end marker line),
                     // so these lines can be skipped in phase 2 for replacements
                     allMacroDefinitionLineReferences.add(getLineReference(lookaheadLineIndex));
                     if (!_trimmedLine || /^\s*\/[/*]/.test(_trimmedLine)) {
@@ -218,7 +227,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             lineIndex += skipLines; // non-zero if we had multiline-expressions
         }
     };
-    
+
     return {
         name: 'inline-macros',
         buildStart(inputOpts) {
@@ -228,12 +237,12 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                 writeFileSync(logFilePath, `\nRunning ${LOGGED_PLUGIN_NAME}${versionInfo}\n`);
             }
             console.log('Scanning for macros...');
-            
+
             let entryFilePath = resolve('./' + inputOpts.input[0]),
                 totalScannedFiles = 0,
                 remainingDirPaths = [dirname(entryFilePath)];
-            
-            for (let dirPath = remainingDirPaths.shift(), entries; dirPath; dirPath = remainingDirPaths.shift()) {
+
+            for (let dirPath = remainingDirPaths.shift(); dirPath; dirPath = remainingDirPaths.shift()) {
                 for (let entry of readdirSync(dirPath, {withFileTypes: true})) {
                     let entryPath = join(dirPath, entry.name);
                     if (entry.isFile() && canProcess(entryPath)) {
@@ -244,7 +253,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                     }
                 }
             }
-            
+
             console.log(` => ${totalScannedFiles} files scanned\n` +
                         ` => ${totalMacros} macros found (${globalMacrosByName.size} global)`);
         },
@@ -257,9 +266,9 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             const toMacroUsageString = macro => {
                 let count = macro.replacementsCount;
                 hasUnusedMacros = hasUnusedMacros || !count;
-                return ` ${count ? `${count}x` : '(!) UNUSED '}  ${macro.name}  - [${macro.lineReference}]`; 
+                return ` ${count ? `${count}x` : '(!) UNUSED '}  ${macro.name}  - [${macro.lineReference}]`;
             };
-            
+
             let usageSummary = [
                 'Global macros inlining summary:',
                 ...Array.from(globalMacrosByName.values()).map(toMacroUsageString),
@@ -272,13 +281,13 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                     .map(macros => macros.map(toMacroUsageString).join('\n')),
                 ''
             ].join('\n');
-            
+
             let summaryLine1 = `${LOGGED_PLUGIN_NAME} finished ${totalErrors ? `with ${totalErrors} ERROR${totalErrors === 1 ? '' : 'S'}`  : 'successfully'}`,
                 summaryLine2 = `Inlined ${totalReplacements} usages of ${totalMacros} macros (${globalMacrosByName.size} global) in ${totalChangedFiles} files`,
                 unusedWarning = hasUnusedMacros ? 'NOTICE: found macros which never got inlined\n' : '',
                 hr = '='.repeat(Math.max(summaryLine1.length, summaryLine2.length)),
                 summary = `\n${usageSummary}\n${hr}\n${summaryLine1}\n${summaryLine2}\n${unusedWarning}${hr}`;
-            
+
             console.log(summary);
 
             if (logFilePath) {
@@ -310,7 +319,7 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
             // console.log('[TRANSFORM] ' + id);
 
             let totalReplacementsBefore = totalReplacements;
-            
+
             const fileUtils = getFileUtils(id, code, false);
             const {localMacros, getLineReference, LOG, lines, relativeFilePath} = fileUtils;
 
@@ -319,27 +328,27 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
 
             /** @type {string[]} */
             let originalLines;
-            
+
             lines.forEach((line, lineIndex) => {
                 let lineReference = getLineReference(lineIndex),
                     isMacroDefinitionLine = allMacroDefinitionLineReferences.has(lineReference);
-                
+
                 if (isMacroDefinitionLine) {
                     // don't expand macro invocations within macro definitions,
-                    // instead re-process regular invocation lines until no more macro invocations are left 
+                    // instead re-process regular invocation lines until no more macro invocations are left
                     return;
                 }
-                
+
                 for (let shouldScanForInvocations = true, lineIteration = 1; shouldScanForInvocations; lineIteration++) {
                     shouldScanForInvocations = false;
                     for (let macro of availableMacros) {
                         let {name, params, invocationRegex, bodyWithPlaceholders} = macro,
-                            isPossibleInvocationLine = ~line.indexOf(name + '('); 
-                        
+                            isPossibleInvocationLine = ~line.indexOf(name + '(');
+
                         if (!isPossibleInvocationLine) {
                             continue;
                         }
-                        
+
                         let changedLine = line.replace(invocationRegex, (matchedInvocation, invPrefixChar, invParamsString) => {
                             // FIXME invocations like foo("hey,foo") won't work, but that's ok for now
                             let invParams = invParamsString.split(',').map(s => s.trim());
@@ -349,17 +358,17 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                                 totalErrors++;
                                 return matchedInvocation;
                             }
-                            
+
                             let replacedInvocation = invPrefixChar + bodyWithPlaceholders;
-                            
+
                             invParams.forEach((paramName, i) => {
                                 let placeholderRegex = getParamPlaceholderReplacementRegexForIndex(i);
                                 replacedInvocation = replacedInvocation.replace(placeholderRegex, paramName);
                             });
-                            
+
                             return replacedInvocation;
                         });
-                        
+
                         if (changedLine !== line) {
                             if (!originalLines) {
                                 originalLines = lines.slice(); // lazy-copy original lines before any changes
@@ -372,30 +381,30 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
                             lines[lineIndex] = changedLine;
                             macro.replacementsCount++;
                             totalReplacements++;
-                            
+
                             if (macro.relativeFilePath !== relativeFilePath && macro.dependencies) {
                                 // If a (global) macro is used/invoked in a different file than where it was defined,
                                 // it may require importing some additional dependencies from its origin files,
                                 // listed behind the macro-marker, e.g.  //@inline-global:_localDoThis,_localDoThat
-                                
+
                                 // console.warn(`! usage of global macro "${macro.name}" outside its definition file \n` +
                                 //              `  -> defined in: ${relativeFilePath}\n  -> used in:   ${macro.relativeFilePath}`);
                                 for (let dependency of macro.dependencies) {
                                     fileUtils.getImportsHelper().addImportIfNotExists(macro.name, macro.filename, dependency, lineIndex);
                                 }
                             }
-                            
+
                             // re-iterate, because macros may be using other macros
                             shouldScanForInvocations = true;
                         }
                     }
                 }
             });
-            
+
             if (totalReplacements > totalReplacementsBefore) {
                 totalChangedFiles++;
-            } 
-            
+            }
+
             return {code: lines.join('\n'), map: null};
         }
     }
@@ -404,15 +413,15 @@ export default function createRollupInlineMacrosPlugin(opts = {}) {
 const IMPORT_FROM_REGEX = / from '[./a-z0-9_$]+?([.a-z0-9_$]+?)(?:\.js)?';?/i;
 
 /**
- * Helper for adding additional imports for a macro's dependencies into the respective file where the 
+ * Helper for adding additional imports for a macro's dependencies into the respective file where the
  * invocation gets inlined.
  * (!) Assumptions & limitations:
  *     - the macro symbol itself is imported in the target file
  *     - neither the macro nor its dependencies are default exports
- *     - macro-dependencies are exported by the same file as the macro 
- *     - comments in/after line(s) of an import statement must not contain a macro or dependency name in such a way 
+ *     - macro-dependencies are exported by the same file as the macro
+ *     - comments in/after line(s) of an import statement must not contain a macro or dependency name in such a way
  *       that could be misinterpreted as part of the import, e.g. import {foo} from 'module'; // dont use {foo} here
- *     - multi-line imports must use trailing commas, not commas at the start of each further module line    
+ *     - multi-line imports must use trailing commas, not commas at the start of each further module line
  */
 class ImportsHelper {
     /**
@@ -447,28 +456,28 @@ class ImportsHelper {
      * @private
      */
     _createImportedNameRegex(name) {
-        return new RegExp(`([{,\\s])(${name.replace(/[$\\]/g, '\\$1')})([,}\\s])`, 'i'); 
-    } 
-    
+        return new RegExp(`([{,\\s])(${name.replace(/[$\\]/g, '\\$1')})([,}\\s])`, 'i');
+    }
+
     /**
      * @param {string} causingName - the name of the already-imported module we want to add another dependency-import for
      *                               (!) the dependency is assumed to be located in the same file as the causing name
      * @param {string} causeFilename
      * @param {string} nameToAdd - the name to be imported alongside (and from the same file as) causingName
-     * @param {number} forLineIndex - the line index of the causing invocation 
+     * @param {number} forLineIndex - the line index of the causing invocation
      */
-    addImportIfNotExists(causingName, causeFilename, nameToAdd, forLineIndex) {
+    addImportIfNotExists(causingName, causeFilename, nameToAdd) {
         let causeModuleName = causeFilename.replace(/^.*\/|\.js$/g, ''),
             cacheKey = nameToAdd + '@' + causeFilename,
             success = false;
-        
+
         const SIMILAR_IMPORT = `{${nameToAdd}} from '${causeModuleName}'`;
 
         DEBUG && this._addToLog(`Trying to auto-add macro-dependency import similar to:\n import ${SIMILAR_IMPORT}`);
-        
+
         if (this._addedImports[cacheKey]) {
             this._addToLog(`Skipped adding dependency import - some import like ${SIMILAR_IMPORT} already exists in ${this._filename}`);
-            return; 
+            return;
         }
         if (this._firstImportLine > this._lastImportLine) {
             throw new Error('Error: no imports in file! ImportsHelper can only alter existing imports.');
@@ -479,7 +488,7 @@ class ImportsHelper {
 
         DEBUG && this._addToLog(`_causingNameRegex: ${_causingNameRegex}\n`+
                                 `_nameToAddRegex  : ${_nameToAddRegex}`);
-        
+
         for (let i = this._lastImportLine, foundModuleName = null, line; i >= this._firstImportLine; i--) {
             line = this._lines[i];
             if (foundModuleName !== causeModuleName) {
@@ -488,8 +497,8 @@ class ImportsHelper {
                     continue;
                 }
                 DEBUG && this._addToLog(`Located imports from "${foundModuleName}" in line ${i}`);
-            } 
-            
+            }
+
             if (_nameToAddRegex.test(line)) {
                 this._addToLog(`Skipped adding macro-dependency ${nameToAdd} (already imported)`);
                 success = true;
@@ -502,7 +511,7 @@ class ImportsHelper {
                                `OLD:  ${oldLine}\nNEW:  ${newLine}`);
                 success = true;
             }
-            
+
             if (success) {
                 this._addedImports[cacheKey] = true;
             } else if (line.startsWith('import ')) {
@@ -535,15 +544,15 @@ class ImportsHelper {
  * @property {string[]} params - names of the formal parameters in the function definition
  * @property {string} body - the function body code
  * @property {string} bodyWithPlaceholders - the function body with formal parameters replaced with placeholders,
- *                           e.g. `(foo,bar) => alert(foo + bar)` will have bodyWithPlaceholders `(alert(%0% + %1%))`   
+ *                           e.g. `(foo,bar) => alert(foo + bar)` will have bodyWithPlaceholders `(alert(%0% + %1%))`
  * @property {RegExp} invocationRegex - the regex to match an invocation
  * @property {number} replacementsCount
  * @property {string} lineReference
  * @property {string} relativeFilePath - relative path of the file this macro is defined in
  * @property {string} filename - the filename this macro is defined in
- * @property {?string[]} dependencies - if the macro is global, this is a list of dependencies which need to be added as imports 
+ * @property {?string[]} dependencies - if the macro is global, this is a list of dependencies which need to be added as imports
  *                                      when inlining an invocation within a file which is not the macro's own file
- * @property {boolean} isGlobal                                     
+ * @property {boolean} isGlobal
  */
 
 /**
@@ -559,6 +568,6 @@ class ImportsHelper {
  * @property {RollupInlineMacrosPlugin_InlineMacro[]} localMacros
  * @property {string[]} lines
  * @property {function} LOG
- * @property {function} LOG_FORCE 
+ * @property {function} LOG_FORCE
  * @property {function:ImportsHelper} getImportsHelper
  */

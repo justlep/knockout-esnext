@@ -271,7 +271,7 @@ const COMPUTED_PROTOTYPE = {
 
         let state = this[COMPUTED_STATE],
             disposeWhen = state.disposeWhen,
-            changed = false;
+            changed;
         
         if (state.isBeingEvaluated) {
             // If the evaluation of a ko.computed causes side effects, it's possible that it will trigger its own re-evaluation.
@@ -313,7 +313,7 @@ const COMPUTED_PROTOTYPE = {
 
         let computedObservable = this,
             state = computedObservable[COMPUTED_STATE],
-            changed = false;
+            changed;
 
         // Initially, we assume that none of the subscriptions are still being used (i.e., all are candidates for disposal).
         // Then, during evaluation, we cross off any that are in fact still being used.
