@@ -257,14 +257,6 @@ export const renderTemplateForEach = (template, arrayOrObservableArray, options,
 
 const TEMPLATE_COMPUTED_DOM_DATA_KEY = nextDomDataKey();
 
-const _disposeOldComputedAndStoreNewOne = (element, newComputed) => {
-    let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
-    if (oldComputed && (typeof oldComputed.dispose === 'function')) {
-        oldComputed.dispose();
-    }
-    setDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY, (newComputed && (!newComputed.isActive || newComputed.isActive())) ? newComputed : undefined);
-};
-
 const CLEAN_CONTAINER_DOM_DATA_KEY = nextDomDataKey();
 
 bindingHandlers.template = {
@@ -331,6 +323,12 @@ bindingHandlers.template = {
             }
         }
 
+        // Dispose the old computed before displaying data since in some cases, the code below can cause the old computed to update
+        let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
+        if (oldComputed && (typeof oldComputed.dispose === 'function')) {
+            oldComputed.dispose();
+        }
+        
         if ('foreach' in options) {
             // Render once for each data point (treating data set as empty if shouldDisplay==false)
             let dataArray = (shouldDisplay && options['foreach']) || [];
@@ -350,8 +348,8 @@ bindingHandlers.template = {
             templateComputed = renderTemplate(template, innerBindingContext, options, element);
         }
 
-        // It only makes sense to have a single template computed per element (otherwise which one should have its output displayed?)
-        _disposeOldComputedAndStoreNewOne(element, templateComputed);
+        setDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY, 
+            (templateComputed && (!templateComputed.isActive || templateComputed.isActive())) ? templateComputed : undefined);
     }
 };
 
