@@ -93,7 +93,7 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
         mapData = lastMappingResult[oldPosition];
         let _indexObservable = mapData.indexObservable;
         if (currentArrayIndex !== peekObservableInternal(_indexObservable)) {
-            itemsForBeforeMoveCallbacks[mapData.indexObservable.peek()] = mapData;
+            itemsForBeforeMoveCallbacks[peekObservableInternal(mapData.indexObservable)] = mapData;
             itemsForAfterMoveCallbacks[currentArrayIndex] = mapData;
         }
         // Since updating the index might change the nodes, do so before calling fixUpContinuousNodeArray
@@ -150,7 +150,7 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
                                 if (mapData.arrayEntry === DELETED_ITEM_DUMMY_VALUE) {
                                     mapData = null;
                                 } else {
-                                    itemsForBeforeRemoveCallbacks[mapData.indexObservable.peek()] = mapData;
+                                    itemsForBeforeRemoveCallbacks[peekObservableInternal(mapData.indexObservable)] = mapData;
                                 }
                             }
                             if (mapData) {
