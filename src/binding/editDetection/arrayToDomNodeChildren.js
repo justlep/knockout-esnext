@@ -71,7 +71,9 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     let nodesToDelete = [];
     let itemsToMoveFirstIndexes = [];
     let itemsForBeforeRemoveCallbacks = [];
-    let itemsForMoveCallbacks = [];
+    let itemsForBeforeMoveCallbacks = [];
+    let itemsForAfterMoveCallbacks = [];
+    
     let itemsForAfterAddCallbacks = [];
     let mapData;
     let countWaitingForRemove = 0;
@@ -83,7 +85,7 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
         };
         newMappingResult.push(mapData);
         if (!isFirstExecution) {
-            itemsForAfterAddCallbacks.push(mapData);
+            itemsForAfterAddCallbacks[currentArrayIndex - 1] = mapData;
         }
     };
 
@@ -91,7 +93,8 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
         mapData = lastMappingResult[oldPosition];
         let _indexObservable = mapData.indexObservable;
         if (currentArrayIndex !== peekObservableInternal(_indexObservable)) {
-            itemsForMoveCallbacks.push(mapData);
+            itemsForBeforeMoveCallbacks[mapData.indexObservable.peek()] = mapData;
+            itemsForAfterMoveCallbacks[currentArrayIndex] = mapData;
         }
         // Since updating the index might change the nodes, do so before calling fixUpContinuousNodeArray
         _indexObservable(currentArrayIndex++);
@@ -100,10 +103,11 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     };
 
     const _callCallback = (callback, items) => {
-        for (let i = 0, len = items.length; i < len; i++) {
-            let item = items[i];
-            for (let node of item.mappedNodes) {
-                callback(node, i, item.arrayEntry);
+        for (let i = 0, len = items.length, item; i < len; i++) {
+            if (item = items[i]) { // intended cond-assign
+                for (let node of item.mappedNodes) {
+                    callback(node, i, item.arrayEntry);
+                }
             }
         }
     };
@@ -146,7 +150,7 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
                                 if (mapData.arrayEntry === DELETED_ITEM_DUMMY_VALUE) {
                                     mapData = null;
                                 } else {
-                                    itemsForBeforeRemoveCallbacks.push(mapData);
+                                    itemsForBeforeRemoveCallbacks[mapData.indexObservable.peek()] = mapData;
                                 }
                             }
                             if (mapData) {
@@ -184,7 +188,7 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     setDomData(domNode, LAST_MAPPING_RESULT_DOM_DATA_KEY, newMappingResult);
 
     // Call beforeMove first before any changes have been made to the DOM
-    options.beforeMove && _callCallback(options.beforeMove, itemsForMoveCallbacks);
+    options.beforeMove && _callCallback(options.beforeMove, itemsForBeforeMoveCallbacks);
 
     // Next remove nodes for deleted items (or just clean if there's a beforeRemove callback)
     // TODO modify so that removeNode() becomes an explicit invocation which can be inlined (removeNode = global macro)
@@ -252,10 +256,12 @@ export const setDomNodeChildrenFromArrayMapping = (domNode, array, mapping, opti
     // as already "removed" so we won't call beforeRemove for it again, and it ensures that the item won't match up
     // with an actual item in the array and appear as "retained" or "moved".
     for (let i = 0, len = itemsForBeforeRemoveCallbacks.length; i < len; ++i) {
-        itemsForBeforeRemoveCallbacks[i].arrayEntry = DELETED_ITEM_DUMMY_VALUE;
+        if (itemsForBeforeRemoveCallbacks[i]) {
+            itemsForBeforeRemoveCallbacks[i].arrayEntry = DELETED_ITEM_DUMMY_VALUE;
+        }
     }
 
     // Finally call afterMove and afterAdd callbacks
-    options.afterMove && _callCallback(options.afterMove, itemsForMoveCallbacks);
+    options.afterMove && _callCallback(options.afterMove, itemsForAfterMoveCallbacks);
     options.afterAdd &&  _callCallback(options.afterAdd, itemsForAfterAddCallbacks);
 };

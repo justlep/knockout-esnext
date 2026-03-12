@@ -167,7 +167,7 @@ describe('Binding: Foreach', function() {
         expect(testNode.childNodes[0]).toContainHtml('<span data-bind="text: $data">first child</span><span data-bind="text: $data">added child</span>');
         expect(afterAddCallbackData.length).toEqual(1);
         expect(afterAddCallbackData[0].elem).toEqual(testNode.childNodes[0].childNodes[1]);
-        expect(afterAddCallbackData[0].index).toEqual(0);
+        expect(afterAddCallbackData[0].index).toEqual(1);
         expect(afterAddCallbackData[0].value).toEqual("added child");
         expect(afterAddCallbackData[0].currentParentClone).toContainHtml('<span data-bind="text: $data">first child</span><span data-bind="text: $data">added child</span>');
 
@@ -375,10 +375,10 @@ describe('Binding: Foreach', function() {
 
     it('Should be able to nest foreaches and access binding contexts both during and after binding', function() {
         testNode.innerHTML = "<div data-bind='foreach: items'>"
-                                + "<div data-bind='foreach: children'>"
-                                    + "(Val: <span data-bind='text: $data'></span>, Parents: <span data-bind='text: $parents.length'></span>, Rootval: <span data-bind='text: $root.rootVal'></span>)"
-                                + "</div>"
-                           + "</div>";
+            + "<div data-bind='foreach: children'>"
+            + "(Val: <span data-bind='text: $data'></span>, Parents: <span data-bind='text: $parents.length'></span>, Rootval: <span data-bind='text: $root.rootVal'></span>)"
+            + "</div>"
+            + "</div>";
         var viewModel = {
             rootVal: 'ROOTVAL',
             items: ko.observableArray([
@@ -466,23 +466,23 @@ describe('Binding: Foreach', function() {
         ko.applyBindings(viewModel, testNode);
 
         expect(testNode).toContainHtml('<ul>'
-                                                + '<!--ko foreach: items-->'
-                                                   + '<li>'
-                                                      + '<!--ko if: childval-->'
-                                                         + '<span data-bind="text: childval.childprop">123</span>'
-                                                      + '<!--/ko-->'
-                                                   + '</li>'
-                                                   + '<li>'
-                                                      + '<!--ko if: childval-->'
-                                                      + '<!--/ko-->'
-                                                   + '</li>'
-                                                   + '<li>'
-                                                      + '<!--ko if: childval-->'
-                                                         + '<span data-bind="text: childval.childprop">456</span>'
-                                                      + '<!--/ko-->'
-                                                   + '</li>'
-                                                + '<!--/ko-->'
-                                             + '</ul>');
+            + '<!--ko foreach: items-->'
+            + '<li>'
+            + '<!--ko if: childval-->'
+            + '<span data-bind="text: childval.childprop">123</span>'
+            + '<!--/ko-->'
+            + '</li>'
+            + '<li>'
+            + '<!--ko if: childval-->'
+            + '<!--/ko-->'
+            + '</li>'
+            + '<li>'
+            + '<!--ko if: childval-->'
+            + '<span data-bind="text: childval.childprop">456</span>'
+            + '<!--/ko-->'
+            + '</li>'
+            + '<!--/ko-->'
+            + '</ul>');
     });
 
     it('Should be able to give an alias to $data using \"as\"', function() {
@@ -494,10 +494,10 @@ describe('Binding: Foreach', function() {
 
     it('Should be able to give an alias to $data using \"as\", and use it within a nested loop', function() {
         testNode.innerHTML = "<div data-bind='foreach: { data: someItems, as: \"item\" }'>"
-                           +    "<span data-bind='foreach: item.sub'>"
-                           +        "<span data-bind='text: item.name+\":\"+$data'></span>,"
-                           +    "</span>"
-                           + "</div>";
+            +    "<span data-bind='foreach: item.sub'>"
+            +        "<span data-bind='text: item.name+\":\"+$data'></span>,"
+            +    "</span>"
+            + "</div>";
         var someItems = [{ name: 'alpha', sub: ['a', 'b'] }, { name: 'beta', sub: ['c'] }];
         ko.applyBindings({ someItems: someItems }, testNode);
         expect(testNode.childNodes[0]).toContainText('alpha:a,alpha:b,beta:c,');
@@ -505,10 +505,10 @@ describe('Binding: Foreach', function() {
 
     it('Should be able to set up multiple nested levels of aliases using \"as\"', function() {
         testNode.innerHTML = "<div data-bind='foreach: { data: someItems, as: \"item\" }'>"
-                           +    "<span data-bind='foreach: { data: item.sub, as: \"subvalue\" }'>"
-                           +        "<span data-bind='text: item.name+\":\"+subvalue'></span>,"
-                           +    "</span>"
-                           + "</div>";
+            +    "<span data-bind='foreach: { data: item.sub, as: \"subvalue\" }'>"
+            +        "<span data-bind='text: item.name+\":\"+subvalue'></span>,"
+            +    "</span>"
+            + "</div>";
         var someItems = [{ name: 'alpha', sub: ['a', 'b'] }, { name: 'beta', sub: ['c','d'] }];
         ko.applyBindings({ someItems: someItems }, testNode);
         expect(testNode.childNodes[0]).toContainText('alpha:a,alpha:b,beta:c,beta:d,');
@@ -792,10 +792,10 @@ describe('Binding: Foreach', function() {
 
         it('Should provide itemIndex observable in the context accessible across multiple nested levels', function() {
             testNode.innerHTML = "<div data-bind='foreach: { data: someItems, as: \"item\", noChildContext: true }'>"
-                               +    "<span data-bind='foreach: { data: item.sub, as: \"subvalue\", noChildContext: true }'>"
-                               +        "<span data-bind='text: itemIndex()+item.name+\":\"+subvalueIndex()+subvalue'></span>,"
-                               +    "</span>"
-                               + "</div>";
+                +    "<span data-bind='foreach: { data: item.sub, as: \"subvalue\", noChildContext: true }'>"
+                +        "<span data-bind='text: itemIndex()+item.name+\":\"+subvalueIndex()+subvalue'></span>,"
+                +    "</span>"
+                + "</div>";
             var someItems = [{ name: 'alpha', sub: ['a', 'b'] }, { name: 'beta', sub: ['c','d'] }];
             ko.applyBindings({ someItems: someItems }, testNode);
             expect(testNode.childNodes[0]).toContainText('0alpha:0a,0alpha:1b,1beta:0c,1beta:1d,');
@@ -869,10 +869,10 @@ describe('Binding: Foreach', function() {
 
         it('Should provide itemIndex observable in the context accessible across multiple nested levels', function() {
             testNode.innerHTML = "<div data-bind='foreach: { data: someItems, as: \"item\", noChildContext: false }'>"
-                               +    "<span data-bind='foreach: { data: item.sub, as: \"subvalue\", noChildContext: false }'>"
-                               +        "<span data-bind='text: itemIndex()+item.name+\":\"+subvalueIndex()+subvalue'></span>,"
-                               +    "</span>"
-                               + "</div>";
+                +    "<span data-bind='foreach: { data: item.sub, as: \"subvalue\", noChildContext: false }'>"
+                +        "<span data-bind='text: itemIndex()+item.name+\":\"+subvalueIndex()+subvalue'></span>,"
+                +    "</span>"
+                + "</div>";
             var someItems = [{ name: 'alpha', sub: ['a', 'b'] }, { name: 'beta', sub: ['c','d'] }];
             ko.applyBindings({ someItems: someItems }, testNode);
             expect(testNode.childNodes[0]).toContainText('0alpha:0a,0alpha:1b,1beta:0c,1beta:1d,');
