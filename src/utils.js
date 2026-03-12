@@ -1,5 +1,5 @@
 import {isObservable, unwrapObservable} from './subscribables/observableUtils';
-import {cleanNode, removeNode} from './utils.domNodeDisposal';
+import {addDisposeCallback, cleanNode, removeNode} from './utils.domNodeDisposal';
 import {firstChild, nextSibling, setDomNodeChildren as virtualElementsSetDomNodeChildren} from './virtualElements';
 import {onError} from './onError';
 
@@ -320,11 +320,9 @@ export const valuesArePrimitiveAndEqual = (PRIMITIVE_TYPES => (a, b) => {
 })({'undefined': 1, 'boolean': 1, 'number': 1, 'string': 1});
 
 export const registerEventHandler = (element, eventType, handler) => {
-    if (typeof element.addEventListener === 'function') {
-        element.addEventListener(eventType, catchFunctionErrors(handler), false);
-        return;
-    }
-    throw new Error('Browser doesn\'t support addEventListener');
+    let wrappedHandler = catchFunctionErrors(handler);
+    element.addEventListener(eventType, wrappedHandler);
+    addDisposeCallback(element, () => element.removeEventListener(eventType, wrappedHandler));
 };
 
 export const triggerEvent = (element, eventType) => {

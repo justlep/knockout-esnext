@@ -69,14 +69,8 @@ const _cleanNodesInList = (nodeList, onlyComments) => {
  * @param {function} callback 
  */
 export const addDisposeCallback = (node, callback) => {
-    let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
-        itemArray = dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY];
-
-    if (itemArray) {
-        itemArray.push(callback);
-    } else {
-        dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = [callback];
-    }
+    let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {});
+    dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY]?.push(callback) || (dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = [callback]);
 };
 
  /**
