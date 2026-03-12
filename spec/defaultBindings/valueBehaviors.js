@@ -1,4 +1,4 @@
-describe('Binding: Value', function() {
+describe('Binding: Value', function () {
     beforeEach(jasmine.prepareTestNode);
 
     it('Should assign the value to the node', function () {
@@ -362,7 +362,7 @@ describe('Binding: Value', function() {
 
             // Also check that the selection doesn't change later (see https://github.com/knockout/knockout/issues/2218)
             waits(10);
-            runs(function() {
+            runs(function () {
                 expect(testNode.childNodes[0].selectedIndex).toEqual(0);
             });
         });
@@ -559,7 +559,7 @@ describe('Binding: Value', function() {
             expect(observable()).toEqual("E");
         });
 
-        it('Should update model value and selection when changing observable option value', function() {
+        it('Should update model value and selection when changing observable option value', function () {
             var selected = ko.observable('B');
             var people = [
                 { name: ko.observable('Annie'), id: ko.observable('A') },
@@ -618,6 +618,24 @@ describe('Binding: Value', function() {
 
             expect(testNode.childNodes[0].selectedIndex).toEqual(1);
             expect(observable()).toEqual("B");
+        });
+
+        it('Should update observable before subsequent change event handler', function () {
+            // See https://github.com/knockout/knockout/issues/2530
+            testNode.innerHTML = '<select data-bind="value: testId, event: { change: function() {$data.checkValue($element.value)} }"><option value="1">1</option><option value="2">2</option></select>';
+            var checkedValue;
+            var vm = {
+                testId: ko.observable(1),
+                checkValue: function (val) {
+                    checkedValue = val;
+                    expect(val).toEqual(vm.testId());
+                }
+            };
+            ko.applyBindings(vm, testNode);
+
+            testNode.childNodes[0].selectedIndex = 1;
+            ko.utils.triggerEvent(testNode.childNodes[0], "change");
+            expect(checkedValue).toEqual(vm.testId());
         });
 
         describe('Using valueAllowUnset option', function () {

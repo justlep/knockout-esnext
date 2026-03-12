@@ -104,9 +104,11 @@ bindingHandlers.value = {
 
         if (tagName === 'SELECT') {
             let isChangeHandlerBound = false;
+            registerEventHandler(element, 'change', () => {
+                isChangeHandlerBound && _valueUpdateHandler();
+            });
             bindingEvent.subscribe(element, EVENT_CHILDREN_COMPLETE, () => {
                 if (!isChangeHandlerBound) {
-                    registerEventHandler(element, 'change', _valueUpdateHandler);
                     isChangeHandlerBound = !!computed(_updateFromModel, null, {disposeWhenNodeIsRemoved: element});
                 } else if (allBindings.get('valueAllowUnset')) {
                     _updateFromModel();
