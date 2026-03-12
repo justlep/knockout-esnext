@@ -84,7 +84,7 @@ bindingHandlers.checked = {
 
             if (valueIsArray) {
                 // When a checkbox is bound to an array, being checked represents its value being present in that array
-                element.checked = modelValue.includes(elemValue);
+                element.checked = !!modelValue?.includes(elemValue);
                 oldElemValue = elemValue;
             } else if (isCheckbox && elemValue === undefined) {
                 // When a checkbox is bound to any other value (not an array) and "checkedValue" is not defined,
