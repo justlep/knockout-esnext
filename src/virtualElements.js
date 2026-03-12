@@ -119,7 +119,10 @@ export const firstChild = (node) => {
     if (!_isStartComment(node)) {
         let _nodeFirstChild = node.firstChild; 
         if (_nodeFirstChild && _isEndComment(_nodeFirstChild)) {
-            throw new Error('Found invalid end comment, as the first child of ' + node);
+            if (DEBUG) {
+                throw new Error("Found invalid end comment, as the first child of " + node);
+            }
+            return _nodeFirstChild.nextSibling;
         }
         return _nodeFirstChild;
     } 
@@ -138,7 +141,10 @@ export const nextSibling = (node) => {
     if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
         if (!_nodeNextSibling[SYM_MATCHED_END_COMMENT]) {
             // unmatched end comment!
-            throw Error('Found end comment without a matching opening comment, as child of ' + node);
+            if (DEBUG) {
+                throw Error("Found end comment without a matching opening comment, as child of " + node);
+            }
+            return null;
         } 
         return null;
     }
