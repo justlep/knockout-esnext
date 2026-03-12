@@ -1,6 +1,6 @@
 
 Running Rollup inline-macros plugin
-for Knockout-ESNext JavaScript library v3.5.1028
+for Knockout-ESNext JavaScript library v3.5.1030
 
 
 ------- src/binding/bindingAttributeSyntax.js --------
@@ -180,7 +180,7 @@ Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {nextDomDataKey, getDomData, setDomData} from '../../utils.domData';
 NEW:  import {nextDomDataKey, getDomData, DOM_DATASTORE_PROP, setDomData} from '../../utils.domData';
 
-[arrayToDomNodeChildren.js:93]
+[arrayToDomNodeChildren.js:95]
 Inlined: "peekObservableInternal" (global macro)
 OLD:  if (currentArrayIndex !== peekObservableInternal(_indexObservable)) {
 NEW:  if (currentArrayIndex !== (_indexObservable[LATEST_VALUE_KEY])) {
@@ -190,7 +190,21 @@ Added dependency-import "LATEST_VALUE_KEY" for macro "peekObservableInternal"
 OLD:  import {observable, peekObservableInternal} from '../../subscribables/observable';
 NEW:  import {observable, peekObservableInternal, LATEST_VALUE_KEY} from '../../subscribables/observable';
 
-[arrayToDomNodeChildren.js:190]
+[arrayToDomNodeChildren.js:96]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  itemsForBeforeMoveCallbacks[peekObservableInternal(mapData.indexObservable)] = mapData;
+NEW:  itemsForBeforeMoveCallbacks[(mapData.indexObservable[LATEST_VALUE_KEY])] = mapData;
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in arrayToDomNodeChildren.js
+
+[arrayToDomNodeChildren.js:153]
+Inlined: "peekObservableInternal" (global macro)
+OLD:  itemsForBeforeRemoveCallbacks[peekObservableInternal(mapData.indexObservable)] = mapData;
+NEW:  itemsForBeforeRemoveCallbacks[(mapData.indexObservable[LATEST_VALUE_KEY])] = mapData;
+
+Skipped adding dependency import - some import like {LATEST_VALUE_KEY} from 'observable' already exists in arrayToDomNodeChildren.js
+
+[arrayToDomNodeChildren.js:194]
 Inlined: "removeNode" (global macro)
 OLD:  // TODO modify so that removeNode() becomes an explicit invocation which can be inlined (removeNode = global macro)
 NEW:  // TODO modify so that (cleanNode().remove()) becomes an explicit invocation which can be inlined (removeNode = global macro)
@@ -605,10 +619,10 @@ Added dependency-import "LATEST_VALUE_KEY" for macro "peekObservableInternal"
 OLD:  import {peekObservableInternal} from '../subscribables/observable.js';
 NEW:  import {peekObservableInternal, LATEST_VALUE_KEY} from '../subscribables/observable.js';
 
-[templating.js:261]
+[templating.js:282]
 Inlined: "getDomData" (global macro)
-OLD:  let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
-NEW:  let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
+OLD:  if (!container || !getDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY)) {
+NEW:  if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTORE_PROP][CLEAN_CONTAINER_DOM_DATA_KEY])) {
 
 [templating.js:10]
 Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
@@ -616,13 +630,6 @@ OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
 [templating.js:290]
-Inlined: "getDomData" (global macro)
-OLD:  if (!container || !getDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY)) {
-NEW:  if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTORE_PROP][CLEAN_CONTAINER_DOM_DATA_KEY])) {
-
-Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templating.js
-
-[templating.js:298]
 Inlined: "childNodes" (global macro)
 OLD:  let templateNodes = childNodes(element);
 NEW:  let templateNodes = (_isStartComment(element) ? _getVirtualChildren(element) : element.childNodes);
@@ -637,12 +644,19 @@ Added dependency-import "_getVirtualChildren" for macro "childNodes"
 OLD:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
 NEW:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, _getVirtualChildren, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
 
-[templating.js:298]
+[templating.js:290]
 Inlined: "_isStartComment"  [iteration #2] (global macro)
 OLD:  let templateNodes = childNodes(element);
 NEW:  let templateNodes = (((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes);
 
 Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in templating.js
+
+[templating.js:327]
+Inlined: "getDomData" (global macro)
+OLD:  let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
+NEW:  let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
+
+Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'utils.domData' already exists in templating.js
 
 
 ------- src/utils.domData.js --------
@@ -660,7 +674,7 @@ Found local macro: "_isNodeTypeCleanable"
 [utils.domNodeDisposal.js:10]
 Found local macro: "_isNodeTypeCleanableWithDescendents"
 
-[utils.domNodeDisposal.js:126]
+[utils.domNodeDisposal.js:120]
 Found global macro: "removeNode"
 Dependencies (to auto-import): cleanNode
 
@@ -669,12 +683,12 @@ Inlined: "_isNodeTypeCleanableWithDescendents"
 OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
 
-[utils.domNodeDisposal.js:110]
+[utils.domNodeDisposal.js:104]
 Inlined: "_isNodeTypeCleanable"
 OLD:  if (_isNodeTypeCleanable(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 8 || node.nodeType === 9)) {
 
-[utils.domNodeDisposal.js:115]
+[utils.domNodeDisposal.js:109]
 Inlined: "_isNodeTypeCleanableWithDescendents"
 OLD:  if (_isNodeTypeCleanableWithDescendents(node.nodeType)) {
 NEW:  if ((node.nodeType === 1 || node.nodeType === 9)) {
@@ -771,17 +785,17 @@ Inlined: "_isEndComment" (global macro)
 OLD:  if (_nodeFirstChild && _isEndComment(_nodeFirstChild)) {
 NEW:  if (_nodeFirstChild && ((_nodeFirstChild.nodeType === 8) && END_COMMENT_REGEX.test(_nodeFirstChild.nodeValue))) {
 
-[virtualElements.js:127]
+[virtualElements.js:130]
 Inlined: "_isEndComment" (global macro)
 OLD:  if (!_nodeNextSibling|| _isEndComment(_nodeNextSibling)) {
 NEW:  if (!_nodeNextSibling|| ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
 
-[virtualElements.js:134]
+[virtualElements.js:137]
 Inlined: "_isStartComment" (global macro)
 OLD:  if (_isStartComment(node)) {
 NEW:  if (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
 
-[virtualElements.js:138]
+[virtualElements.js:141]
 Inlined: "_isEndComment" (global macro)
 OLD:  if (_nodeNextSibling && _isEndComment(_nodeNextSibling)) {
 NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
@@ -789,11 +803,11 @@ NEW:  if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_
 
 Global macros inlining summary:
  7x  getDomData  - [src/utils.domData.js:10]
- 4x  removeNode  - [src/utils.domNodeDisposal.js:126]
+ 4x  removeNode  - [src/utils.domNodeDisposal.js:120]
  12x  _isStartComment  - [src/virtualElements.js:19]
  4x  _isEndComment  - [src/virtualElements.js:20]
  5x  childNodes  - [src/virtualElements.js:56]
- 7x  peekObservableInternal  - [src/subscribables/observable.js:60]
+ 9x  peekObservableInternal  - [src/subscribables/observable.js:60]
  7x  observableValueWillMutateInternal  - [src/subscribables/observable.js:63]
  1x  isSubscribable  - [src/subscribables/observableUtils.js:2]
  4x  updateSubscribableVersion  - [src/subscribables/subscribable.js:20]
@@ -823,5 +837,5 @@ Local macros inlining summary:
 
 =======================================================
 Rollup inline-macros plugin finished successfully
-Inlined 104 usages of 30 macros (12 global) in 20 files
+Inlined 106 usages of 30 macros (12 global) in 20 files
 =======================================================

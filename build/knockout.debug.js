@@ -1,5 +1,5 @@
 /*!
- * Knockout-ESNext JavaScript library v3.5.1028
+ * Knockout-ESNext JavaScript library v3.5.1030
  * https://github.com/justlep/knockout-esnext
  * Forked from Knockout v3.5.1
  * (c) The Knockout.js team - https://knockoutjs.com/
@@ -12,7 +12,7 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ko = factory());
 })(this, (function () {
     const DEBUG = true; // inserted by rollup intro
-    const version = '3.5.1028'; // inserted by rollup intro
+    const version = '3.5.1030'; // inserted by rollup intro
 
     /** @type {function} */
     let onError = null;
@@ -194,14 +194,8 @@
      * @param {function} callback 
      */
     const addDisposeCallback = (node, callback) => {
-        let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}),
-            itemArray = dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY];
-
-        if (itemArray) {
-            itemArray.push(callback);
-        } else {
-            dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = [callback];
-        }
+        let dataForNode = node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {});
+        dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY]?.push(callback) || (dataForNode[DISPOSE_CALLBACKS_DOM_DATA_KEY] = [callback]);
     };
 
      /**
@@ -383,7 +377,10 @@
         if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
             let _nodeFirstChild = node.firstChild; 
             if (_nodeFirstChild && ((_nodeFirstChild.nodeType === 8) && END_COMMENT_REGEX.test(_nodeFirstChild.nodeValue))) {
-                throw new Error('Found invalid end comment, as the first child of ' + node);
+                if (DEBUG) {
+                    throw new Error("Found invalid end comment, as the first child of " + node);
+                }
+                return _nodeFirstChild.nextSibling;
             }
             return _nodeFirstChild;
         } 
@@ -402,7 +399,10 @@
         if (_nodeNextSibling && ((_nodeNextSibling.nodeType === 8) && END_COMMENT_REGEX.test(_nodeNextSibling.nodeValue))) {
             if (!_nodeNextSibling[SYM_MATCHED_END_COMMENT]) {
                 // unmatched end comment!
-                throw Error('Found end comment without a matching opening comment, as child of ' + node);
+                if (DEBUG) {
+                    throw Error("Found end comment without a matching opening comment, as child of " + node);
+                }
+                return null;
             } 
             return null;
         }
@@ -732,11 +732,9 @@
     })({'undefined': 1, 'boolean': 1, 'number': 1, 'string': 1});
 
     const registerEventHandler = (element, eventType, handler) => {
-        if (typeof element.addEventListener === 'function') {
-            element.addEventListener(eventType, catchFunctionErrors(handler), false);
-            return;
-        }
-        throw new Error('Browser doesn\'t support addEventListener');
+        let wrappedHandler = catchFunctionErrors(handler);
+        element.addEventListener(eventType, wrappedHandler);
+        addDisposeCallback(element, () => element.removeEventListener(eventType, wrappedHandler));
     };
 
     const triggerEvent = (element, eventType) => {
@@ -3932,6 +3930,8 @@
                 case 'boolean':
                 case 'number':
                 case 'string':
+                case "bigint":
+                case "symbol":
                 case 'function':
                     outputProperties[indexer] = propertyValue;
                     break;
@@ -4030,7 +4030,9 @@
         let nodesToDelete = [];
         let itemsToMoveFirstIndexes = [];
         let itemsForBeforeRemoveCallbacks = [];
-        let itemsForMoveCallbacks = [];
+        let itemsForBeforeMoveCallbacks = [];
+        let itemsForAfterMoveCallbacks = [];
+        
         let itemsForAfterAddCallbacks = [];
         let mapData;
         let countWaitingForRemove = 0;
@@ -4042,7 +4044,7 @@
             };
             newMappingResult.push(mapData);
             if (!isFirstExecution) {
-                itemsForAfterAddCallbacks.push(mapData);
+                itemsForAfterAddCallbacks[currentArrayIndex - 1] = mapData;
             }
         };
 
@@ -4050,7 +4052,8 @@
             mapData = lastMappingResult[oldPosition];
             let _indexObservable = mapData.indexObservable;
             if (currentArrayIndex !== (_indexObservable[LATEST_VALUE_KEY])) {
-                itemsForMoveCallbacks.push(mapData);
+                itemsForBeforeMoveCallbacks[(mapData.indexObservable[LATEST_VALUE_KEY])] = mapData;
+                itemsForAfterMoveCallbacks[currentArrayIndex] = mapData;
             }
             // Since updating the index might change the nodes, do so before calling fixUpContinuousNodeArray
             _indexObservable(currentArrayIndex++);
@@ -4059,10 +4062,11 @@
         };
 
         const _callCallback = (callback, items) => {
-            for (let i = 0, len = items.length; i < len; i++) {
-                let item = items[i];
-                for (let node of item.mappedNodes) {
-                    callback(node, i, item.arrayEntry);
+            for (let i = 0, len = items.length, item; i < len; i++) {
+                if (item = items[i]) { // intended cond-assign
+                    for (let node of item.mappedNodes) {
+                        callback(node, i, item.arrayEntry);
+                    }
                 }
             }
         };
@@ -4105,7 +4109,7 @@
                                     if (mapData.arrayEntry === DELETED_ITEM_DUMMY_VALUE) {
                                         mapData = null;
                                     } else {
-                                        itemsForBeforeRemoveCallbacks.push(mapData);
+                                        itemsForBeforeRemoveCallbacks[(mapData.indexObservable[LATEST_VALUE_KEY])] = mapData;
                                     }
                                 }
                                 if (mapData) {
@@ -4143,7 +4147,7 @@
         setDomData(domNode, LAST_MAPPING_RESULT_DOM_DATA_KEY, newMappingResult);
 
         // Call beforeMove first before any changes have been made to the DOM
-        options.beforeMove && _callCallback(options.beforeMove, itemsForMoveCallbacks);
+        options.beforeMove && _callCallback(options.beforeMove, itemsForBeforeMoveCallbacks);
 
         // Next remove nodes for deleted items (or just clean if there's a beforeRemove callback)
         // TODO modify so that (cleanNode().remove()) becomes an explicit invocation which can be inlined (removeNode = global macro)
@@ -4211,11 +4215,13 @@
         // as already "removed" so we won't call beforeRemove for it again, and it ensures that the item won't match up
         // with an actual item in the array and appear as "retained" or "moved".
         for (let i = 0, len = itemsForBeforeRemoveCallbacks.length; i < len; ++i) {
-            itemsForBeforeRemoveCallbacks[i].arrayEntry = DELETED_ITEM_DUMMY_VALUE;
+            if (itemsForBeforeRemoveCallbacks[i]) {
+                itemsForBeforeRemoveCallbacks[i].arrayEntry = DELETED_ITEM_DUMMY_VALUE;
+            }
         }
 
         // Finally call afterMove and afterAdd callbacks
-        options.afterMove && _callCallback(options.afterMove, itemsForMoveCallbacks);
+        options.afterMove && _callCallback(options.afterMove, itemsForAfterMoveCallbacks);
         options.afterAdd &&  _callCallback(options.afterAdd, itemsForAfterAddCallbacks);
     };
 
@@ -4646,14 +4652,6 @@
 
     const TEMPLATE_COMPUTED_DOM_DATA_KEY = nextDomDataKey();
 
-    const _disposeOldComputedAndStoreNewOne = (element, newComputed) => {
-        let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
-        if (oldComputed && (typeof oldComputed.dispose === 'function')) {
-            oldComputed.dispose();
-        }
-        setDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY, (newComputed && (!newComputed.isActive || newComputed.isActive())) ? newComputed : undefined);
-    };
-
     const CLEAN_CONTAINER_DOM_DATA_KEY = nextDomDataKey();
 
     bindingHandlers.template = {
@@ -4720,6 +4718,12 @@
                 }
             }
 
+            // Dispose the old computed before displaying data since in some cases, the code below can cause the old computed to update
+            let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
+            if (oldComputed && (typeof oldComputed.dispose === 'function')) {
+                oldComputed.dispose();
+            }
+            
             if ('foreach' in options) {
                 // Render once for each data point (treating data set as empty if shouldDisplay==false)
                 let dataArray = (shouldDisplay && options['foreach']) || [];
@@ -4739,8 +4743,8 @@
                 templateComputed = renderTemplate(template, innerBindingContext, options, element);
             }
 
-            // It only makes sense to have a single template computed per element (otherwise which one should have its output displayed?)
-            _disposeOldComputedAndStoreNewOne(element, templateComputed);
+            setDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY, 
+                (templateComputed && (!templateComputed.isActive || templateComputed.isActive())) ? templateComputed : undefined);
         }
     };
 
@@ -4912,7 +4916,7 @@
 
                 if (valueIsArray) {
                     // When a checkbox is bound to an array, being checked represents its value being present in that array
-                    element.checked = modelValue.includes(elemValue);
+                    element.checked = !!modelValue?.includes(elemValue);
                     oldElemValue = elemValue;
                 } else if (isCheckbox && elemValue === undefined) {
                     // When a checkbox is bound to any other value (not an array) and "checkedValue" is not defined,
@@ -5848,9 +5852,11 @@
 
             if (tagName === 'SELECT') {
                 let isChangeHandlerBound = false;
+                registerEventHandler(element, 'change', () => {
+                    isChangeHandlerBound && _valueUpdateHandler();
+                });
                 bindingEvent.subscribe(element, EVENT_CHILDREN_COMPLETE, () => {
                     if (!isChangeHandlerBound) {
-                        registerEventHandler(element, 'change', _valueUpdateHandler);
                         isChangeHandlerBound = !!computed(_updateFromModel, null, {disposeWhenNodeIsRemoved: element});
                     } else if (allBindings.get('valueAllowUnset')) {
                         _updateFromModel();
