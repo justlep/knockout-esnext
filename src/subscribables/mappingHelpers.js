@@ -44,6 +44,8 @@ const _mapJsObjectGraph = (rootObject, mapInputCallback, visitedObjects) => {
             case 'boolean':
             case 'number':
             case 'string':
+            case "bigint":
+            case "symbol":
             case 'function':
                 outputProperties[indexer] = propertyValue;
                 break;
