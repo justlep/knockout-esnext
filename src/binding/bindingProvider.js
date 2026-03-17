@@ -1,6 +1,7 @@
 import {START_COMMENT_REGEX} from '../virtualElements';
 import {preProcessBindings} from './expressionRewriting';
-import {addBindingsForCustomElement, getComponentNameForNode, _setNativeBindingProviderInstance} from '../components/customElements';
+import {addBindingsForCustomElement, _setNativeBindingProviderInstance} from '../components/customElements';
+import {defaultConfigRegistry} from '../components/defaultLoader.js';
 
 const DEFAULT_BINDING_ATTRIBUTE_NAME = "data-bind";
 
@@ -36,7 +37,7 @@ export class KoBindingProvider {
      *     make sure to change {@link bindingProviderMaySupportTextNodes} accordingly.
      */
     nodeHasBindings(node) {
-        return (node.nodeType === 1) ? !!(node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) || getComponentNameForNode(node)) :
+        return (node.nodeType === 1) ? !!node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) || defaultConfigRegistry.has(node.tagName) :
                (node.nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
     }
 
@@ -59,7 +60,7 @@ export class KoBindingProvider {
      * @internal
      */
     parseBindingsString(bindingsString, bindingContext, node, options) {
-        let cacheKey = bindingsString + (options && options['valueAccessors'] || ''),
+        let cacheKey = bindingsString + (options && options.valueAccessors || ''),
             bindingFunction = this._cache.get(cacheKey);
         
         if (bindingFunction) {

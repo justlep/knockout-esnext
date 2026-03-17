@@ -45,18 +45,8 @@ export const applyMemoizedBindingsToNextSibling = (bindings, nodeName) => memoiz
     }
 });
 
-
-export const ensureTemplateIsRewritten = (template, templateEngine, templateDocument) => {
-    if (templateEngine.isTemplateRewritten(template, templateDocument)) {
-        return;
-    }
-    templateEngine.rewriteTemplate(template, htmlString => memoizeBindingAttributeSyntax(htmlString, templateEngine), templateDocument);
-};
-
-export const memoizeBindingAttributeSyntax = (htmlString, templateEngine) => {
-    return htmlString
-        .replace(MEMOIZE_DATA_BINDING_ATTR_SYNTAX_REGEX,
-            (_0, tagToRetain, nodeName, _3, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, tagToRetain, nodeName, templateEngine))
-        .replace(MEMOIZE_VIRTUAL_CONTAINER_BINDING_SYNTAX_REGEX,
-            (_0, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, /* tagToRetain: */ '<!-- ko -->', /* nodeName: */ '#comment', templateEngine));
-};
+export const memoizeBindingAttributeSyntax = (htmlString, templateEngine) => htmlString
+    .replace(MEMOIZE_DATA_BINDING_ATTR_SYNTAX_REGEX,
+        (_0, tagToRetain, nodeName, _3, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, tagToRetain, nodeName, templateEngine))
+    .replace(MEMOIZE_VIRTUAL_CONTAINER_BINDING_SYNTAX_REGEX,
+        (_0, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, /* tagToRetain: */ '<!-- ko -->', /* nodeName: */ '#comment', templateEngine));

@@ -1,9 +1,9 @@
-import {_getFirstResultFromLoaders, clearCachedDefinition} from './loaderRegistry';
 import {parseHtmlFragment} from '../utils.domManipulation';
 import {cloneNodes} from '../utils';
-import {loaders} from './loaderRegistry';
 
 const CREATE_VIEW_MODEL_KEY = 'createViewModel';
+
+const ALLOWED_COMPONENT_NAME_REGEX = /^[a-z][a-z0-9._-]*-[a-z0-9._-]*$/;
 
 // The default loader is responsible for two things:
 // 1. Maintaining the default in-memory registry of component configuration objects
@@ -14,43 +14,37 @@ const CREATE_VIEW_MODEL_KEY = 'createViewModel';
 // Custom loaders may override either of these facilities, i.e.,
 // 1. To supply configuration objects from some other source (e.g., conventions)
 // 2. Or, to resolve configuration objects by loading viewmodels/templates via arbitrary logic.
-const defaultConfigRegistry = new Map();
+export const defaultConfigRegistry = new Map();
 
 export const registerComponent = (componentName, config) => {
     if (!config) {
         throw new Error('Invalid configuration for ' + componentName);
     }
-    if (defaultConfigRegistry.has(componentName)) {
+    let nameUpper = componentName.toUpperCase();
+    if (defaultConfigRegistry.has(nameUpper)) {
         throw new Error('Component ' + componentName + ' is already registered');
     }
-    defaultConfigRegistry.set(componentName, config);
+    if (!ALLOWED_COMPONENT_NAME_REGEX.test(componentName)) {
+        throw new Error('Invalid component name. Must match ' + ALLOWED_COMPONENT_NAME_REGEX.toString());
+    }
+    defaultConfigRegistry.set(nameUpper, config);
 };
 
 /**
  * @type {function(string):boolean}
  */
-export const isComponentRegistered = defaultConfigRegistry.has.bind(defaultConfigRegistry);
-
-export const unregisterComponent = (componentName) => {
-    defaultConfigRegistry.delete(componentName);
-    clearCachedDefinition(componentName);
-};
+export const isComponentRegistered = name => defaultConfigRegistry.has(name.toUpperCase());
 
 export const defaultLoader = {
     getConfig(componentName, callback) {
-        let result = defaultConfigRegistry.get(componentName) || null;
-        callback(result);
+        callback(defaultConfigRegistry.get(componentName) || null);
     },
-    
     loadComponent(componentName, config, callback) {
-        let errorCallback = _makeErrorCallback(componentName);
-        _possiblyGetConfigFromAmd(errorCallback, config, loadedConfig => _resolveConfig(componentName, errorCallback, loadedConfig, callback));
+        _resolveConfig(componentName, _makeErrorCallback(componentName), config, callback);
     },
-    
     loadTemplate(componentName, templateConfig, callback) {
         _resolveTemplate(_makeErrorCallback(componentName), templateConfig, callback);
     },
-    
     loadViewModel(componentName, viewModelConfig, callback) {
         _resolveViewModel(_makeErrorCallback(componentName), viewModelConfig, callback);
     }
@@ -65,27 +59,21 @@ export const defaultLoader = {
 const _resolveConfig = (componentName, errorCallback, config, callback) => {
     let result = {},
         makeCallBackWhenZero = 2,
-        tryIssueCallback = () => (--makeCallBackWhenZero === 0) && callback(result),
-        templateConfig = config['template'],
-        viewModelConfig = config['viewModel'];
+        tryIssueCallback = () => --makeCallBackWhenZero || callback(result);
 
-    if (templateConfig) {
-        _possiblyGetConfigFromAmd(errorCallback, templateConfig, loadedConfig => {
-            _getFirstResultFromLoaders('loadTemplate', [componentName, loadedConfig], resolvedTemplate => {
-                result['template'] = resolvedTemplate;
-                tryIssueCallback();
-            });
+    if (config.template) {
+        defaultLoader.loadTemplate(componentName, config.template, resolvedTemplate => {
+            result.template = resolvedTemplate;
+            tryIssueCallback();
         });
     } else {
         tryIssueCallback();
     }
 
-    if (viewModelConfig) {
-        _possiblyGetConfigFromAmd(errorCallback, viewModelConfig, loadedConfig => {
-            _getFirstResultFromLoaders('loadViewModel', [componentName, loadedConfig], resolvedViewModel => {
-                result[CREATE_VIEW_MODEL_KEY] = resolvedViewModel;
-                tryIssueCallback();
-            });
+    if (config.viewModel) {
+        defaultLoader.loadViewModel(componentName, config.viewModel, resolvedViewModel => {
+            result[CREATE_VIEW_MODEL_KEY] = resolvedViewModel;
+            tryIssueCallback();
         });
     } else {
         tryIssueCallback();
@@ -99,7 +87,7 @@ const _resolveTemplate = (errorCallback, templateConfig, callback) => {
     if (typeof templateConfig === 'string') {
         // Markup - parse it
         return callback(parseHtmlFragment(templateConfig));
-    } 
+    }
     if (templateConfig.element) {
         let elementIdOrNode = templateConfig.element,
             elem;
@@ -159,25 +147,6 @@ const _resolveViewModel = (errorCallback, viewModelConfig, callback) => {
 
 const _isDocumentFragment = obj => obj && obj.nodeType === 11; //@inline
 
-const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
-    if (typeof config.require !== 'string') {
-        callback(config);
-        return;
-    }
-    // The config is the value of an AMD module
-    let requireFn = typeof amdRequire === 'function' ? amdRequire : window.require; // eslint-disable-line no-undef
-    if (requireFn) {
-        requireFn([config.require], module => {
-            if (module && (typeof module === 'object') && module.__esModule && module.default) {
-                module = module.default;
-            }
-            callback(module);
-        });
-    } else {
-        errorCallback('Uses require, but no AMD loader is present');
-    }
-};
-
 /**
  * @callback KnockoutTemplateLoaderErrorCallback
  * @throws {Error}
@@ -191,5 +160,3 @@ const _makeErrorCallback = (componentName) => message => {
     throw new Error('Component \'' + componentName + '\': ' + message);
 };
 
-// By default, the default loader is the only registered component loader
-loaders.push(defaultLoader);

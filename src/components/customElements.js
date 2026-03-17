@@ -1,21 +1,9 @@
-import {isComponentRegistered} from './defaultLoader';
+import {defaultConfigRegistry} from './defaultLoader';
 import {isWritableObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {computed} from '../subscribables/dependentObservable';
 
 
-// Overridable API for determining which component name applies to a given node. By overriding this,
-// you can for example map specific tagNames to components that are not preregistered.
-export const _overrideGetComponentNameForNode = fn => getComponentNameForNode = fn;
-
-export let getComponentNameForNode = (node) => {
-    let tagNameLower = (node && node.tagName || '').toLowerCase();
-    if (tagNameLower && isComponentRegistered(tagNameLower)) {
-        // Try to determine that this node can be considered a *custom* element; see https://github.com/knockout/knockout/issues/1603
-        if (~tagNameLower.indexOf('-') || ('' + node) === "[object HTMLUnknownElement]") {
-            return tagNameLower;
-        }
-    }
-};
+export const getComponentNameForNode = (node) => node && defaultConfigRegistry.has(node.tagName) ? node.tagName : undefined;
 
 export const addBindingsForCustomElement = (allBindings, node, bindingContext, valueAccessors) => {
     // Determine if it's really a custom element matching a component
@@ -32,9 +20,7 @@ export const addBindingsForCustomElement = (allBindings, node, bindingContext, v
 
             let componentBindingValue = {name: componentName, params: _getComponentParamsFromCustomElement(node, bindingContext)};
 
-            allBindings.component = valueAccessors
-                ? function() { return componentBindingValue; }
-                : componentBindingValue;
+            allBindings.component = valueAccessors ? () => componentBindingValue : componentBindingValue;
         }
     }
 

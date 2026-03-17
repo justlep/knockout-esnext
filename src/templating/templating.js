@@ -1,7 +1,7 @@
 import {nextSibling, setDomNodeChildren, emptyNode, childNodes, allowedBindings} from '../virtualElements';
 import {unmemoizeDomNodeAndDescendants, _memoMap} from '../memoization';
 import {fixUpContinuousNodeArray, replaceDomNodes, moveCleanedNodesToContainerElement} from '../utils';
-import {ensureTemplateIsRewritten} from './templateRewriting';
+import {memoizeBindingAttributeSyntax} from './templateRewriting';
 import {isObservableArray, isObservable, unwrapObservable} from '../subscribables/observableUtils';
 import {bindingRewriteValidators, keyValueArrayContainsKey} from '../binding/expressionRewriting';
 import {applyBindings, bindingEvent, EVENT_CHILDREN_COMPLETE, KoBindingContext} from '../binding/bindingAttributeSyntax';
@@ -109,9 +109,11 @@ const _executeTemplate = (targetNodeOrNodeArray, renderMode, template, bindingCo
     options = options || {};
     let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
         templateDocument = (firstTargetNode || template || {}).ownerDocument,
-        templateEngineToUse = (options.templateEngine || _templateEngine);
-    
-    ensureTemplateIsRewritten(template, templateEngineToUse, templateDocument);
+        templateEngineToUse = options.templateEngine || _templateEngine;
+
+    if (!templateEngineToUse.isTemplateRewritten(template, templateDocument)) {
+        templateEngineToUse.rewriteTemplate(template, htmlString => memoizeBindingAttributeSyntax(htmlString, templateEngineToUse), templateDocument);
+    }
     
     let renderedNodesArray = templateEngineToUse.renderTemplate(template, bindingContext, options, templateDocument);
 

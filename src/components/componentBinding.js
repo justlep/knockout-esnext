@@ -1,7 +1,6 @@
 import {applyBindingsToDescendants, bindingEvent, EVENT_DESCENDENTS_COMPLETE} from '../binding/bindingAttributeSyntax';
 import {allowedBindings, childNodes, emptyNode, setDomNodeChildren} from '../virtualElements';
 import {addDisposeCallback} from '../utils.domNodeDisposal';
-import {cloneNodes} from '../utils';
 import {getComponent} from './loaderRegistry';
 import {bindingHandlers} from '../binding/bindingHandlers';
 import {computed} from '../subscribables/dependentObservable';
@@ -41,8 +40,8 @@ bindingHandlers.component = {
             if (typeof value === 'string') {
                 componentName = value;
             } else {
-                componentName = unwrapObservable(value['name']);
-                componentParams = unwrapObservable(value['params']);
+                componentName = unwrapObservable(value.name);
+                componentParams = unwrapObservable(value.params);
             }
 
             if (!componentName) {
@@ -65,7 +64,11 @@ bindingHandlers.component = {
                 if (!componentDefinition) {
                     throw new Error('Unknown component \'' + componentName + '\'');
                 }
-                _cloneTemplateIntoElement(componentName, componentDefinition, element);
+                if (!componentDefinition.template) {
+                    throw new Error('Component \'' + componentName + '\' has no template');
+                }
+                // was: _cloneTemplateIntoElement(...)
+                setDomNodeChildren(element, componentDefinition.template.map(node => node.cloneNode(true)));
 
                 let componentInfo = {
                     element,
@@ -92,15 +95,6 @@ bindingHandlers.component = {
 
         return {controlsDescendantBindings: true};
     }
-};
-
-const _cloneTemplateIntoElement = (componentName, componentDefinition, element) => {
-    let template = componentDefinition['template'];
-    if (!template) {
-        throw new Error('Component \'' + componentName + '\' has no template');
-    }
-    let clonedNodesArray = cloneNodes(template);
-    setDomNodeChildren(element, clonedNodesArray);
 };
 
 const _createViewModel = (componentDefinition, componentParams, componentInfo) => {

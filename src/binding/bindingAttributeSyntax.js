@@ -23,11 +23,8 @@ const BINDING_DOES_NOT_RECURSE_INTO_ELEMENT_TYPES = {
     // Also bindings should not operate on <template> elements since this breaks in Internet Explorer
     // and because such elements' contents are always intended to be bound in a different context
     // from where they appear in the document.
-    script: 1,
     SCRIPT: 1,
-    textarea: 1,
     TEXTAREA: 1,
-    template: 1,
     TEMPLATE: 1
 };
 

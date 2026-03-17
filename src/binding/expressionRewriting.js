@@ -199,7 +199,7 @@ export const writeValueToProperty = (property, allBindings, key, value, checkIfD
 // For those developers who rely on _ko_property_writers in their custom bindings, we expose _twoWayBindings as an
 // undocumented feature that makes it relatively easy to upgrade to KO 3.0. However, this is still not an official
 // public API, and we reserve the right to remove it at any time if we create a real public property writers API.
-export const _twoWayBindings = twoWayBindings;
+//export const _twoWayBindings = twoWayBindings;
 
 // alias For backward compatibility (see 'ko.jsonExpressionRewriting' alias below)
 // TODO removed, add to documentation

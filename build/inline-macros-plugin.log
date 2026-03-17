@@ -5,69 +5,69 @@ for Knockout-ESNext JavaScript library v3.5.1030
 
 ------- src/binding/bindingAttributeSyntax.js --------
 
-[bindingAttributeSyntax.js:37]
+[bindingAttributeSyntax.js:34]
 Found local macro: "_getBindingInfoForNode"
 
-[bindingAttributeSyntax.js:38]
+[bindingAttributeSyntax.js:35]
 Found local macro: "_ensureNodeHasDomData"
 
-[bindingAttributeSyntax.js:39]
+[bindingAttributeSyntax.js:36]
 Found local macro: "_getOrAddBindingInfoInDomData"
 
-[bindingAttributeSyntax.js:549]
+[bindingAttributeSyntax.js:546]
 Found local macro: "_getBindingContext"  (MULTI-LINE-EXPRESSION)
 
-[bindingAttributeSyntax.js:188]
+[bindingAttributeSyntax.js:185]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = _getBindingInfoForNode(node),
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
 
-[bindingAttributeSyntax.js:252]
+[bindingAttributeSyntax.js:249]
 Inlined: "_ensureNodeHasDomData"
 OLD:  _ensureNodeHasDomData(node);
 NEW:  (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {}));
 
-[bindingAttributeSyntax.js:253]
+[bindingAttributeSyntax.js:250]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:254]
+[bindingAttributeSyntax.js:251]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData),
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {})),
 
-[bindingAttributeSyntax.js:264]
+[bindingAttributeSyntax.js:261]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = _getBindingInfoForNode(node);
 NEW:  let bindingInfo = (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:277]
+[bindingAttributeSyntax.js:274]
 Inlined: "hasSubscriptionsForEvent" (global macro)
 OLD:  } else if (_asyncContext === undefined && _eventSubscribable && hasSubscriptionsForEvent(_eventSubscribable, EVENT_DESCENDENTS_COMPLETE)) {
 NEW:  } else if (_asyncContext === undefined && _eventSubscribable && ((_eventSubscribable._subscriptions[EVENT_DESCENDENTS_COMPLETE] || 0).length)) {
 
-[bindingAttributeSyntax.js:286]
+[bindingAttributeSyntax.js:283]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:287]
+[bindingAttributeSyntax.js:284]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:363]
+[bindingAttributeSyntax.js:360]
 Inlined: "_ensureNodeHasDomData"
 OLD:  let nodeDomData = _ensureNodeHasDomData(node),
 NEW:  let nodeDomData = (node[DOM_DATASTORE_PROP] || (node[DOM_DATASTORE_PROP] = {})),
 
-[bindingAttributeSyntax.js:364]
+[bindingAttributeSyntax.js:361]
 Inlined: "_getOrAddBindingInfoInDomData"
 OLD:  bindingInfo = _getOrAddBindingInfoInDomData(nodeDomData);
 NEW:  bindingInfo = (nodeDomData[BINDING_INFO_DOM_DATA_KEY] || (nodeDomData[BINDING_INFO_DOM_DATA_KEY] = {}));
 
-[bindingAttributeSyntax.js:450]
+[bindingAttributeSyntax.js:447]
 Inlined: "childNodes" (global macro)
 OLD:  let nodes = childNodes(node);
 NEW:  let nodes = (_isStartComment(node) ? _getVirtualChildren(node) : node.childNodes);
@@ -82,39 +82,39 @@ Added dependency-import "_getVirtualChildren" for macro "childNodes"
 OLD:  import {childNodes, START_COMMENT_REGEX, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 NEW:  import {childNodes, _getVirtualChildren, START_COMMENT_REGEX, nextSibling, firstChild, allowedVirtualElementBindings} from '../virtualElements';
 
-[bindingAttributeSyntax.js:450]
+[bindingAttributeSyntax.js:447]
 Inlined: "_isStartComment"  [iteration #2] (global macro)
 OLD:  let nodes = childNodes(node);
 NEW:  let nodes = (((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue)) ? _getVirtualChildren(node) : node.childNodes);
 
 Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in bindingAttributeSyntax.js
 
-[bindingAttributeSyntax.js:554]
+[bindingAttributeSyntax.js:551]
 Inlined: "_getBindingContext"
 OLD:  return _applyBindingsToNodeInternal(node, bindings, _getBindingContext(viewModelOrBindingContext, undefined));
 NEW:  return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
 
-[bindingAttributeSyntax.js:558]
+[bindingAttributeSyntax.js:555]
 Inlined: "_getBindingContext"
 OLD:  let context = _getBindingContext(viewModelOrBindingContext, undefined),
 NEW:  let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
 
-[bindingAttributeSyntax.js:576]
+[bindingAttributeSyntax.js:573]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToDescendantsInternal(_getBindingContext(viewModelOrBindingContext, undefined), rootNode);
 NEW:  _applyBindingsToDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)), rootNode);
 
-[bindingAttributeSyntax.js:589]
+[bindingAttributeSyntax.js:586]
 Inlined: "_getBindingContext"
 OLD:  _applyBindingsToNodeAndDescendantsInternal(_getBindingContext(viewModelOrBindingContext, extendContextCallback), rootNode);
 NEW:  _applyBindingsToNodeAndDescendantsInternal(( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, extendContextCallback)), rootNode);
 
-[bindingAttributeSyntax.js:595]
+[bindingAttributeSyntax.js:592]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo =  node && _getBindingInfoForNode(node);
 NEW:  let bindingInfo =  node && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]);
 
-[bindingAttributeSyntax.js:602]
+[bindingAttributeSyntax.js:599]
 Inlined: "_getBindingInfoForNode"
 OLD:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && _getBindingInfoForNode(node),
 NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && (node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][BINDING_INFO_DOM_DATA_KEY]),
@@ -122,28 +122,28 @@ NEW:  let bindingInfo = node && (node.nodeType === 1 || node.nodeType === 8) && 
 
 ------- src/binding/bindingProvider.js --------
 
-[bindingProvider.js:7]
+[bindingProvider.js:8]
 Found local macro: "virtualNodeBindingValue"
 
-[bindingProvider.js:16]
+[bindingProvider.js:17]
 Found local macro: "_getBindingsString"
 
-[bindingProvider.js:44]
+[bindingProvider.js:45]
 Inlined: "_getBindingsString"
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
 
-[bindingProvider.js:44]
+[bindingProvider.js:45]
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
 
-[bindingProvider.js:50]
+[bindingProvider.js:51]
 Inlined: "_getBindingsString"
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? virtualNodeBindingValue(node) : null),
 
-[bindingProvider.js:50]
+[bindingProvider.js:51]
 Inlined: "virtualNodeBindingValue"  [iteration #2]
 OLD:  let bindingsString = _getBindingsString(node),
 NEW:  let bindingsString = (node.nodeType === 1 ? node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) : node.nodeType === 8 ? (START_COMMENT_REGEX.test(node.nodeValue) ? RegExp.$1 : null) : null),
@@ -221,7 +221,7 @@ Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
-[componentBinding.js:32]
+[componentBinding.js:31]
 Inlined: "childNodes" (global macro)
 OLD:  originalChildNodes = Array.from(childNodes(element));
 NEW:  originalChildNodes = Array.from((_isStartComment(element) ? _getVirtualChildren(element) : element.childNodes));
@@ -236,7 +236,7 @@ Added dependency-import "_getVirtualChildren" for macro "childNodes"
 OLD:  import {allowedBindings, childNodes, START_COMMENT_REGEX, emptyNode, setDomNodeChildren} from '../virtualElements';
 NEW:  import {allowedBindings, childNodes, _getVirtualChildren, START_COMMENT_REGEX, emptyNode, setDomNodeChildren} from '../virtualElements';
 
-[componentBinding.js:32]
+[componentBinding.js:31]
 Inlined: "_isStartComment"  [iteration #2] (global macro)
 OLD:  originalChildNodes = Array.from(childNodes(element));
 NEW:  originalChildNodes = Array.from((((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes));
@@ -246,10 +246,10 @@ Skipped adding dependency import - some import like {START_COMMENT_REGEX} from '
 
 ------- src/components/defaultLoader.js --------
 
-[defaultLoader.js:160]
+[defaultLoader.js:148]
 Found local macro: "_isDocumentFragment"
 
-[defaultLoader.js:127]
+[defaultLoader.js:115]
 Inlined: "_isDocumentFragment"
 OLD:  if (_isDocumentFragment(templateConfig)) {
 NEW:  if ((templateConfig && templateConfig.nodeType === 11)) {
@@ -581,7 +581,7 @@ Skipped adding dependency import - some import like {DOM_DATASTORE_PROP} from 'u
 [templating.js:106]
 Found local macro: "_getFirstNodeFromPossibleArray"
 
-[templating.js:153]
+[templating.js:155]
 Found local macro: "_resolveTemplateName"  (MULTI-LINE-EXPRESSION)
 
 [templating.js:110]
@@ -589,27 +589,27 @@ Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  let firstTargetNode = targetNodeOrNodeArray && _getFirstNodeFromPossibleArray(targetNodeOrNodeArray),
 NEW:  let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
 
-[templating.js:164]
+[templating.js:166]
 Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  let firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 NEW:  let firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-[templating.js:173]
+[templating.js:175]
 Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, bindingContext['$data'], bindingContext),
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(bindingContext['$data'], bindingContext) : template),
 
-[templating.js:178]
+[templating.js:180]
 Inlined: "_getFirstNodeFromPossibleArray"
 OLD:  firstTargetNode = _getFirstNodeFromPossibleArray(targetNodeOrNodeArray);
 NEW:  firstTargetNode = (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null);
 
-[templating.js:209]
+[templating.js:211]
 Inlined: "_resolveTemplateName"
 OLD:  let templateName = _resolveTemplateName(template, arrayValue, arrayItemContext);
 NEW:  let templateName = ( isObservable(template) ? template() : (typeof template === 'function') ? template(arrayValue, arrayItemContext) : template);
 
-[templating.js:235]
+[templating.js:237]
 Inlined: "peekObservableInternal" (global macro)
 OLD:  _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped(peekObservableInternal(arrayOrObservableArray));
 NEW:  _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped((arrayOrObservableArray[LATEST_VALUE_KEY]));
@@ -619,7 +619,7 @@ Added dependency-import "LATEST_VALUE_KEY" for macro "peekObservableInternal"
 OLD:  import {peekObservableInternal} from '../subscribables/observable.js';
 NEW:  import {peekObservableInternal, LATEST_VALUE_KEY} from '../subscribables/observable.js';
 
-[templating.js:282]
+[templating.js:284]
 Inlined: "getDomData" (global macro)
 OLD:  if (!container || !getDomData(container, CLEAN_CONTAINER_DOM_DATA_KEY)) {
 NEW:  if (!container || !(container[DOM_DATASTORE_PROP] && container[DOM_DATASTORE_PROP][CLEAN_CONTAINER_DOM_DATA_KEY])) {
@@ -629,7 +629,7 @@ Added dependency-import "DOM_DATASTORE_PROP" for macro "getDomData"
 OLD:  import {getDomData, setDomData, nextDomDataKey} from '../utils.domData';
 NEW:  import {getDomData, DOM_DATASTORE_PROP, setDomData, nextDomDataKey} from '../utils.domData';
 
-[templating.js:290]
+[templating.js:292]
 Inlined: "childNodes" (global macro)
 OLD:  let templateNodes = childNodes(element);
 NEW:  let templateNodes = (_isStartComment(element) ? _getVirtualChildren(element) : element.childNodes);
@@ -644,14 +644,14 @@ Added dependency-import "_getVirtualChildren" for macro "childNodes"
 OLD:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
 NEW:  import {nextSibling, setDomNodeChildren, emptyNode, childNodes, _getVirtualChildren, START_COMMENT_REGEX, allowedBindings} from '../virtualElements';
 
-[templating.js:290]
+[templating.js:292]
 Inlined: "_isStartComment"  [iteration #2] (global macro)
 OLD:  let templateNodes = childNodes(element);
 NEW:  let templateNodes = (((element.nodeType === 8) && START_COMMENT_REGEX.test(element.nodeValue)) ? _getVirtualChildren(element) : element.childNodes);
 
 Skipped adding dependency import - some import like {START_COMMENT_REGEX} from 'virtualElements' already exists in templating.js
 
-[templating.js:327]
+[templating.js:329]
 Inlined: "getDomData" (global macro)
 OLD:  let oldComputed = getDomData(element, TEMPLATE_COMPUTED_DOM_DATA_KEY);
 NEW:  let oldComputed = (element[DOM_DATASTORE_PROP] && element[DOM_DATASTORE_PROP][TEMPLATE_COMPUTED_DOM_DATA_KEY]);
@@ -816,13 +816,13 @@ Global macros inlining summary:
  4x  initSubscribableInternal  - [src/subscribables/subscribable.js:36]
 
 Local macros inlining summary:
- 4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:37]
- 4x  _ensureNodeHasDomData  - [src/binding/bindingAttributeSyntax.js:38]
- 3x  _getOrAddBindingInfoInDomData  - [src/binding/bindingAttributeSyntax.js:39]
- 4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:549]
- 2x  virtualNodeBindingValue  - [src/binding/bindingProvider.js:7]
- 2x  _getBindingsString  - [src/binding/bindingProvider.js:16]
- 1x  _isDocumentFragment  - [src/components/defaultLoader.js:160]
+ 4x  _getBindingInfoForNode  - [src/binding/bindingAttributeSyntax.js:34]
+ 4x  _ensureNodeHasDomData  - [src/binding/bindingAttributeSyntax.js:35]
+ 3x  _getOrAddBindingInfoInDomData  - [src/binding/bindingAttributeSyntax.js:36]
+ 4x  _getBindingContext  - [src/binding/bindingAttributeSyntax.js:546]
+ 2x  virtualNodeBindingValue  - [src/binding/bindingProvider.js:8]
+ 2x  _getBindingsString  - [src/binding/bindingProvider.js:17]
+ 1x  _isDocumentFragment  - [src/components/defaultLoader.js:148]
  2x  parseMemoText  - [src/memoization.js:11]
  2x  _beginDependencyDetectionWithEmptyFrame  - [src/subscribables/dependencyDetection.js:12]
  2x  endDependencyDetection  - [src/subscribables/dependencyDetection.js:14]
@@ -831,7 +831,7 @@ Local macros inlining summary:
  2x  _getItemFilterPredicate  - [src/subscribables/observableArray.js:21]
  2x  _getTemplateDomData  - [src/templating/templateSources.js:42]
  3x  _getFirstNodeFromPossibleArray  - [src/templating/templating.js:106]
- 2x  _resolveTemplateName  - [src/templating/templating.js:153]
+ 2x  _resolveTemplateName  - [src/templating/templating.js:155]
  1x  _isNodeTypeCleanable  - [src/utils.domNodeDisposal.js:9]
  2x  _isNodeTypeCleanableWithDescendents  - [src/utils.domNodeDisposal.js:10]
 

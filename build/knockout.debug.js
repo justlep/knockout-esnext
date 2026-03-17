@@ -31,9 +31,6 @@
     let _keyCount = 0;
     const nextDomDataKey = () => KEY_PREFIX + (++_keyCount);
 
-    // not using optional chaining here as it's 20% slower (2025)
-    const getDomData = (node, key) => node[DOM_DATASTORE_PROP] && node[DOM_DATASTORE_PROP][key]; //@inline-global:DOM_DATASTORE_PROP
-
     const setDomData = (node, key, value) => {
         // Make sure we don't actually create a new domData key if we are actually deleting a value
         let dataForNode = node[DOM_DATASTORE_PROP] || (value !== undefined && (node[DOM_DATASTORE_PROP] = {}));
@@ -41,13 +38,6 @@
             dataForNode[key] = value;
         }
     };
-
-    /**
-     *
-     * @param {Node} node
-     * @return {boolean} - true if there was actually a domData deleted on the node
-     */
-    const clearDomData = (node) => node[DOM_DATASTORE_PROP] ? !(node[DOM_DATASTORE_PROP] = undefined) : false;
 
     const IS_SUBSCRIBABLE = Symbol('IS_SUBSCRIBABLE');
     const isSubscribable = (obj) => !!(obj && obj[IS_SUBSCRIBABLE]); //@inline-global:IS_SUBSCRIBABLE
@@ -118,26 +108,11 @@
      */
     const registerDependencyInternal = (subscribable) => currentFrame && (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
 
-    const registerDependencyExternal = (subscribable) => {
-        if (currentFrame) {
-            if (!(!!(subscribable && subscribable[IS_SUBSCRIBABLE]))) {
-                throw new Error('Only subscribable things can act as dependencies');
-            }
-            (currentFrame.callback.call(currentFrame.callbackTarget, subscribable, subscribable._id || (subscribable._id = (++lastId))));
-        }
-    };
-
     const getDependenciesCount = () => currentFrame ? currentFrame.computed.getDependenciesCount() : undefined;
-    const getDependencies = () => currentFrame ? currentFrame.computed.getDependencies() : undefined;
     const isInitialDependency = () => currentFrame ? currentFrame.isInitial : undefined;
     const getCurrentComputed = () => currentFrame ? currentFrame.computed : undefined;
 
     const DISPOSE_CALLBACKS_DOM_DATA_KEY = nextDomDataKey();
-
-
-    /** @type {function|boolean} */
-    let _cleanExternalData = false;
-    const _overrideCleanExternalData = (fn) => _cleanExternalData = fn;
 
     const _cleanSingleNode = (node) => {
         // Run all the dispose callbacks & ease the DOM data
@@ -150,11 +125,6 @@
                 }
             }
             node[DOM_DATASTORE_PROP] = undefined;
-        }
-        
-        // Perform cleanup needed by external libraries (currently only jQuery, but can be extended)
-        if (_cleanExternalData) {
-            _cleanExternalData(node);
         }
         
         // Clear any immediate-child comment nodes, as these wouldn't have been found by
@@ -276,8 +246,6 @@
     const allowedBindings = {};
     const allowedVirtualElementBindings = allowedBindings;
 
-    const _isStartComment = (node) => (node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue); //@inline-global:START_COMMENT_REGEX
-
     const _getVirtualChildren = (startComment, allowUnbalanced) => {
             let currentNode = startComment.nextSibling,
                 depth = 1,
@@ -310,8 +278,6 @@
         }
         return null; // Must have no matching end comment, and allowUnbalanced is true
     };
-
-    const childNodes = (node) => _isStartComment(node) ? _getVirtualChildren(node) : node.childNodes; //@inline-global:START_COMMENT_REGEX,_getVirtualChildren
 
     const emptyNode = (node) => {
         if (!((node.nodeType === 8) && START_COMMENT_REGEX.test(node.nodeValue))) {
@@ -411,8 +377,6 @@
 
     // For any options that may affect various areas of Knockout and aren't directly associated with data binding.
     const options = {
-        deferUpdates: false,
-        useOnlyNativeEvents: false,
         foreachHidesDestroyed: false
     };
 
@@ -769,96 +733,6 @@
         }
     };
 
-    /** @deprecated - too trivial*/
-    const setElementName = (element, name) => element.name = name;
-
-    const range = function (min, max) {
-        let result = [];
-        for (let i = unwrapObservable(min), max = unwrapObservable(max); i <= max; i++) {
-            result.push(i);
-        }
-        return result;
-    };
-
-    /** @deprecated - modern ES has enough means to turn array-like structures into Arrays -> Array.from(), [...values] */
-    const makeArray = (arrayLikeObject) => {
-        let result = [];
-        for (let i = 0, j = arrayLikeObject.length; i < j; i++) {
-            result[i] = arrayLikeObject[i];
-        }
-        return result;
-    };
-
-    /**
-     * @param {string} identifier
-     * @return {symbol}
-     * @deprecated - in here for legacy purposes only
-     */
-    const createSymbolOrString = identifier => Symbol(identifier);
-
-    const getFormFields = (form, fieldName) => {
-        let fields = [...form.getElementsByTagName('input'), ...form.getElementsByTagName('textarea')];
-        let isMatchingField = (typeof fieldName === 'string') ? (field) => field.name === fieldName
-                                                             : (field) => fieldName.test(field.name);
-            // Treat fieldName as regex or object containing predicate
-        let matches = [];
-        for (let i = fields.length - 1; i >= 0; i--) {
-            if (isMatchingField(fields[i])) {
-                matches.push(fields[i]);
-            }
-        }
-        return matches;
-    };
-
-    // replacer and space are optional
-    const stringifyJson = (data, replacer, space) => JSON.stringify(unwrapObservable(data), replacer, space);
-
-    const postJson = function(urlOrForm, data, options) {
-        options = options || {};
-        let params = options['params'] || {},
-            includeFields = options['includeFields'] || fieldsIncludedWithJsonPost,
-            url = urlOrForm;
-
-        // If we were given a form, use its 'action' URL and pick out any requested field values
-        if (typeof urlOrForm === 'object' && urlOrForm.tagName === 'FORM') {
-            let originalForm = urlOrForm;
-            url = originalForm.action;
-            for (let i = includeFields.length - 1; i >= 0; i--) {
-                let fields = getFormFields(originalForm, includeFields[i]);
-                for (let j = fields.length - 1; j >= 0; j--) {
-                    params[fields[j].name] = fields[j].value;
-                }
-            }
-        }
-        data = unwrapObservable(data);
-        let form = document.createElement('form');
-        form.style.display = 'none';
-        form.action = url;
-        form.method = 'post';
-        if (data) {
-            for (let key of Object.keys(data)) {
-                // Since 'data' this is a model object, we include all properties including those inherited from its prototype
-                let input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = stringifyJson(unwrapObservable(data[key]));
-                form.appendChild(input);
-            }
-        }
-        if (params) {
-            for (let key of Object.keys(params)) {
-                let input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = params[key];
-                form.appendChild(input);
-            }
-        }
-        document.body.appendChild(form);
-        options.submitter ? options.submitter(form) : form.submit();
-        setTimeout(() => form.parentNode.removeChild(form), 0);
-    };
-
     /**
      * Converts a kebab-case string into camelCase.
      * @param {string} s - a kebab string; a leading dash or contained double dashes are considered non-kebab
@@ -894,26 +768,20 @@
         canSetPrototype: canSetPrototype,
         catchFunctionErrors: catchFunctionErrors,
         cloneNodes: cloneNodes,
-        createSymbolOrString: createSymbolOrString,
         deferError: deferError,
         domNodeIsAttachedToDocument: domNodeIsAttachedToDocument,
         domNodeIsContainedBy: domNodeIsContainedBy,
         extend: extend,
         fieldsIncludedWithJsonPost: fieldsIncludedWithJsonPost,
         fixUpContinuousNodeArray: fixUpContinuousNodeArray,
-        getFormFields: getFormFields,
         hasOwnProperty: hasOwnProperty,
         kebabToCamelCase: kebabToCamelCase,
-        makeArray: makeArray,
         moveCleanedNodesToContainerElement: moveCleanedNodesToContainerElement,
         objectForEach: objectForEach,
         objectMap: objectMap,
         peekObservable: peekObservable,
-        postJson: postJson,
-        range: range,
         registerEventHandler: registerEventHandler,
         replaceDomNodes: replaceDomNodes,
-        setElementName: setElementName,
         setOptionNodeSelectionState: setOptionNodeSelectionState,
         setPrototypeOf: setPrototypeOf,
         setPrototypeOfOrExtend: setPrototypeOfOrExtend,
@@ -921,7 +789,6 @@
         setTimeoutWithCatchError: setTimeoutWithCatchError,
         stringStartsWith: stringStartsWith,
         stringTrim: stringTrim,
-        stringifyJson: stringifyJson,
         tagNameLower: tagNameLower,
         toggleDomNodeCssClass: toggleDomNodeCssClass,
         toggleObjectClassPropertyString: toggleObjectClassPropertyString,
@@ -937,14 +804,6 @@
         _nextIndexToProcess = 0;
 
     let _scheduler;
-
-    // allows for overriding the default scheduler by assigning 'ko.tasks.scheduler = someCustomScheduler' (see ko.js)
-    const _overrideScheduler = newScheduler => {
-        if (typeof newScheduler !== 'function') {
-            throw new Error('Scheduler must be a function');    
-        }
-        _scheduler = newScheduler;
-    };
 
     const _processTasks = () => {
         if (!_taskQueueLength) {
@@ -1015,15 +874,6 @@
             _taskQueue[index] = null;
         }
     };
-
-    // For testing only: reset the queue and return the previous queue length
-    const resetForTesting = () => {
-        let length = _taskQueueLength - _nextIndexToProcess;
-        _nextIndexToProcess = _taskQueueLength = _taskQueue.length = 0;
-        return length;
-    };
-
-    const runEarly = _processTasks;
 
     const deferredExtender = (target, options) => {
         if (options !== true) {
@@ -1442,10 +1292,6 @@
             _computedObservable.getVersion = _pureGetVersion;
         } else if (options$1.deferEvaluation) {
             Object.assign(_computedObservable, deferEvaluationOverrides);
-        }
-
-        if (options.deferUpdates) {
-            deferredExtender(_computedObservable, true);
         }
 
         if (DEBUG) {
@@ -1935,8 +1781,6 @@
     // Use an overridable method for retrieving binding handlers so that plugins may support dynamically created handlers
     let getBindingHandler = bindingKey => bindingHandlers[bindingKey];
 
-    const _overrideGetBindingHandler = (fn) => getBindingHandler = fn;
-
     const JS_RESERVED_WORDS = {'true': true, 'false': true, 'null': true, 'undefined': true};
 
     const PROPERTY_WRITERS_BINDING_KEY = '_ko_property_writers';
@@ -2135,143 +1979,11 @@
     // For those developers who rely on _ko_property_writers in their custom bindings, we expose _twoWayBindings as an
     // undocumented feature that makes it relatively easy to upgrade to KO 3.0. However, this is still not an official
     // public API, and we reserve the right to remove it at any time if we create a real public property writers API.
-    const _twoWayBindings = twoWayBindings;
+    //export const _twoWayBindings = twoWayBindings;
 
     // alias For backward compatibility (see 'ko.jsonExpressionRewriting' alias below)
     // TODO removed, add to documentation
     // export const insertPropertyAccessorsIntoJson = preProcessBindings;
-
-    const _loadingSubscribablesCache = new Map(); // Tracks component loads that are currently in flight
-    const _loadedDefinitionsCache = new Map();    // Tracks component loads that have already completed
-
-    let loaders = [];
-
-    const _setComponentLoaders = (newLoaders) => loaders = newLoaders;
-
-    const getComponent = (componentName, callback) => {
-        let cachedDefinition = _loadedDefinitionsCache.get(componentName);
-        if (cachedDefinition) {
-            // It's already loaded and cached. Reuse the same definition object.
-            // Note that for API consistency, even cache hits complete asynchronously by default.
-            // You can bypass this by putting synchronous:true on your component config.
-            if (cachedDefinition.isSynchronousComponent) {
-                // See comment in loaderRegistryBehaviors.js for reasoning
-                ignoreDependencyDetectionNoArgs(() => callback(cachedDefinition.definition));
-            } else {
-                scheduleTask(() => callback(cachedDefinition.definition));
-            }
-        } else {
-            // Join the loading process that is already underway, or start a new one.
-            let loadingSubscribable = _loadingSubscribablesCache.get(componentName);
-            if (loadingSubscribable) {
-                loadingSubscribable.subscribe(callback);
-            } else {
-                _loadNotYetLoadingComponentAndNotify(componentName, callback);
-            }
-        }
-    };
-
-    const clearCachedDefinition = (componentName) => {
-        _loadedDefinitionsCache.delete(componentName);
-    };
-
-    /**
-     * Start loading a component that is not yet loading, and when it's done, move it to loadedDefinitionsCache.
-     * @param {string} componentName
-     * @param {function} callback
-     * @private
-     */
-    const _loadNotYetLoadingComponentAndNotify = (componentName, callback) => {
-        // if (_loadingSubscribablesCache.has(componentName)) {
-        //     throw new Error('Component "' + componentName + '" is already loading');
-        // }
-        let _subscribable = new Subscribable(),
-            completedAsync;
-        
-        _loadingSubscribablesCache.set(componentName, _subscribable);
-        _subscribable.subscribe(callback);
-
-        _beginLoadingComponent(componentName, (definition, config) => {
-            let isSynchronousComponent = !!(config && config.synchronous);
-            _loadedDefinitionsCache.set(componentName, {definition, isSynchronousComponent});
-            _loadingSubscribablesCache.delete(componentName);
-
-            // For API consistency, all loads complete asynchronously. However we want to avoid
-            // adding an extra task schedule if it's unnecessary (i.e., the completion is already
-            // async).
-            //
-            // You can bypass the 'always asynchronous' feature by putting the synchronous:true
-            // flag on your component configuration when you register it.
-            if (completedAsync || isSynchronousComponent) {
-                // Note that notifySubscribers ignores any dependencies read within the callback.
-                // See comment in loaderRegistryBehaviors.js for reasoning
-                _subscribable.notifySubscribers(definition);
-            } else {
-                scheduleTask(() => _subscribable.notifySubscribers(definition));
-            }
-        });
-        completedAsync = true;
-    };
-
-    const _beginLoadingComponent = (componentName, callback) => {
-        _getFirstResultFromLoaders('getConfig', [componentName], config => {
-            if (config) {
-                // We have a config, so now load its definition
-                _getFirstResultFromLoaders('loadComponent', [componentName, config], definition => void callback(definition, config));
-            } else {
-                // The component has no config - it's unknown to all the loaders.
-                // Note that this is not an error (e.g., a module loading error) - that would abort the
-                // process and this callback would not run. For this callback to run, all loaders must
-                // have confirmed they don't know about this component.
-                callback(null, null);
-            }
-        });
-    };
-
-    const _getFirstResultFromLoaders = (methodName, argsExceptCallback, callback, candidateLoaders) => {
-        // On the first call in the stack, start with the full set of loaders
-        if (!candidateLoaders) {
-            candidateLoaders = loaders.slice(); // Use a copy, because we'll be mutating this array
-        }
-
-        // Try the next candidate
-        let currentCandidateLoader = candidateLoaders.shift();
-        if (!currentCandidateLoader) {
-            // No candidates returned a value
-            return callback(null);
-        }
-        
-        if (!currentCandidateLoader[methodName]) {
-            // This candidate doesn't have the relevant handler. Synchronously move on to the next one.
-            return _getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders);
-        }
-        let wasAborted = false,
-            synchronousReturnValue = currentCandidateLoader[methodName](...argsExceptCallback, result => {
-                if (wasAborted) {
-                    callback(null);
-                } else if (result !== null) {
-                    // This candidate returned a value. Use it.
-                    callback(result);
-                } else {
-                    // Try the next candidate
-                    _getFirstResultFromLoaders(methodName, argsExceptCallback, callback, candidateLoaders);
-                }
-            });
-
-        // Currently, loaders may not return anything synchronously. This leaves open the possibility
-        // that we'll extend the API to support synchronous return values in the future. It won't be
-        // a breaking change, because currently no loader is allowed to return anything except undefined.
-        if (synchronousReturnValue !== undefined) {
-            wasAborted = true;
-
-            // Method to suppress exceptions will remain undocumented. This is only to keep
-            // KO's specs running tidily, since we can observe the loading got aborted without
-            // having exceptions cluttering up the console too.
-            if (!currentCandidateLoader['suppressLoaderExceptions']) {
-                throw new Error('Component loaders must supply values by invoking the callback, not by returning values synchronously.');
-            }
-        }
-    };
 
     const TABLE = [1, '<table>', '</table>'];
     const TBODY = [2, '<table><tbody>', '</tbody></table>'];
@@ -2348,6 +2060,8 @@
 
     const CREATE_VIEW_MODEL_KEY = 'createViewModel';
 
+    const ALLOWED_COMPONENT_NAME_REGEX = /^[a-z][a-z0-9._-]*-[a-z0-9._-]*$/;
+
     // The default loader is responsible for two things:
     // 1. Maintaining the default in-memory registry of component configuration objects
     //    (i.e., the thing you're writing to when you call ko.components.register(someName, ...))
@@ -2363,37 +2077,26 @@
         if (!config) {
             throw new Error('Invalid configuration for ' + componentName);
         }
-        if (defaultConfigRegistry.has(componentName)) {
+        let nameUpper = componentName.toUpperCase();
+        if (defaultConfigRegistry.has(nameUpper)) {
             throw new Error('Component ' + componentName + ' is already registered');
         }
-        defaultConfigRegistry.set(componentName, config);
-    };
-
-    /**
-     * @type {function(string):boolean}
-     */
-    const isComponentRegistered = defaultConfigRegistry.has.bind(defaultConfigRegistry);
-
-    const unregisterComponent = (componentName) => {
-        defaultConfigRegistry.delete(componentName);
-        clearCachedDefinition(componentName);
+        if (!ALLOWED_COMPONENT_NAME_REGEX.test(componentName)) {
+            throw new Error('Invalid component name. Must match ' + ALLOWED_COMPONENT_NAME_REGEX.toString());
+        }
+        defaultConfigRegistry.set(nameUpper, config);
     };
 
     const defaultLoader = {
         getConfig(componentName, callback) {
-            let result = defaultConfigRegistry.get(componentName) || null;
-            callback(result);
+            callback(defaultConfigRegistry.get(componentName) || null);
         },
-        
         loadComponent(componentName, config, callback) {
-            let errorCallback = _makeErrorCallback(componentName);
-            _possiblyGetConfigFromAmd(errorCallback, config, loadedConfig => _resolveConfig(componentName, errorCallback, loadedConfig, callback));
+            _resolveConfig(componentName, _makeErrorCallback(componentName), config, callback);
         },
-        
         loadTemplate(componentName, templateConfig, callback) {
             _resolveTemplate(_makeErrorCallback(componentName), templateConfig, callback);
         },
-        
         loadViewModel(componentName, viewModelConfig, callback) {
             _resolveViewModel(_makeErrorCallback(componentName), viewModelConfig, callback);
         }
@@ -2408,27 +2111,21 @@
     const _resolveConfig = (componentName, errorCallback, config, callback) => {
         let result = {},
             makeCallBackWhenZero = 2,
-            tryIssueCallback = () => (--makeCallBackWhenZero === 0) && callback(result),
-            templateConfig = config['template'],
-            viewModelConfig = config['viewModel'];
+            tryIssueCallback = () => --makeCallBackWhenZero || callback(result);
 
-        if (templateConfig) {
-            _possiblyGetConfigFromAmd(errorCallback, templateConfig, loadedConfig => {
-                _getFirstResultFromLoaders('loadTemplate', [componentName, loadedConfig], resolvedTemplate => {
-                    result['template'] = resolvedTemplate;
-                    tryIssueCallback();
-                });
+        if (config.template) {
+            defaultLoader.loadTemplate(componentName, config.template, resolvedTemplate => {
+                result.template = resolvedTemplate;
+                tryIssueCallback();
             });
         } else {
             tryIssueCallback();
         }
 
-        if (viewModelConfig) {
-            _possiblyGetConfigFromAmd(errorCallback, viewModelConfig, loadedConfig => {
-                _getFirstResultFromLoaders('loadViewModel', [componentName, loadedConfig], resolvedViewModel => {
-                    result[CREATE_VIEW_MODEL_KEY] = resolvedViewModel;
-                    tryIssueCallback();
-                });
+        if (config.viewModel) {
+            defaultLoader.loadViewModel(componentName, config.viewModel, resolvedViewModel => {
+                result[CREATE_VIEW_MODEL_KEY] = resolvedViewModel;
+                tryIssueCallback();
             });
         } else {
             tryIssueCallback();
@@ -2442,7 +2139,7 @@
         if (typeof templateConfig === 'string') {
             // Markup - parse it
             return callback(parseHtmlFragment(templateConfig));
-        } 
+        }
         if (templateConfig.element) {
             let elementIdOrNode = templateConfig.element,
                 elem;
@@ -2500,25 +2197,6 @@
         errorCallback('Unknown viewModel value: ' + viewModelConfig);
     };
 
-    const _possiblyGetConfigFromAmd = (errorCallback, config, callback) => {
-        if (typeof config.require !== 'string') {
-            callback(config);
-            return;
-        }
-        // The config is the value of an AMD module
-        let requireFn = typeof amdRequire === 'function' ? amdRequire : window.require; // eslint-disable-line no-undef
-        if (requireFn) {
-            requireFn([config.require], module => {
-                if (module && (typeof module === 'object') && module.__esModule && module.default) {
-                    module = module.default;
-                }
-                callback(module);
-            });
-        } else {
-            errorCallback('Uses require, but no AMD loader is present');
-        }
-    };
-
     /**
      * @callback KnockoutTemplateLoaderErrorCallback
      * @throws {Error}
@@ -2532,22 +2210,7 @@
         throw new Error('Component \'' + componentName + '\': ' + message);
     };
 
-    // By default, the default loader is the only registered component loader
-    loaders.push(defaultLoader);
-
-    // Overridable API for determining which component name applies to a given node. By overriding this,
-    // you can for example map specific tagNames to components that are not preregistered.
-    const _overrideGetComponentNameForNode = fn => getComponentNameForNode = fn;
-
-    let getComponentNameForNode = (node) => {
-        let tagNameLower = (node && node.tagName || '').toLowerCase();
-        if (tagNameLower && isComponentRegistered(tagNameLower)) {
-            // Try to determine that this node can be considered a *custom* element; see https://github.com/knockout/knockout/issues/1603
-            if (~tagNameLower.indexOf('-') || ('' + node) === "[object HTMLUnknownElement]") {
-                return tagNameLower;
-            }
-        }
-    };
+    const getComponentNameForNode = (node) => node && defaultConfigRegistry.has(node.tagName) ? node.tagName : undefined;
 
     const addBindingsForCustomElement = (allBindings, node, bindingContext, valueAccessors) => {
         // Determine if it's really a custom element matching a component
@@ -2564,9 +2227,7 @@
 
                 let componentBindingValue = {name: componentName, params: _getComponentParamsFromCustomElement(node, bindingContext)};
 
-                allBindings.component = valueAccessors
-                    ? function() { return componentBindingValue; }
-                    : componentBindingValue;
+                allBindings.component = valueAccessors ? () => componentBindingValue : componentBindingValue;
             }
         }
 
@@ -2654,7 +2315,7 @@
          *     make sure to change {@link bindingProviderMaySupportTextNodes} accordingly.
          */
         nodeHasBindings(node) {
-            return (node.nodeType === 1) ? !!(node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) || getComponentNameForNode(node)) :
+            return (node.nodeType === 1) ? !!node.getAttribute(DEFAULT_BINDING_ATTRIBUTE_NAME) || defaultConfigRegistry.has(node.tagName) :
                    (node.nodeType === 8) ? START_COMMENT_REGEX.test(node.nodeValue) : false;
         }
 
@@ -2677,7 +2338,7 @@
          * @internal
          */
         parseBindingsString(bindingsString, bindingContext, node, options) {
-            let cacheKey = bindingsString + (options && options['valueAccessors'] || ''),
+            let cacheKey = bindingsString + (options && options.valueAccessors || ''),
                 bindingFunction = this._cache.get(cacheKey);
             
             if (bindingFunction) {
@@ -2720,11 +2381,8 @@
         // Also bindings should not operate on <template> elements since this breaks in Internet Explorer
         // and because such elements' contents are always intended to be bound in a different context
         // from where they appear in the document.
-        script: 1,
         SCRIPT: 1,
-        textarea: 1,
         TEXTAREA: 1,
-        template: 1,
         TEMPLATE: 1
     };
 
@@ -3240,24 +2898,7 @@
     };
 
     const applyBindingAccessorsToNode = (node, bindings, viewModelOrBindingContext) => {
-        return _applyBindingsToNodeInternal(node, bindings, ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
-    };
-
-    const applyBindingsToNode = (node, bindings, viewModelOrBindingContext) => {
-        let context = ( (viewModelOrBindingContext && viewModelOrBindingContext[IS_BINDING_CONTEXT_INSTANCE]) ? viewModelOrBindingContext : new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)),
-            /** @type {Object} - a new bindings object that contains binding value-accessors functions */
-            bindingsWithAccessors;
-
-        if (typeof bindings === 'function') {
-            bindingsWithAccessors = _makeAccessorsFromFunction(() => bindings(context, node));
-        } else {
-            bindingsWithAccessors = {};
-            for (let key of Object.keys(bindings)) {
-                let val = bindings[key];
-                bindingsWithAccessors[key] = () => val;
-            }
-        }
-        return applyBindingAccessorsToNode(node, bindingsWithAccessors, context);
+        return _applyBindingsToNodeInternal(node, bindings, ( new KoBindingContext(viewModelOrBindingContext, undefined, undefined, undefined)));
     };
 
     const applyBindingsToDescendants = (viewModelOrBindingContext, rootNode) => {
@@ -3333,10 +2974,6 @@
         // Inherit from './observable.js'
         setPrototypeOfOrExtend(_observable, OBSERVABLE_PROTOTYPE);
 
-        if (options.deferUpdates) {
-            deferredExtender(_observable, true);
-        }
-
         return _observable;
     };
 
@@ -3396,9 +3033,6 @@
              compareSmallArrayToBigArray(oldArray, newArray, STATUS_NOT_IN_OLD, STATUS_NOT_IN_NEW, options) :
              compareSmallArrayToBigArray(newArray, oldArray, STATUS_NOT_IN_NEW, STATUS_NOT_IN_OLD, options);
     };
-
-    // allow overriding compareArrays for tests
-    const _overrideCompareArrays = fn => compareArrays = fn;
 
     const STATUS_NOT_IN_OLD = 'added'; 
     const STATUS_NOT_IN_NEW = 'deleted';
@@ -3761,6 +3395,279 @@
         };
     }
 
+    const when = (predicate, callback, context) => {
+
+        const _kowhen = (resolve) => {
+            let _observable = pureComputed(predicate, context).extend({notify:'always'});
+            let subscription = _observable.subscribe(value => {
+                if (value) {
+                    subscription.dispose();
+                    resolve(value);
+                }
+            });
+            // In case the initial value is true, process it right away
+            _observable.notifySubscribers(_observable.peek());
+
+            return subscription;
+        };
+
+        return callback ? _kowhen(context ? callback.bind(context) : callback) : new Promise(_kowhen);
+    };
+
+    bindingHandlers.attr = {
+        update(element, valueAccessor, allBindings) {
+            let value = unwrapObservable(valueAccessor()) || {};
+            for (let attrName of Object.keys(value)) {
+                let attrValue = unwrapObservable(value[attrName]);
+
+                // Find the namespace of this attribute, if any.
+                let prefixLen = attrName.indexOf(':');
+                let namespace = prefixLen > 0 && element.lookupNamespaceURI && element.lookupNamespaceURI(attrName.substring(0, prefixLen));
+
+                // To cover cases like "attr: { checked:someProp }", we want to remove the attribute entirely
+                // when someProp is a "no value"-like value (strictly null, false, or undefined)
+                // (because the absence of the "checked" attr is how to mark an element as not checked, etc.)
+                let toRemove = (attrValue === false) || (attrValue === null) || (attrValue === undefined);
+                if (toRemove) {
+                    namespace ? element.removeAttributeNS(namespace, attrName) : element.removeAttribute(attrName);
+                } else {
+                    attrValue = attrValue.toString();
+                    namespace ? element.setAttributeNS(namespace, attrName, attrValue) : element.setAttribute(attrName, attrValue);
+                }
+                
+                // Treat "name" specially - although you can think of it as an attribute, it also needs
+                // special handling on older versions of IE (https://github.com/SteveSanderson/knockout/pull/333)
+                // Deliberately being case-sensitive here because XHTML would regard "Name" as a different thing
+                // entirely, and there's no strong reason to allow for such casing in HTML.
+                if (attrName === 'name') {
+                    element.name = toRemove ? '' : attrValue;
+                }
+            }
+        }
+    };
+
+    bindingHandlers.checked = {
+        after: ['value', 'attr'],
+        init(element, valueAccessor, allBindings) {
+            let checkedValue = pureComputed(() => {
+                // Treat "value" like "checkedValue" when it is included with "checked" binding
+                if (allBindings.has('checkedValue')) {
+                    return unwrapObservable(allBindings.get('checkedValue'));
+                } 
+                if (useElementValue) {
+                    return allBindings.has('value') ? unwrapObservable(allBindings.get('value')) : element.value;
+                }
+            });
+
+            const _updateModel = () => {
+                // This updates the model value from the view value.
+                // It runs in response to DOM events (click) and changes in checkedValue.
+                let isChecked = element.checked,
+                    elemValue = checkedValue();
+
+                // When we're first setting up this computed, don't change any model state.
+                if (isInitialDependency()) {
+                    return;
+                }
+
+                // We can ignore unchecked radio buttons, because some other radio
+                // button will be checked, and that one can take care of updating state.
+                // Also ignore value changes to an already unchecked checkbox.
+                if (!isChecked && (isRadio || getDependenciesCount())) {
+                    return;
+                }
+
+                let modelValue = ignoreDependencyDetectionNoArgs(valueAccessor);
+                if (valueIsArray) {
+                    let writableValue = rawValueIsNonArrayObservable ? modelValue.peek() : modelValue,
+                        saveOldValue = oldElemValue;
+                    
+                    oldElemValue = elemValue;
+
+                    if (saveOldValue !== elemValue) {
+                        // When we're responding to the checkedValue changing, and the element is
+                        // currently checked, replace the old elem value with the new elem value
+                        // in the model array.
+                        if (isChecked) {
+                            addOrRemoveItem(writableValue, elemValue, true);
+                            addOrRemoveItem(writableValue, saveOldValue, false);
+                        }
+                    } else {
+                        // When we're responding to the user having checked/unchecked a checkbox,
+                        // add/remove the element value to the model array.
+                        addOrRemoveItem(writableValue, elemValue, isChecked);
+                    }
+
+                    if (rawValueIsNonArrayObservable && isWritableObservable(modelValue)) {
+                        modelValue(writableValue);
+                    }
+                } else {
+                    if (isCheckbox) {
+                        if (elemValue === undefined) {
+                            elemValue = isChecked;
+                        } else if (!isChecked) {
+                            elemValue = undefined;
+                        }
+                    }
+                    writeValueToProperty(modelValue, allBindings, 'checked', elemValue, true);
+                }
+            };
+
+            const _updateView = () => {
+                // This updates the view value from the model value.
+                // It runs in response to changes in the bound (checked) value.
+                let modelValue = unwrapObservable(valueAccessor()),
+                    elemValue = checkedValue();
+
+                if (valueIsArray) {
+                    // When a checkbox is bound to an array, being checked represents its value being present in that array
+                    element.checked = !!modelValue?.includes(elemValue);
+                    oldElemValue = elemValue;
+                } else if (isCheckbox && elemValue === undefined) {
+                    // When a checkbox is bound to any other value (not an array) and "checkedValue" is not defined,
+                    // being checked represents the value being trueish
+                    element.checked = !!modelValue;
+                } else {
+                    // Otherwise, being checked means that the checkbox or radio button's value corresponds to the model value
+                    element.checked = (checkedValue() === modelValue);
+                }
+            };
+
+            let isCheckbox = element.type === 'checkbox',
+                isRadio = element.type === 'radio';
+
+            // Only bind to check boxes and radio buttons
+            if (!isCheckbox && !isRadio) {
+                return;
+            }
+
+            let rawValue = valueAccessor(),
+                valueIsArray = isCheckbox && Array.isArray(unwrapObservable(rawValue)),
+                rawValueIsNonArrayObservable = !(valueIsArray && rawValue.push && rawValue.splice),
+                useElementValue = isRadio || valueIsArray,
+                oldElemValue = valueIsArray ? checkedValue() : undefined;
+
+            // Set up two computeds to update the binding:
+
+            // The first responds to changes in the checkedValue value and to element clicks
+            computed(_updateModel, null, {disposeWhenNodeIsRemoved: element});
+            registerEventHandler(element, "click", _updateModel);
+
+            // The second responds to changes in the model value (the one associated with the checked binding)
+            computed(_updateView, null, {disposeWhenNodeIsRemoved: element});
+        }
+    };
+
+    twoWayBindings['checked'] = true;
+
+    bindingHandlers.checkedValue = {
+        update(element, valueAccessor) {
+            element.value = unwrapObservable(valueAccessor());
+        }
+    };
+
+    const _makeEventHandlerShortcut = (eventName) => {
+        bindingHandlers[eventName] = {
+            init (element, valueAccessor, allBindings, viewModel, bindingContext) {
+                let newValueAccessor = () => ({[eventName]: valueAccessor()});
+                return _eventBindingInitFn(element, newValueAccessor, allBindings, viewModel, bindingContext);
+            }
+        };
+    };
+
+    const _eventBindingInitFn = (element, valueAccessor, allBindings, viewModel, bindingContext) => {
+        let eventsToHandle = valueAccessor() || {};
+        if (!eventsToHandle) {
+            return;
+        }
+        for (let eventName of Object.keys(eventsToHandle)) {
+            if (typeof eventName !== 'string') {
+                continue;
+            }
+            registerEventHandler(element, eventName, (event, ...otherArgs) => {
+                let handlerReturnValue,
+                    handlerFunction = valueAccessor()[eventName];
+                
+                if (!handlerFunction) {
+                    return;
+                }
+
+                try {
+                    // Take all the event args, and prefix with the viewmodel
+                    let viewModel = bindingContext['$data'];
+                    // call the event handler with like handler(viewModel, event, ...otherArgs);
+                    handlerReturnValue = handlerFunction.call(viewModel, viewModel, event, ...otherArgs);
+                } finally {
+                    if (handlerReturnValue !== true) { 
+                        // Normally we want to prevent default action. Developer can override this be explicitly returning true.
+                        event.preventDefault();
+                        // removed historic 'event.returnValue = false'
+                    }
+                }
+
+                let bubble = allBindings.get(eventName + 'Bubble') !== false;
+                if (!bubble) {
+                    event.stopPropagation();
+                    // removed historic 'event.cancelBubble = true'
+                }
+            });
+        }
+    };
+
+    bindingHandlers.event = {
+        init: _eventBindingInitFn
+    };
+
+    // 'click' is just a shorthand for the usual full-length event:{click:handler}
+
+    _makeEventHandlerShortcut('click');
+
+    const CLASSES_WRITTEN_BY_BINDING_KEY = Symbol('__ko__cssValue');
+
+    const _classBindingUpdateFn = (element, valueAccessor) => {
+        let value = stringTrim(unwrapObservable(valueAccessor()));
+        toggleDomNodeCssClass(element, element[CLASSES_WRITTEN_BY_BINDING_KEY], false);
+        element[CLASSES_WRITTEN_BY_BINDING_KEY] = value;
+        toggleDomNodeCssClass(element, value, true);
+    };
+
+    bindingHandlers.class = { 
+        update: _classBindingUpdateFn
+    };
+
+    bindingHandlers.css = {
+        update(element, valueAccessor) {
+            let value = unwrapObservable(valueAccessor());
+            if (!value || typeof value !== 'object') {
+                _classBindingUpdateFn(element, valueAccessor);
+                return;
+            }
+            for (let className of Object.keys(value)) {
+                let shouldHaveClass = unwrapObservable( value[className] );
+                toggleDomNodeCssClass(element, className, shouldHaveClass);
+            }
+        }
+    };
+
+    const _enableBindingUpdateFn = (element, valueAccessor) => {
+        let value = unwrapObservable(valueAccessor());
+        if (value && element.disabled) {
+            element.removeAttribute("disabled");
+        } else if ((!value) && (!element.disabled)) {
+            element.disabled = true;
+        }
+    };
+
+    bindingHandlers.enable = {
+        update: _enableBindingUpdateFn
+    };
+
+    bindingHandlers.disable = {
+        update(element, valueAccessor) {
+            _enableBindingUpdateFn(element, () => !unwrapObservable(valueAccessor()));
+        }
+    };
+
     /** 
      * @type {Map<string, function>}
      * @internal
@@ -3769,8 +3676,6 @@
 
     const MEMO_TEXT_START = '[!KoMemo:'; // length 9 (= magic number used inside `parseMemoText`)
     const MEMO_ID_PREFIX = Date.now().toString(36) + '_';
-
-    const parseMemoText = (memoText) => memoText.startsWith(MEMO_TEXT_START) ? memoText.substring(9) : null; //@inline
 
     let _nextMemoId = 1;
 
@@ -3863,108 +3768,11 @@
         return templateEngine.createJavaScriptEvaluatorBlock(applyBindingsToNextSiblingScript) + tagToRetain;
     };
 
-    const applyMemoizedBindingsToNextSibling = (bindings, nodeName) => memoize((domNode, bindingContext) => {
-        let nodeToBind = domNode.nextSibling;
-        if (nodeToBind && nodeToBind.nodeName.toLowerCase() === nodeName) {
-            applyBindingAccessorsToNode(nodeToBind, bindings, bindingContext);
-        }
-    });
-
-
-    const ensureTemplateIsRewritten = (template, templateEngine, templateDocument) => {
-        if (templateEngine.isTemplateRewritten(template, templateDocument)) {
-            return;
-        }
-        templateEngine.rewriteTemplate(template, htmlString => memoizeBindingAttributeSyntax(htmlString, templateEngine), templateDocument);
-    };
-
-    const memoizeBindingAttributeSyntax = (htmlString, templateEngine) => {
-        return htmlString
-            .replace(MEMOIZE_DATA_BINDING_ATTR_SYNTAX_REGEX,
-                (_0, tagToRetain, nodeName, _3, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, tagToRetain, nodeName, templateEngine))
-            .replace(MEMOIZE_VIRTUAL_CONTAINER_BINDING_SYNTAX_REGEX,
-                (_0, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, /* tagToRetain: */ '<!-- ko -->', /* nodeName: */ '#comment', templateEngine));
-    };
-
-    const MAX_NESTED_OBSERVABLE_DEPTH = 10; // Escape the (unlikely) pathological case where an observable's current value is itself (or similar reference cycle)
-
-    const toJS = function (rootObject) {
-        if (!arguments.length) {
-            throw new Error("When calling ko.toJS, pass the object you want to convert.");
-        }
-
-        // We just unwrap everything at every level in the object graph
-        return _mapJsObjectGraph(rootObject, valueToMap => {
-            // Loop because an observable's value might in turn be another observable wrapper
-            for (let i = 0; isObservable(valueToMap) && (i < MAX_NESTED_OBSERVABLE_DEPTH); i++) {
-                valueToMap = valueToMap();
-            }
-            return valueToMap;
-        });
-    };
-
-    // replacer and space are optional
-    const toJSON = (rootObject, replacer, space) => {
-        let plainJavaScriptObject = toJS(rootObject);
-        return JSON.stringify(unwrapObservable(plainJavaScriptObject), replacer, space);
-    };
-
-    const _mapJsObjectGraph = (rootObject, mapInputCallback, visitedObjects) => {
-        visitedObjects = visitedObjects || new Map();
-
-        rootObject = mapInputCallback(rootObject);
-        let canHaveProperties = (typeof rootObject === "object") && (rootObject !== null) && (rootObject !== undefined) &&
-            (!(rootObject instanceof RegExp)) && (!(rootObject instanceof Date)) && (!(rootObject instanceof String)) &&
-            (!(rootObject instanceof Number)) && (!(rootObject instanceof Boolean));
-        if (!canHaveProperties) {
-            return rootObject;
-        }
-
-        let outputProperties = Array.isArray(rootObject) ? [] : {};
-        visitedObjects.set(rootObject, outputProperties);
-
-        _visitPropertiesOrArrayEntries(rootObject, indexer => {
-            let propertyValue = mapInputCallback(rootObject[indexer]);
-
-            switch (typeof propertyValue) {
-                case 'boolean':
-                case 'number':
-                case 'string':
-                case "bigint":
-                case "symbol":
-                case 'function':
-                    outputProperties[indexer] = propertyValue;
-                    break;
-                case 'object':
-                case 'undefined': {
-                    let previouslyMappedValue = visitedObjects.get(propertyValue);
-                    outputProperties[indexer] = (previouslyMappedValue !== undefined)
-                        ? previouslyMappedValue
-                        : _mapJsObjectGraph(propertyValue, mapInputCallback, visitedObjects);
-                    break;
-                }
-            }
-        });
-
-        return outputProperties;
-    };
-
-    const _visitPropertiesOrArrayEntries = (rootObject, visitorCallback) => {
-        if (rootObject instanceof Array) {
-            for (let i = 0; i < rootObject.length; i++) {
-                visitorCallback(i);
-            }
-
-            // For arrays, also respect toJSON property for custom mappings (fixes #278)
-            if (typeof rootObject['toJSON'] === 'function') {
-                visitorCallback('toJSON');
-            }
-        } else {
-            for (let propertyName in rootObject) {
-                visitorCallback(propertyName);
-            }
-        }
-    };
+    const memoizeBindingAttributeSyntax = (htmlString, templateEngine) => htmlString
+        .replace(MEMOIZE_DATA_BINDING_ATTR_SYNTAX_REGEX,
+            (_0, tagToRetain, nodeName, _3, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, tagToRetain, nodeName, templateEngine))
+        .replace(MEMOIZE_VIRTUAL_CONTAINER_BINDING_SYNTAX_REGEX,
+            (_0, dataBindAttributeValue) => _constructMemoizedTagReplacement(dataBindAttributeValue, /* tagToRetain: */ '<!-- ko -->', /* nodeName: */ '#comment', templateEngine));
 
     const LAST_MAPPING_RESULT_DOM_DATA_KEY = nextDomDataKey();
     const DELETED_ITEM_DUMMY_VALUE = nextDomDataKey();
@@ -4513,9 +4321,11 @@
         options = options || {};
         let firstTargetNode = targetNodeOrNodeArray && (targetNodeOrNodeArray.nodeType ? targetNodeOrNodeArray : targetNodeOrNodeArray.length ? targetNodeOrNodeArray[0] : null),
             templateDocument = (firstTargetNode || template || {}).ownerDocument,
-            templateEngineToUse = (options.templateEngine || _templateEngine);
-        
-        ensureTemplateIsRewritten(template, templateEngineToUse, templateDocument);
+            templateEngineToUse = options.templateEngine || _templateEngine;
+
+        if (!templateEngineToUse.isTemplateRewritten(template, templateDocument)) {
+            templateEngineToUse.rewriteTemplate(template, htmlString => memoizeBindingAttributeSyntax(htmlString, templateEngineToUse), templateDocument);
+        }
         
         let renderedNodesArray = templateEngineToUse.renderTemplate(template, bindingContext, options, templateDocument);
 
@@ -4624,7 +4434,7 @@
                 bindingEvent.notify(targetNode, EVENT_CHILDREN_COMPLETE);
             };
 
-        let shouldHideDestroyed = (options$1.includeDestroyed === false) || (options.foreachHidesDestroyed && !options$1.includeDestroyed);
+        let shouldHideDestroyed = (options$1.includeDestroyed === false) || (options.foreachHidesDestroyed);
 
         if (!shouldHideDestroyed && !options$1.beforeRemove && isObservableArray(arrayOrObservableArray)) {
             _setDomNodeChildrenFromArrayMappingIgnoringUnwrapped((arrayOrObservableArray[LATEST_VALUE_KEY]));
@@ -4789,279 +4599,6 @@
     }
 
     setTemplateEngine(NativeTemplateEngine.instance = new NativeTemplateEngine());
-
-    const when = (predicate, callback, context) => {
-
-        const _kowhen = (resolve) => {
-            let _observable = pureComputed(predicate, context).extend({notify:'always'});
-            let subscription = _observable.subscribe(value => {
-                if (value) {
-                    subscription.dispose();
-                    resolve(value);
-                }
-            });
-            // In case the initial value is true, process it right away
-            _observable.notifySubscribers(_observable.peek());
-
-            return subscription;
-        };
-
-        return callback ? _kowhen(context ? callback.bind(context) : callback) : new Promise(_kowhen);
-    };
-
-    bindingHandlers.attr = {
-        update(element, valueAccessor, allBindings) {
-            let value = unwrapObservable(valueAccessor()) || {};
-            for (let attrName of Object.keys(value)) {
-                let attrValue = unwrapObservable(value[attrName]);
-
-                // Find the namespace of this attribute, if any.
-                let prefixLen = attrName.indexOf(':');
-                let namespace = prefixLen > 0 && element.lookupNamespaceURI && element.lookupNamespaceURI(attrName.substring(0, prefixLen));
-
-                // To cover cases like "attr: { checked:someProp }", we want to remove the attribute entirely
-                // when someProp is a "no value"-like value (strictly null, false, or undefined)
-                // (because the absence of the "checked" attr is how to mark an element as not checked, etc.)
-                let toRemove = (attrValue === false) || (attrValue === null) || (attrValue === undefined);
-                if (toRemove) {
-                    namespace ? element.removeAttributeNS(namespace, attrName) : element.removeAttribute(attrName);
-                } else {
-                    attrValue = attrValue.toString();
-                    namespace ? element.setAttributeNS(namespace, attrName, attrValue) : element.setAttribute(attrName, attrValue);
-                }
-                
-                // Treat "name" specially - although you can think of it as an attribute, it also needs
-                // special handling on older versions of IE (https://github.com/SteveSanderson/knockout/pull/333)
-                // Deliberately being case-sensitive here because XHTML would regard "Name" as a different thing
-                // entirely, and there's no strong reason to allow for such casing in HTML.
-                if (attrName === 'name') {
-                    element.name = toRemove ? '' : attrValue;
-                }
-            }
-        }
-    };
-
-    bindingHandlers.checked = {
-        after: ['value', 'attr'],
-        init(element, valueAccessor, allBindings) {
-            let checkedValue = pureComputed(() => {
-                // Treat "value" like "checkedValue" when it is included with "checked" binding
-                if (allBindings.has('checkedValue')) {
-                    return unwrapObservable(allBindings.get('checkedValue'));
-                } 
-                if (useElementValue) {
-                    return allBindings.has('value') ? unwrapObservable(allBindings.get('value')) : element.value;
-                }
-            });
-
-            const _updateModel = () => {
-                // This updates the model value from the view value.
-                // It runs in response to DOM events (click) and changes in checkedValue.
-                let isChecked = element.checked,
-                    elemValue = checkedValue();
-
-                // When we're first setting up this computed, don't change any model state.
-                if (isInitialDependency()) {
-                    return;
-                }
-
-                // We can ignore unchecked radio buttons, because some other radio
-                // button will be checked, and that one can take care of updating state.
-                // Also ignore value changes to an already unchecked checkbox.
-                if (!isChecked && (isRadio || getDependenciesCount())) {
-                    return;
-                }
-
-                let modelValue = ignoreDependencyDetectionNoArgs(valueAccessor);
-                if (valueIsArray) {
-                    let writableValue = rawValueIsNonArrayObservable ? modelValue.peek() : modelValue,
-                        saveOldValue = oldElemValue;
-                    
-                    oldElemValue = elemValue;
-
-                    if (saveOldValue !== elemValue) {
-                        // When we're responding to the checkedValue changing, and the element is
-                        // currently checked, replace the old elem value with the new elem value
-                        // in the model array.
-                        if (isChecked) {
-                            addOrRemoveItem(writableValue, elemValue, true);
-                            addOrRemoveItem(writableValue, saveOldValue, false);
-                        }
-                    } else {
-                        // When we're responding to the user having checked/unchecked a checkbox,
-                        // add/remove the element value to the model array.
-                        addOrRemoveItem(writableValue, elemValue, isChecked);
-                    }
-
-                    if (rawValueIsNonArrayObservable && isWritableObservable(modelValue)) {
-                        modelValue(writableValue);
-                    }
-                } else {
-                    if (isCheckbox) {
-                        if (elemValue === undefined) {
-                            elemValue = isChecked;
-                        } else if (!isChecked) {
-                            elemValue = undefined;
-                        }
-                    }
-                    writeValueToProperty(modelValue, allBindings, 'checked', elemValue, true);
-                }
-            };
-
-            const _updateView = () => {
-                // This updates the view value from the model value.
-                // It runs in response to changes in the bound (checked) value.
-                let modelValue = unwrapObservable(valueAccessor()),
-                    elemValue = checkedValue();
-
-                if (valueIsArray) {
-                    // When a checkbox is bound to an array, being checked represents its value being present in that array
-                    element.checked = !!modelValue?.includes(elemValue);
-                    oldElemValue = elemValue;
-                } else if (isCheckbox && elemValue === undefined) {
-                    // When a checkbox is bound to any other value (not an array) and "checkedValue" is not defined,
-                    // being checked represents the value being trueish
-                    element.checked = !!modelValue;
-                } else {
-                    // Otherwise, being checked means that the checkbox or radio button's value corresponds to the model value
-                    element.checked = (checkedValue() === modelValue);
-                }
-            };
-
-            let isCheckbox = element.type === 'checkbox',
-                isRadio = element.type === 'radio';
-
-            // Only bind to check boxes and radio buttons
-            if (!isCheckbox && !isRadio) {
-                return;
-            }
-
-            let rawValue = valueAccessor(),
-                valueIsArray = isCheckbox && Array.isArray(unwrapObservable(rawValue)),
-                rawValueIsNonArrayObservable = !(valueIsArray && rawValue.push && rawValue.splice),
-                useElementValue = isRadio || valueIsArray,
-                oldElemValue = valueIsArray ? checkedValue() : undefined;
-
-            // Set up two computeds to update the binding:
-
-            // The first responds to changes in the checkedValue value and to element clicks
-            computed(_updateModel, null, {disposeWhenNodeIsRemoved: element});
-            registerEventHandler(element, "click", _updateModel);
-
-            // The second responds to changes in the model value (the one associated with the checked binding)
-            computed(_updateView, null, {disposeWhenNodeIsRemoved: element});
-        }
-    };
-
-    twoWayBindings['checked'] = true;
-
-    bindingHandlers.checkedValue = {
-        update(element, valueAccessor) {
-            element.value = unwrapObservable(valueAccessor());
-        }
-    };
-
-    const _makeEventHandlerShortcut = (eventName) => {
-        bindingHandlers[eventName] = {
-            init (element, valueAccessor, allBindings, viewModel, bindingContext) {
-                let newValueAccessor = () => ({[eventName]: valueAccessor()});
-                return _eventBindingInitFn(element, newValueAccessor, allBindings, viewModel, bindingContext);
-            }
-        };
-    };
-
-    const _eventBindingInitFn = (element, valueAccessor, allBindings, viewModel, bindingContext) => {
-        let eventsToHandle = valueAccessor() || {};
-        if (!eventsToHandle) {
-            return;
-        }
-        for (let eventName of Object.keys(eventsToHandle)) {
-            if (typeof eventName !== 'string') {
-                continue;
-            }
-            registerEventHandler(element, eventName, (event, ...otherArgs) => {
-                let handlerReturnValue,
-                    handlerFunction = valueAccessor()[eventName];
-                
-                if (!handlerFunction) {
-                    return;
-                }
-
-                try {
-                    // Take all the event args, and prefix with the viewmodel
-                    let viewModel = bindingContext['$data'];
-                    // call the event handler with like handler(viewModel, event, ...otherArgs);
-                    handlerReturnValue = handlerFunction.call(viewModel, viewModel, event, ...otherArgs);
-                } finally {
-                    if (handlerReturnValue !== true) { 
-                        // Normally we want to prevent default action. Developer can override this be explicitly returning true.
-                        event.preventDefault();
-                        // removed historic 'event.returnValue = false'
-                    }
-                }
-
-                let bubble = allBindings.get(eventName + 'Bubble') !== false;
-                if (!bubble) {
-                    event.stopPropagation();
-                    // removed historic 'event.cancelBubble = true'
-                }
-            });
-        }
-    };
-
-    bindingHandlers.event = {
-        init: _eventBindingInitFn
-    };
-
-    // 'click' is just a shorthand for the usual full-length event:{click:handler}
-
-    _makeEventHandlerShortcut('click');
-
-    const CLASSES_WRITTEN_BY_BINDING_KEY = Symbol('__ko__cssValue');
-
-    const _classBindingUpdateFn = (element, valueAccessor) => {
-        let value = stringTrim(unwrapObservable(valueAccessor()));
-        toggleDomNodeCssClass(element, element[CLASSES_WRITTEN_BY_BINDING_KEY], false);
-        element[CLASSES_WRITTEN_BY_BINDING_KEY] = value;
-        toggleDomNodeCssClass(element, value, true);
-    };
-
-    bindingHandlers.class = { 
-        update: _classBindingUpdateFn
-    };
-
-    bindingHandlers.css = {
-        update(element, valueAccessor) {
-            let value = unwrapObservable(valueAccessor());
-            if (!value || typeof value !== 'object') {
-                _classBindingUpdateFn(element, valueAccessor);
-                return;
-            }
-            for (let className of Object.keys(value)) {
-                let shouldHaveClass = unwrapObservable( value[className] );
-                toggleDomNodeCssClass(element, className, shouldHaveClass);
-            }
-        }
-    };
-
-    const _enableBindingUpdateFn = (element, valueAccessor) => {
-        let value = unwrapObservable(valueAccessor());
-        if (value && element.disabled) {
-            element.removeAttribute("disabled");
-        } else if ((!value) && (!element.disabled)) {
-            element.disabled = true;
-        }
-    };
-
-    bindingHandlers.enable = {
-        update: _enableBindingUpdateFn
-    };
-
-    bindingHandlers.disable = {
-        update(element, valueAccessor) {
-            _enableBindingUpdateFn(element, () => !unwrapObservable(valueAccessor()));
-        }
-    };
 
     const _foreachBindingMakeTemplateValueAccessor = (valueAccessor) => () => {
         let modelValue = valueAccessor(),
@@ -5893,6 +5430,86 @@
         update: (element, valueAccessor) => __visibleBindingUpdateFn(element, () => !unwrapObservable(valueAccessor()))
     };
 
+    const _loadingSubscribablesCache = new Map(); // Tracks component loads that are currently in flight
+    const _loadedDefinitionsCache = new Map();    // Tracks component loads that have already completed
+
+    const getComponent = (componentName, callback) => {
+        componentName = componentName.toUpperCase();
+        let cachedDefinition = _loadedDefinitionsCache.get(componentName);
+        if (cachedDefinition) {
+            // It's already loaded and cached. Reuse the same definition object.
+            // Note that for API consistency, even cache hits complete asynchronously by default.
+            // You can bypass this by putting synchronous:true on your component config.
+            if (cachedDefinition.isSynchronousComponent) {
+                // See comment in loaderRegistryBehaviors.js for reasoning
+                ignoreDependencyDetectionNoArgs(() => callback(cachedDefinition.definition));
+            } else {
+                scheduleTask(() => callback(cachedDefinition.definition));
+            }
+        } else {
+            // Join the loading process that is already underway, or start a new one.
+            let loadingSubscribable = _loadingSubscribablesCache.get(componentName);
+            if (loadingSubscribable) {
+                loadingSubscribable.subscribe(callback);
+            } else {
+                _loadNotYetLoadingComponentAndNotify(componentName, callback);
+            }
+        }
+    };
+
+    /**
+     * Start loading a component that is not yet loading, and when it's done, move it to loadedDefinitionsCache.
+     * @param {string} componentNameUpper - uppercase component name
+     * @param {function} callback
+     * @private
+     */
+    const _loadNotYetLoadingComponentAndNotify = (componentNameUpper, callback) => {
+        // if (_loadingSubscribablesCache.has(componentName)) {
+        //     throw new Error('Component "' + componentName + '" is already loading');
+        // }
+        let _subscribable = new Subscribable(),
+            completedAsync;
+        
+        _loadingSubscribablesCache.set(componentNameUpper, _subscribable);
+        _subscribable.subscribe(callback);
+
+        _beginLoadingComponent(componentNameUpper, (definition, config) => {
+            let isSynchronousComponent = !!(config && config.synchronous);
+            _loadedDefinitionsCache.set(componentNameUpper, {definition, isSynchronousComponent});
+            _loadingSubscribablesCache.delete(componentNameUpper);
+
+            // For API consistency, all loads complete asynchronously. However we want to avoid
+            // adding an extra task schedule if it's unnecessary (i.e., the completion is already
+            // async).
+            //
+            // You can bypass the 'always asynchronous' feature by putting the synchronous:true
+            // flag on your component configuration when you register it.
+            if (completedAsync || isSynchronousComponent) {
+                // Note that notifySubscribers ignores any dependencies read within the callback.
+                // See comment in loaderRegistryBehaviors.js for reasoning
+                _subscribable.notifySubscribers(definition);
+            } else {
+                scheduleTask(() => _subscribable.notifySubscribers(definition));
+            }
+        });
+        completedAsync = true;
+    };
+
+    const _beginLoadingComponent = (componentNameUpper, callback) => {
+        defaultLoader.getConfig(componentNameUpper, config => {
+            if (config) {
+                // We have a config, so now load its definition
+                defaultLoader.loadComponent(componentNameUpper, config, definition => callback(definition, config));
+            } else {
+                // The component has no config - it's unknown to all the loaders.
+                // Note that this is not an error (e.g., a module loading error) - that would abort the
+                // process and this callback would not run. For this callback to run, all loaders must
+                // have confirmed they don't know about this component.
+                callback(null, null);
+            }
+        });
+    };
+
     let componentLoadingOperationUniqueId = 0;
 
     allowedBindings.component = true;
@@ -5927,8 +5544,8 @@
                 if (typeof value === 'string') {
                     componentName = value;
                 } else {
-                    componentName = unwrapObservable(value['name']);
-                    componentParams = unwrapObservable(value['params']);
+                    componentName = unwrapObservable(value.name);
+                    componentParams = unwrapObservable(value.params);
                 }
 
                 if (!componentName) {
@@ -5951,7 +5568,11 @@
                     if (!componentDefinition) {
                         throw new Error('Unknown component \'' + componentName + '\'');
                     }
-                    _cloneTemplateIntoElement(componentName, componentDefinition, element);
+                    if (!componentDefinition.template) {
+                        throw new Error('Component \'' + componentName + '\' has no template');
+                    }
+                    // was: _cloneTemplateIntoElement(...)
+                    setDomNodeChildren(element, componentDefinition.template.map(node => node.cloneNode(true)));
 
                     let componentInfo = {
                         element,
@@ -5980,15 +5601,6 @@
         }
     };
 
-    const _cloneTemplateIntoElement = (componentName, componentDefinition, element) => {
-        let template = componentDefinition['template'];
-        if (!template) {
-            throw new Error('Component \'' + componentName + '\' has no template');
-        }
-        let clonedNodesArray = cloneNodes(template);
-        setDomNodeChildren(element, clonedNodesArray);
-    };
-
     const _createViewModel = (componentDefinition, componentParams, componentInfo) => {
         let componentViewModelFactory = componentDefinition['createViewModel'];
         return componentViewModelFactory
@@ -5999,74 +5611,23 @@
     // This is the final knockout library to be built. 
     // Anything that's not contained in the default export at the bottom of this file won't be accessible later.  
 
-
-    const expressionRewriting = {
-        bindingRewriteValidators,
-        parseObjectLiteral,
-        preProcessBindings,
-        _twoWayBindings,
-        insertPropertyAccessorsIntoJson: preProcessBindings // alias for backwards compat
-    };
-
-
     // ********************** export all props/methods/namespaces to be exposed publicly *********************************
 
     const ko = {
         version, // eslint-disable-line no-undef
-        options,
         utils: Object.assign({
-            setTimeout: setTimeoutWithCatchError,  // alias for backwards compat.
-
-            parseHtmlFragment,
-            parseHtmlForTemplateNodes,
-            setHtml,
-            parseJson: JSON.parse,
-            setDomNodeChildrenFromArrayMapping,
-            get compareArrays() { return compareArrays; },
-            set compareArrays(fn) { _overrideCompareArrays(fn); },
-            findMovesInArrayComparison,
-
-            domData: {
-                get: getDomData,
-                set: setDomData,
-                clear: clearDomData
-            },
+            unwrapObservable,
             domNodeDisposal: {
                 removeNode,
-                get cleanExternalData() { return _cleanExternalData; },
-                set cleanExternalData(fn) { _overrideCleanExternalData(fn); },
-                addDisposeCallback,
-                removeDisposeCallback
-            },
-            unwrapObservable
+                addDisposeCallback
+            }
         }, utils),
         unwrap: unwrapObservable,
         removeNode,
         cleanNode,
-        memoization: {
-            memoize,
-            unmemoize,
-            parseMemoText,
-            unmemoizeDomNodeAndDescendants
-        },
-        tasks: {
-            cancel: cancelTask,
-            runEarly,
-            resetForTesting,
-            schedule: scheduleTask,
-            get scheduler() { return _scheduler; },
-            set scheduler(s) { _overrideScheduler(s); }
-        },
         extenders,
         subscribable: Subscribable,
         isSubscribable,
-        computedContext: {
-            getDependenciesCount,
-            getDependencies,
-            isInitial: isInitialDependency,
-            registerDependency: registerDependencyExternal
-        },
-        ignoreDependencies: ignoreDependencyDetection,
         observable,
         isObservable,
         isWritableObservable,
@@ -6074,63 +5635,17 @@
         observableArray,
         isObservableArray,
         computed,
-        dependentObservable,
         isComputed,
         isPureComputed,
         pureComputed,
-        toJSON,
-        toJS,
         when,
-        selectExtensions: {
-            readValue: readSelectOrOptionValue,
-            writeValue: writeSelectOrOptionValue
-        },
-        expressionRewriting,
-        jsonExpressionRewriting: expressionRewriting,
-        virtualElements: {
-            childNodes,
-            firstChild,
-            nextSibling,
-            allowedBindings,
-            emptyNode,
-            insertAfter,
-            prepend,
-            setDomNodeChildren
-        },
-        bindingProvider: KoBindingProvider,
-        get getBindingHandler() { return getBindingHandler; },
-        set getBindingHandler(fn) { _overrideGetBindingHandler(fn); },
         bindingHandlers,
-        bindingEvent,
         applyBindings,
-        applyBindingsToDescendants,
-        applyBindingAccessorsToNode,
-        applyBindingsToNode,
         contextFor,
         dataFor,
         components: {
-            get loaders() { return loaders; },
-            set loaders(newLoaders) { _setComponentLoaders(newLoaders); },
-            // Expose the default loader so that developers can directly ask it for configuration or to resolve configuration
-            defaultLoader,
-            get: getComponent,
-            clearCachedDefinition,
-            isRegistered: isComponentRegistered,
-            register: registerComponent,
-            unregister: unregisterComponent,
-            addBindingsForCustomElement,
-            get getComponentNameForNode() { return getComponentNameForNode; },
-            set getComponentNameForNode(fn) { _overrideGetComponentNameForNode(fn); }
+            register: registerComponent
         },
-        templateEngine: TemplateEngine,
-        __tr_ambtns: applyMemoizedBindingsToNextSibling, // eslint-disable-line camelcase
-        templateSources: {
-            domElement: DomElementTemplate,
-            anonymousTemplate: AnonymousTemplate
-        },
-        setTemplateEngine,
-        renderTemplate,
-        nativeTemplateEngine: NativeTemplateEngine,
         get onError() { return onError; },
         set onError(fnOrNull) { _overrideOnError(fnOrNull); }
     };
